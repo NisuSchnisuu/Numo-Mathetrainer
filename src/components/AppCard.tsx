@@ -11,9 +11,10 @@ const iconMap: Record<string, any> = {
 
 export function AppCard({ app }: { app: App }) {
     const Icon = iconMap[app.icon] || Brain;
+    const fullPath = `${import.meta.env.BASE_URL}${app.path}`;
 
     return (
-        <a href={app.path} target="_blank" rel="noopener noreferrer" className="block group decoration-0">
+        <a href={fullPath} target="_blank" rel="noopener noreferrer" className="block group decoration-0">
             <motion.div
                 whileHover={{ y: -5 }}
                 className="relative h-full overflow-hidden rounded-xl bg-slate-900/50 border border-white/10 p-6 shadow-xl transition-all hover:shadow-cyan-500/10 hover:border-cyan-500/50"
