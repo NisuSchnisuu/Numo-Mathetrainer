@@ -147,8 +147,8 @@ function checkSession() {
                 // Optimistic View Restore
                 if (session.currentView) {
                     console.log("Optimistic Switch to:", session.currentView);
-                    if (session.currentView === 'game') switchView('game');
-                    else if (session.currentView === 'waiting') enterWaitingRoom();
+                    // if (session.currentView === 'game') switchView('game'); // DISABLED to prevent Zombie State
+                    if (session.currentView === 'waiting') enterWaitingRoom();
                 }
 
                 return true;
