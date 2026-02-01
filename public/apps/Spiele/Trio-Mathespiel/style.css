@@ -668,7 +668,7 @@ select option {
 .game-title {
     font-size: 3rem;
     font-weight: 800;
-    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    background: linear-gradient(135deg, #10b981, #3b82f6);
     background-clip: text;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;

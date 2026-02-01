@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aufgabentraining - Numo</title>
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        background: 'hsl(224 71% 4%)',
+                        foreground: 'hsl(213 31% 91%)',
+                        card: 'hsl(224 71% 4%)',
+                        'card-foreground': 'hsl(213 31% 91%)',
+                        primary: 'hsl(210 40% 98%)',
+                        'primary-foreground': 'hsl(222.2 47.4% 11.2%)',
+                        muted: 'hsl(223 47% 11%)',
+                        'muted-foreground': 'hsl(215.4 16.3% 56.9%)',
+                        accent: 'hsl(216 34% 17%)',
+                        'accent-foreground': 'hsl(210 40% 98%)',
+                        border: 'hsl(216 34% 17%)',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body
+    class="bg-background text-foreground font-sans min-h-screen flex flex-col antialiased selection:bg-primary selection:text-primary-foreground">
+
+    <!-- Header -->
+    <header
+        class="sticky top-0 z-50 w-full border-b border-white/10 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div class="container mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <a href="/"
+                    class="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-white/10 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="m15 18-6-6 6-6" />
+                    </svg>
+                </a>
+                <h1 class="text-xl font-bold tracking-tight">Aufgabentraining</h1>
+            </div>
+            <!-- Settings or Profile placeholder -->
+            <button
+                class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-medium hover:bg-primary/20 transition-colors">
+                MA
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 container mx-auto px-4 py-8">
+
+        <!-- Welcome Section -->
+        <section class="mb-8">
+            <h2 class="text-3xl font-bold mb-2">Übungsaufgaben</h2>
+            <p class="text-muted-foreground">Wähle eine Kategorie, um unbegrenzt Aufgaben zu lösen.</p>
+        </section>
+
+        <!-- Dashboard Grid -->
+        <div id="dashboard-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <!-- Cards will be injected here by JS -->
+        </div>
+
+    </main>
+
+    <script src="script.js"></script>
+</body>
+
+</html>

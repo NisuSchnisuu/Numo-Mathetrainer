@@ -18,4 +18,13 @@ export const apps: App[] = [
     category: 'Spiele',
     tags: ['Kopfrechnen', 'Zahlenverständnis', 'Kombinatorik'],
   },
+  {
+    id: 'aufgabentraining',
+    name: 'Aufgabentraining',
+    description: 'Unbegrenzt Übungsaufgaben lösen.',
+    path: 'apps/Üben/Aufgabentraining/index.html',
+    icon: 'app-thumbnails/Aufgabentraining.svg',
+    category: 'Üben',
+    tags: ['Training', 'Mathe', 'Üben'],
+  },
 ];
