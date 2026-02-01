@@ -33,15 +33,15 @@ function App() {
 
   return (
     <DashboardLayout>
-      <div className="max-w-6xl mx-auto space-y-12">
+      <div className="max-w-6xl mx-auto space-y-8">
 
         {/* Header Section */}
-        <div className="space-y-4">
-          <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-white to-slate-500 bg-clip-text text-transparent">
+        <div className="space-y-4 pt-4 pb-2">
+          <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent leading-tight py-1">
             Deine Lernumgebung
           </h1>
-          <p className="text-slate-400 text-lg max-w-2xl">
-            Wähle eine App aus, um zu starten. Filter nach Themen oder Kategorien, um genau das zu finden, was du brauchst.
+          <p className="text-slate-400 text-base max-w-2xl">
+            Wähle eine App aus, um zu starten.
           </p>
         </div>
 
@@ -55,8 +55,8 @@ function App() {
                   key={category}
                   onClick={() => setSelectedCategory(category)}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${selectedCategory === category
-                      ? 'bg-cyan-500/10 text-cyan-400 shadow-sm'
-                      : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+                    ? 'bg-cyan-500/10 text-cyan-400 shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
                     }`}
                 >
                   {category}
@@ -86,8 +86,8 @@ function App() {
                   key={tag}
                   onClick={() => toggleTag(tag)}
                   className={`text-xs px-3 py-1.5 rounded-full border transition-all ${selectedTags.includes(tag)
-                      ? 'bg-cyan-500 text-white border-cyan-500 shadow-lg shadow-cyan-500/25'
-                      : 'bg-slate-900/50 text-slate-400 border-white/10 hover:border-cyan-500/30 hover:text-cyan-400'
+                    ? 'bg-cyan-500 text-white border-cyan-500 shadow-lg shadow-cyan-500/25'
+                    : 'bg-slate-900/50 text-slate-400 border-white/10 hover:border-cyan-500/30 hover:text-cyan-400'
                     }`}
                 >
                   {tag}
@@ -98,7 +98,7 @@ function App() {
         </div>
 
         {/* Apps Grid */}
-        <motion.div layout className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           <AnimatePresence>
             {filteredApps.map(app => (
               <motion.div

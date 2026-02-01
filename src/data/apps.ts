@@ -14,7 +14,7 @@ export const apps: App[] = [
     name: 'Trio Mathespiel',
     description: 'Finde die passenden Zahlenkombinationen.',
     path: 'apps/Trio-Mathespiel/index.html', // Direct link to the independent app
-    icon: 'Calculator', // Placeholder
+    icon: 'app-thumbnails/Trio-Thumbnail.webp', // Path relative to public (or base)
     category: 'Spiele',
     tags: ['Kopfrechnen', 'Zahlenverständnis', 'Kombinatorik'],
   },

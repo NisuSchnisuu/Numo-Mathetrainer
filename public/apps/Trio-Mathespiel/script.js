@@ -105,9 +105,11 @@ function saveSession() {
             playerId: appState.playerId,
             isHost: appState.isHost,
             isHost: appState.isHost,
+            isHost: appState.isHost,
             playerName: appState.playerName,
             difficulty: appState.difficulty,
-            currentView: appState.currentView
+            currentView: appState.currentView,
+            lastActive: Date.now() // Timestamp for timeout
         };
         localStorage.setItem('trio_session', JSON.stringify(session));
     }
@@ -122,12 +124,19 @@ function checkSession() {
     if (sessionStr) {
         try {
             const session = JSON.parse(sessionStr);
+
+            // Timeout Check (5 minutes = 300,000 ms)
+            if (session.lastActive && (Date.now() - session.lastActive > 5 * 60 * 1000)) {
+                console.log("Session expired (timeout > 5min). Clearing.");
+                clearSession();
+                return false;
+            }
+
             if (session.gameId && session.playerId) {
                 console.log("Found previous session:", session);
                 // Restore State
                 appState.gameId = session.gameId;
                 appState.playerId = session.playerId;
-                appState.isHost = session.isHost;
                 appState.isHost = session.isHost;
                 appState.playerName = session.playerName;
                 if (session.difficulty) appState.difficulty = session.difficulty;
@@ -425,6 +434,12 @@ function setupEventListeners() {
             }
         });
     }
+    // Auto-save on visibility change (leaving the app)
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') {
+            saveSession();
+        }
+    });
 }
 
 function handleGlobalBack() {
