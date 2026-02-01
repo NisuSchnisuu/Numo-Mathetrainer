@@ -213,8 +213,12 @@ function goBack() {
 }
 
 function selectTopic(id) {
-    // Placeholder for next step (Exercise selection)
-    alert(`Zeige Aufgaben für Thema: ${id}`);
+    if (id === 'terms') {
+        termGame.init();
+    } else {
+        // Placeholder for next step (Exercise selection)
+        alert(`Zeige Aufgaben für Thema: ${id}`);
+    }
 }
 
 // Initialize

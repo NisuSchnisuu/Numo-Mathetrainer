@@ -36,33 +36,19 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
+    <!-- PWA & Assets -->
+    <link rel="icon" type="image/png" href="assets/Aufabentraining-logo-192x192.png">
+    <link rel="apple-touch-icon" href="assets/Aufabentraining-logo-192x192.png">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0b1120">
+
     <link rel="stylesheet" href="style.css">
 </head>
 
 <body
     class="bg-background text-foreground font-sans min-h-screen flex flex-col antialiased selection:bg-primary selection:text-primary-foreground">
 
-    <!-- Header -->
-    <header
-        class="sticky top-0 z-50 w-full border-b border-white/10 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div class="container mx-auto px-4 h-16 flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <a href="/"
-                    class="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-white/10 transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="m15 18-6-6 6-6" />
-                    </svg>
-                </a>
-                <h1 class="text-xl font-bold tracking-tight">Aufgabentraining</h1>
-            </div>
-            <!-- Settings or Profile placeholder -->
-            <button
-                class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-medium hover:bg-primary/20 transition-colors">
-                MA
-            </button>
-        </div>
-    </header>
+    <!-- Header removed -->
 
     <!-- Main Content -->
     <main class="flex-1 container mx-auto px-4 py-8">
@@ -70,12 +56,17 @@
         <!-- Welcome Section -->
         <section class="mb-8">
             <div class="flex items-center gap-4 mb-4">
-                <button id="back-button" onclick="goBack()" class="hidden p-2 rounded-lg hover:bg-white/10 text-muted-foreground hover:text-foreground transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                <button id="back-button" onclick="goBack()"
+                    class="hidden p-2 rounded-lg hover:bg-white/10 text-muted-foreground hover:text-foreground transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="m15 18-6-6 6-6" />
+                    </svg>
                 </button>
                 <div>
                     <h2 id="section-title" class="text-3xl font-bold mb-2">Übungsaufgaben</h2>
-                    <p id="section-desc" class="text-muted-foreground">Wähle eine Kategorie, um unbegrenzt Aufgaben zu lösen.</p>
+                    <p id="section-desc" class="text-muted-foreground">Wähle eine Kategorie, um unbegrenzt Aufgaben zu
+                        lösen.</p>
                 </div>
             </div>
         </section>
@@ -87,7 +78,13 @@
 
     </main>
 
+    <script src="game-terms.js"></script>
     <script src="script.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./sw.js');
+        }
+    </script>
 </body>
 
 </html>
