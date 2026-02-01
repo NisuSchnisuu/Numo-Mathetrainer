@@ -223,6 +223,9 @@ function init() {
 
     setupEventListeners();
 
+    // Auto-Cleanup Old Games (Lazy Trigger)
+    checkAutoCleanup();
+
     // Check for Join Code in URL
     const params = new URLSearchParams(window.location.search);
     const joinCode = params.get('join');
@@ -561,7 +564,8 @@ function createGame(playerName, isTeacherGame = false) {
                 observeMode: isTeacherGame ? observeMode : true // Default true for normal games
             },
             hostId: appState.playerId,
-            createdAt: firebase.database.ServerValue.TIMESTAMP
+            createdAt: firebase.database.ServerValue.TIMESTAMP,
+            lastActive: firebase.database.ServerValue.TIMESTAMP
         };
 
         gameRef.set(gameData).then(() => {
@@ -2108,6 +2112,7 @@ function submitSolution() {
     };
 
     db.ref(`games/${appState.gameId}/attempts`).push(attempt);
+    updateLastActive(); // Keep game alive
     closeCalculationModal();
 }
 
@@ -2290,23 +2295,38 @@ function startPenaltyCountdown() {
     buttons.buzzer.disabled = true;
     appState.penaltyInterval = setInterval(() => {
         const remaining = Math.ceil((appState.lockedUntil - Date.now()) / 1000);
-        if (remaining <= 0) {
+
+        // CHECK: Is someone else calculating? If so, enable "Anschauen" despite penalty!
+        if (appState.buzzerOwner && appState.buzzerOwner !== appState.playerId) {
+            buttons.buzzer.innerText = "Anschauen";
+            buttons.buzzer.disabled = false;
+            // Note: We don't clear interval, because we want to resume countdown text 
+            // if the other player cancels/submits and our penalty is still active.
+        } else if (remaining <= 0) {
             clearInterval(appState.penaltyInterval);
             appState.lockedUntil = null;
             if (appState.buzzerOwner === null) {
                 buttons.buzzer.innerText = "TRIO!";
                 buttons.buzzer.disabled = false;
             } else {
-                // If someone else is owner, let the owner listener handle text
+                // Someone else is owner (handled above usually, but race condition?)
+                // Just leave it, the listener for 'buzzerOwner' will update text.
             }
         } else {
             buttons.buzzer.innerText = `GESPERRT (${remaining}s)`;
+            buttons.buzzer.disabled = true;
         }
     }, 1000);
 
     // Initial immediate update
     const remaining = Math.ceil((appState.lockedUntil - Date.now()) / 1000);
-    buttons.buzzer.innerText = `GESPERRT (${remaining}s)`;
+    if (appState.buzzerOwner && appState.buzzerOwner !== appState.playerId) {
+        buttons.buzzer.innerText = "Anschauen";
+        buttons.buzzer.disabled = false;
+    } else {
+        buttons.buzzer.innerText = `GESPERRT (${remaining}s)`;
+        buttons.buzzer.disabled = true;
+    }
 }
 
 function generateNewTarget() {
@@ -3179,4 +3199,39 @@ function renderHelpPage(pageId) {
 
     // Scroll to top
     contentArea.scrollTop = 0;
+}
+
+// --- Auto-Cleanup Logic ---
+
+function updateLastActive() {
+    if (appState.gameId) {
+        db.ref(`games/${appState.gameId}`).update({
+            lastActive: firebase.database.ServerValue.TIMESTAMP
+        });
+    }
+}
+
+function checkAutoCleanup() {
+    // 30 Minutes cutoff
+    const cutoff = Date.now() - (30 * 60 * 1000);
+
+    // Query games inactive since cutoff
+    // Note: We limit to a few to prevent heavy load on every client init
+    db.ref('games')
+        .orderByChild('lastActive')
+        .endAt(cutoff)
+        .limitToFirst(5)
+        .once('value')
+        .then(snapshot => {
+            if (snapshot.exists()) {
+                const updates = {};
+                snapshot.forEach(child => {
+                    console.log(`Cleaning up old game: ${child.key}`);
+                    updates[child.key] = null; // Delete
+                });
+                // Atomic delete
+                db.ref('games').update(updates);
+            }
+        })
+        .catch(e => console.warn("Cleanup check failed (permission?):", e));
 }

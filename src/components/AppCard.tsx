@@ -1,12 +1,19 @@
 import type { App } from '../data/apps';
 import { motion } from 'framer-motion';
+import { addRecentAppId } from '../utils/storage';
 
 export function AppCard({ app }: { app: App }) {
     const fullPath = app.path.startsWith('http') ? app.path : `${import.meta.env.BASE_URL}${app.path}`;
     const imagePath = `${import.meta.env.BASE_URL}${app.icon}`;
 
     return (
-        <a href={fullPath} target="_blank" rel="noopener noreferrer" className="block group decoration-0">
+        <a
+            href={fullPath}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block group decoration-0"
+            onClick={() => addRecentAppId(app.id)}
+        >
             <motion.div
                 whileHover={{ y: -4, scale: 1.01 }}
                 className="relative overflow-hidden rounded-2xl bg-slate-900/40 border border-white/5 p-5 flex flex-col items-center gap-4 transition-all hover:bg-slate-900/60 hover:border-cyan-500/30 hover:shadow-lg hover:shadow-cyan-500/10"
