@@ -767,12 +767,19 @@ function subscribeToGame(gameId) {
 
         // Host Disconnected / Game Ended
         // Host Disconnected / Game Ended
+        // Host Disconnected / Game Ended
         if (!data) {
             if (!appState.isHost) {
                 showModal("Spiel beendet", "Der Host hat das Spiel verlassen.", () => {
                     clearSession(); // Prevents restoration loop
                     location.reload();
                 }, true);
+            } else {
+                // Host Zombie Session Fix:
+                // If I am Host but data is gone (e.g. auto-cleanup), we must reset.
+                console.warn("HOST: Game data not found (Zombie Session). Clearing.");
+                clearSession();
+                location.reload();
             }
             return;
         }
