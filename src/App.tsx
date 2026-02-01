@@ -151,21 +151,25 @@ function App() {
               {/* Filters & Search */}
               <div className="space-y-6">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  {/* Category Tabs (Visual only in this mode, or allow switching) */}
-                  <div className="flex p-1 bg-slate-900/50 border border-white/5 rounded-xl backdrop-blur-sm self-start overflow-x-auto max-w-full">
-                    {categories.map(category => (
-                      <button
-                        key={category}
-                        onClick={() => setSelectedCategory(category)}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap ${selectedCategory === category
-                          ? 'bg-cyan-500/10 text-cyan-400 shadow-sm'
-                          : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
-                          }`}
-                      >
-                        {category}
-                      </button>
-                    ))}
-                  </div>
+                  {/* Category Tabs - Only show if we act as "Alle" filter or if we want to allow switching. 
+                      User requested: "within individual areas... no filters needed. Only in area Alle." 
+                  */}
+                  {selectedCategory === 'Alle' && (
+                    <div className="flex p-1 bg-slate-900/50 border border-white/5 rounded-xl backdrop-blur-sm self-start overflow-x-auto max-w-full">
+                      {categories.map(category => (
+                        <button
+                          key={category}
+                          onClick={() => setSelectedCategory(category)}
+                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap ${selectedCategory === category
+                            ? 'bg-cyan-500/10 text-cyan-400 shadow-sm'
+                            : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+                            }`}
+                        >
+                          {category}
+                        </button>
+                      ))}
+                    </div>
+                  )}
 
                   {/* Search Bar */}
                   <div className="relative w-full md:w-72">

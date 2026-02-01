@@ -33,7 +33,7 @@ export function CategoryCard({ title, description, count, type, onClick }: Categ
             whileHover={{ y: -4, scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={onClick}
-            className={`relative w-full text-left p-6 rounded-2xl border border-white/5 bg-gradient-to-br ${getGradient()} transition-all duration-300 group overflow-hidden`}
+            className={`cursor-pointer relative w-full text-left p-6 rounded-2xl border border-white/5 bg-gradient-to-br ${getGradient()} transition-all duration-300 group overflow-hidden`}
         >
             <div className="relative z-10 flex flex-col h-full justify-between gap-4">
                 <div className="p-3 bg-white/5 rounded-xl w-fit backdrop-blur-sm border border-white/5 group-hover:border-white/10 transition-colors">
