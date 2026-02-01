@@ -9,18 +9,18 @@ const termGame = {
 
     // UI Templates
     renderConfig() {
-        // Initialize default    // UI Templates
-        renderConfig() {
-            if (!this.state.opsState) {
-                this.state.opsState = {
-                    plus: true, minus: true, mult: true, div: true, brackets: false
-                };
-            }
+        // Initialize default
 
-            const ops = this.state.opsState;
+        if (!this.state.opsState) {
+            this.state.opsState = {
+                plus: true, minus: true, mult: true, div: true, brackets: false
+            };
+        }
 
-            // Compact layout
-            return `
+        const ops = this.state.opsState;
+
+        // Compact layout
+        return `
             <div class="max-w-lg mx-auto static-card rounded-xl p-6 animate-fade-in flex flex-col justify-center min-h-[500px]">
                 <h2 class="text-xl font-bold mb-4 text-center">Einstellungen</h2>
                 
@@ -64,175 +64,175 @@ const termGame = {
                 </div>
             </div>
         `;
-        },
+    },
 
-        renderOpToggle(id, label, active) {
-            const activeClass = active
-                ? 'bg-primary text-primary-foreground ring-1 ring-primary ring-offset-1 ring-offset-[#0b1120] shadow-sm'
-                : 'bg-white/5 text-muted-foreground hover:bg-white/10';
+    renderOpToggle(id, label, active) {
+        const activeClass = active
+            ? 'bg-primary text-primary-foreground ring-1 ring-primary ring-offset-1 ring-offset-[#0b1120] shadow-sm'
+            : 'bg-white/5 text-muted-foreground hover:bg-white/10';
 
-            return `
+        return `
             <button id="op-btn-${id}" onclick="termGame.toggleOp('${id}')" 
                 class="op-toggle-btn flex items-center justify-center p-2 rounded-md border border-white/5 transition-all duration-200 ${activeClass}"
                 data-op="${id}">
                 <span class="font-bold text-base">${label}</span>
             </button>
         `;
-        },
+    },
 
-        toggleOp(id) {
-            this.state.opsState[id] = !this.state.opsState[id];
-            const btn = document.getElementById(`op-btn-${id}`);
-            if (this.state.opsState[id]) {
-                btn.className = 'op-toggle-btn flex items-center justify-center p-2 rounded-md border border-white/5 transition-all duration-200 bg-primary text-primary-foreground ring-1 ring-primary ring-offset-1 ring-offset-[#0b1120] shadow-sm';
+    toggleOp(id) {
+        this.state.opsState[id] = !this.state.opsState[id];
+        const btn = document.getElementById(`op-btn-${id}`);
+        if (this.state.opsState[id]) {
+            btn.className = 'op-toggle-btn flex items-center justify-center p-2 rounded-md border border-white/5 transition-all duration-200 bg-primary text-primary-foreground ring-1 ring-primary ring-offset-1 ring-offset-[#0b1120] shadow-sm';
+        } else {
+            btn.className = 'op-toggle-btn flex items-center justify-center p-2 rounded-md border border-white/5 transition-all duration-200 bg-white/5 text-muted-foreground hover:bg-white/10';
+        }
+    },
+
+    // Logic
+    init() {
+        const grid = document.getElementById('dashboard-grid');
+        // Hide global text to save space
+        const headerTitle = document.getElementById('section-title');
+        const headerDesc = document.getElementById('section-desc');
+        // Optional: Hide them completely for game mode if user wants "compact"
+        // But for now let's keep them small.
+
+        grid.className = "flex justify-center items-start min-h-[600px]"; // Use flex to center single card
+        this.state.opsState = { plus: true, minus: true, mult: true, div: true, brackets: false };
+        grid.innerHTML = this.renderConfig();
+
+        window.termGame = this;
+    },
+
+    selectDiff(btn, level) {
+        document.querySelectorAll('.diff-btn').forEach(b => {
+            b.className = "diff-btn px-2 py-2 rounded-lg border border-white/10 hover:bg-white/5 text-xs transition-all";
+        });
+        btn.className = "diff-btn active px-2 py-2 rounded-lg border border-white/10 hover:bg-white/5 text-xs transition-all bg-primary/20 ring-1 ring-primary/50 text-white shadow-[0_0_15px_rgba(56,189,248,0.2)]";
+        this.currentDiff = level;
+    },
+
+    start() {
+        const ops = this.state.opsState;
+        const range = parseInt(document.getElementById('config-range').value);
+
+        const hasPoint = ops.mult || ops.div;
+        const hasLine = ops.plus || ops.minus;
+
+        if (!hasPoint || !hasLine) {
+            document.getElementById('config-error').classList.remove('hidden');
+            return;
+        }
+
+        this.state.config = { ops, range, difficulty: this.currentDiff || 'normal' };
+        this.nextTask();
+    },
+
+    nextTask() {
+        this.state.userTerm = [];
+        this.state.isFinished = false;
+        this.state.currentTask = this.generateTask();
+
+        this.state.currentTask.elements.sort((a, b) => {
+            if (a.type === b.type) return 0;
+            return a.type === 'number' ? -1 : 1;
+        });
+
+        this.initGameUI();
+    },
+
+    generateTask() {
+        const { range, ops } = this.state.config;
+        const diff = this.state.config.difficulty;
+        let task = null;
+        let attempts = 0;
+        while (!task && attempts < 50) {
+            attempts++;
+            try { task = this.createEquation(range, ops, diff); } catch (e) { }
+        }
+        if (!task) task = { target: 10, elements: [{ type: 'number', val: 5, id: 'n1' }, { type: 'number', val: 2, id: 'n2' }, { type: 'op', val: '×', id: 'o1' }] };
+        return task;
+    },
+
+    createEquation(range, ops, diff) {
+        const allowBrackets = ops.brackets;
+        if (allowBrackets) {
+            const lineOps = []; if (ops.plus) lineOps.push('+'); if (ops.minus) lineOps.push('-');
+            const pointOps = []; if (ops.mult) pointOps.push('*'); if (ops.div) pointOps.push('/');
+            if (lineOps.length === 0 || pointOps.length === 0) return this.createSimpleEquation(range, ops, 3);
+
+            const op1 = lineOps[Math.floor(Math.random() * lineOps.length)];
+            const op2 = pointOps[Math.floor(Math.random() * pointOps.length)];
+            const a = Math.floor(Math.random() * 10) + 1;
+            const b = Math.floor(Math.random() * 10) + 1;
+
+            let c;
+            let term1Res = (op1 === '+') ? a + b : a - b;
+
+            if (op2 === '*') {
+                c = Math.floor(Math.random() * 10) + 2;
             } else {
-                btn.className = 'op-toggle-btn flex items-center justify-center p-2 rounded-md border border-white/5 transition-all duration-200 bg-white/5 text-muted-foreground hover:bg-white/10';
-            }
-        },
-
-        // Logic
-        init() {
-            const grid = document.getElementById('dashboard-grid');
-            // Hide global text to save space
-            const headerTitle = document.getElementById('section-title');
-            const headerDesc = document.getElementById('section-desc');
-            // Optional: Hide them completely for game mode if user wants "compact"
-            // But for now let's keep them small.
-
-            grid.className = "flex justify-center items-start min-h-[600px]"; // Use flex to center single card
-            this.state.opsState = { plus: true, minus: true, mult: true, div: true, brackets: false };
-            grid.innerHTML = this.renderConfig();
-
-            window.termGame = this;
-        },
-
-        selectDiff(btn, level) {
-            document.querySelectorAll('.diff-btn').forEach(b => {
-                b.className = "diff-btn px-2 py-2 rounded-lg border border-white/10 hover:bg-white/5 text-xs transition-all";
-            });
-            btn.className = "diff-btn active px-2 py-2 rounded-lg border border-white/10 hover:bg-white/5 text-xs transition-all bg-primary/20 ring-1 ring-primary/50 text-white shadow-[0_0_15px_rgba(56,189,248,0.2)]";
-            this.currentDiff = level;
-        },
-
-        start() {
-            const ops = this.state.opsState;
-            const range = parseInt(document.getElementById('config-range').value);
-
-            const hasPoint = ops.mult || ops.div;
-            const hasLine = ops.plus || ops.minus;
-
-            if (!hasPoint || !hasLine) {
-                document.getElementById('config-error').classList.remove('hidden');
-                return;
+                const factors = [];
+                for (let i = 2; i < Math.abs(term1Res); i++) if (term1Res % i === 0) factors.push(i);
+                if (factors.length === 0) c = 1; else c = factors[Math.floor(Math.random() * factors.length)];
             }
 
-            this.state.config = { ops, range, difficulty: this.currentDiff || 'normal' };
-            this.nextTask();
-        },
+            let target = (op2 === '*') ? term1Res * c : term1Res / c;
+            if (target > range || target < 0) throw "Out of range";
 
-        nextTask() {
-            this.state.userTerm = [];
-            this.state.isFinished = false;
-            this.state.currentTask = this.generateTask();
+            const elements = [
+                { type: 'number', val: a, id: 'n1' },
+                { type: 'number', val: b, id: 'n2' },
+                { type: 'number', val: c, id: 'n3' },
+                { type: 'op', val: op1, id: 'o1' },
+                { type: 'op', val: op2 === '*' ? '×' : '÷', id: 'o2' },
+                { type: 'op', val: '(', id: 'b1' },
+                { type: 'op', val: ')', id: 'b2' }
+            ];
+            return { target, elements };
+        } else {
+            let numCount = 3;
+            if (diff === 'advanced') numCount = 4;
+            if (diff === 'profi') numCount = 5;
+            return this.createSimpleEquation(range, ops, numCount);
+        }
+    },
 
-            this.state.currentTask.elements.sort((a, b) => {
-                if (a.type === b.type) return 0;
-                return a.type === 'number' ? -1 : 1;
-            });
+    createSimpleEquation(range, ops, numElements) {
+        const availOps = [];
+        if (ops.plus) availOps.push('+'); if (ops.minus) availOps.push('-');
+        if (ops.mult) availOps.push('*'); if (ops.div) availOps.push('/');
+        if (availOps.length === 0) throw "No ops";
 
-            this.initGameUI();
-        },
+        let nums = [];
+        let operators = [];
 
-        generateTask() {
-            const { range, ops } = this.state.config;
-            const diff = this.state.config.difficulty;
-            let task = null;
-            let attempts = 0;
-            while (!task && attempts < 50) {
-                attempts++;
-                try { task = this.createEquation(range, ops, diff); } catch (e) { }
-            }
-            if (!task) task = { target: 10, elements: [{ type: 'number', val: 5, id: 'n1' }, { type: 'number', val: 2, id: 'n2' }, { type: 'op', val: '×', id: 'o1' }] };
-            return task;
-        },
+        for (let i = 0; i < numElements; i++) nums.push(Math.floor(Math.random() * 20) + 1);
+        for (let i = 0; i < numElements - 1; i++) operators.push(availOps[Math.floor(Math.random() * availOps.length)]);
 
-        createEquation(range, ops, diff) {
-            const allowBrackets = ops.brackets;
-            if (allowBrackets) {
-                const lineOps = []; if (ops.plus) lineOps.push('+'); if (ops.minus) lineOps.push('-');
-                const pointOps = []; if (ops.mult) pointOps.push('*'); if (ops.div) pointOps.push('/');
-                if (lineOps.length === 0 || pointOps.length === 0) return this.createSimpleEquation(range, ops, 3);
+        let str = "";
+        for (let i = 0; i < nums.length; i++) {
+            str += nums[i];
+            if (i < operators.length) str += " " + operators[i] + " ";
+        }
 
-                const op1 = lineOps[Math.floor(Math.random() * lineOps.length)];
-                const op2 = pointOps[Math.floor(Math.random() * pointOps.length)];
-                const a = Math.floor(Math.random() * 10) + 1;
-                const b = Math.floor(Math.random() * 10) + 1;
+        const res = eval(str);
+        if (!Number.isInteger(res)) throw "Decimal";
+        if (res < 0 || res > range) throw "Range";
 
-                let c;
-                let term1Res = (op1 === '+') ? a + b : a - b;
+        const elements = nums.map((n, i) => ({ type: 'number', val: n, id: 'n' + i }));
+        operators.forEach((o, i) => elements.push({ type: 'op', val: o === '*' ? '×' : (o === '/' ? '÷' : o), id: 'o' + i }));
 
-                if (op2 === '*') {
-                    c = Math.floor(Math.random() * 10) + 2;
-                } else {
-                    const factors = [];
-                    for (let i = 2; i < Math.abs(term1Res); i++) if (term1Res % i === 0) factors.push(i);
-                    if (factors.length === 0) c = 1; else c = factors[Math.floor(Math.random() * factors.length)];
-                }
+        return { target: res, elements };
+    },
 
-                let target = (op2 === '*') ? term1Res * c : term1Res / c;
-                if (target > range || target < 0) throw "Out of range";
+    initGameUI() {
+        const grid = document.getElementById('dashboard-grid');
 
-                const elements = [
-                    { type: 'number', val: a, id: 'n1' },
-                    { type: 'number', val: b, id: 'n2' },
-                    { type: 'number', val: c, id: 'n3' },
-                    { type: 'op', val: op1, id: 'o1' },
-                    { type: 'op', val: op2 === '*' ? '×' : '÷', id: 'o2' },
-                    { type: 'op', val: '(', id: 'b1' },
-                    { type: 'op', val: ')', id: 'b2' }
-                ];
-                return { target, elements };
-            } else {
-                let numCount = 3;
-                if (diff === 'advanced') numCount = 4;
-                if (diff === 'profi') numCount = 5;
-                return this.createSimpleEquation(range, ops, numCount);
-            }
-        },
-
-        createSimpleEquation(range, ops, numElements) {
-            const availOps = [];
-            if (ops.plus) availOps.push('+'); if (ops.minus) availOps.push('-');
-            if (ops.mult) availOps.push('*'); if (ops.div) availOps.push('/');
-            if (availOps.length === 0) throw "No ops";
-
-            let nums = [];
-            let operators = [];
-
-            for (let i = 0; i < numElements; i++) nums.push(Math.floor(Math.random() * 20) + 1);
-            for (let i = 0; i < numElements - 1; i++) operators.push(availOps[Math.floor(Math.random() * availOps.length)]);
-
-            let str = "";
-            for (let i = 0; i < nums.length; i++) {
-                str += nums[i];
-                if (i < operators.length) str += " " + operators[i] + " ";
-            }
-
-            const res = eval(str);
-            if (!Number.isInteger(res)) throw "Decimal";
-            if (res < 0 || res > range) throw "Range";
-
-            const elements = nums.map((n, i) => ({ type: 'number', val: n, id: 'n' + i }));
-            operators.forEach((o, i) => elements.push({ type: 'op', val: o === '*' ? '×' : (o === '/' ? '÷' : o), id: 'o' + i }));
-
-            return { target: res, elements };
-        },
-
-        initGameUI() {
-            const grid = document.getElementById('dashboard-grid');
-
-            // Highly Compact Game Layout
-            grid.innerHTML = `
+        // Highly Compact Game Layout
+        grid.innerHTML = `
             <div class="w-full max-w-3xl mx-auto flex flex-col h-[calc(100vh-120px)] animate-fade-in relative">
                 
                 <!-- Target (Top) -->
@@ -279,162 +279,164 @@ const termGame = {
                 </div>
             </div>
         `;
-        },
+    },
 
-        renderPool() {
-            // Filter out used IDs
-            const usedIds = new Set(this.state.userTerm.map(e => e.id));
-            return this.state.currentTask.elements.map(el => {
-                if (usedIds.has(el.id)) return `<div style="width: 60px; height: 50px;"></div>`; // Placeholder to keep layout stable
+    renderPool() {
+        // Filter out used IDs
+        const usedIds = new Set(this.state.userTerm.map(e => e.id));
+        return this.state.currentTask.elements.map(el => {
+            if (usedIds.has(el.id)) return `<div style="width: 60px; height: 50px;"></div>`; // Placeholder to keep layout stable
 
-                let colorClass = el.type === 'number' ? 'bg-blue-500/20 text-blue-100 border-blue-500/30' : 'bg-white/10 text-white border-white/10';
-                return `
+            let colorClass = el.type === 'number' ? 'bg-blue-500/20 text-blue-100 border-blue-500/30' : 'bg-white/10 text-white border-white/10';
+            return `
                 <button id="btn-${el.id}" onclick="termGame.handleElementClick('${el.id}')" 
                     class="${colorClass} border w-[60px] h-[50px] rounded-lg text-lg font-bold hover:scale-110 active:scale-95 transition-all shadow-md backdrop-blur-sm flex items-center justify-center">
                     ${el.val}
                 </button>
             `;
-            }).join('');
-        },
+        }).join('');
+    },
 
-        updateGameUI() {
-            const container = document.getElementById('equation-container');
+    updateGameUI() {
+        const container = document.getElementById('equation-container');
 
-            // Update equation
-            const termHtml = this.state.userTerm.map(el => `
-             <span class="text-2xl font-bold mx-1 animate-fade-in">${el.val}</span>
+        // Update equation
+        const termHtml = this.state.userTerm.map(el => `
+             <span class="text-2xl font-bold mx-1">${el.val}</span>
         `).join('');
-            container.innerHTML = termHtml.length > 0 ? termHtml : '<span class="text-white/20 italic text-lg">Wähle Zahlen & Zeichen...</span>';
+        container.innerHTML = termHtml.length > 0 ? termHtml : '<span class="text-white/20 italic text-lg">Wähle Zahlen & Zeichen...</span>';
 
-            // Update Pool (Re-render to handle placeholders correctly)
-            document.getElementById('pool-container').innerHTML = this.renderPool();
+        // Update Pool (Re-render to handle placeholders correctly)
+        document.getElementById('pool-container').innerHTML = this.renderPool();
 
-            // Check Button Logic
-            const checkBtn = document.getElementById('check-btn');
-            if (checkBtn) {
-                // Enable if at least 1 number and 1 operator are present (roughly)
-                // Or simpler: Just length >= 3
-                if (this.state.userTerm.length >= 3) {
-                    checkBtn.disabled = false;
-                    checkBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-                } else {
-                    checkBtn.disabled = true;
-                    checkBtn.classList.add('opacity-50', 'cursor-not-allowed');
-                }
+        // Check Button Logic
+        const checkBtn = document.getElementById('check-btn');
+        if (checkBtn) {
+            // Enable if at least 1 number and 1 operator are present (roughly)
+            // Or simpler: Just length >= 3
+            if (this.state.userTerm.length >= 3) {
+                checkBtn.disabled = false;
+                checkBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            } else {
+                checkBtn.disabled = true;
+                checkBtn.classList.add('opacity-50', 'cursor-not-allowed');
             }
-        },
-
-        handleElementClick(elId) {
-            if (this.state.isFinished) return;
-
-            const btn = document.getElementById(`btn-${elId}`);
-            if (!btn) return;
-
-            // Clone button for animation
-            const rect = btn.getBoundingClientRect();
-            const clone = btn.cloneNode(true);
-            clone.style.position = 'fixed';
-            clone.style.left = rect.left + 'px';
-            clone.style.top = rect.top + 'px';
-            clone.style.width = rect.width + 'px';
-            clone.style.height = rect.height + 'px';
-            clone.style.zIndex = '100';
-            clone.style.transition = 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
-            clone.style.margin = '0';
-            document.body.appendChild(clone);
-
-            // Find target position (end of equation container)
-            const container = document.getElementById('equation-container');
-            const containerRect = container.getBoundingClientRect();
-
-            // If container empty, center. Else, after last child.
-            // Approximate center of container for simplicity, or slightly to the right of last child.
-            // Let's aim for center of container for "flying in" effect
-            const targetX = containerRect.left + containerRect.width / 2 - rect.width / 2; // Center
-            const targetY = containerRect.top + containerRect.height / 2 - rect.height / 2;
-
-            // Force reflow
-            clone.getBoundingClientRect();
-
-            // Animate
-            clone.style.left = targetX + 'px';
-            clone.style.top = targetY + 'px';
-            clone.style.opacity = '0.5';
-            clone.style.transform = 'scale(0.8)';
-
-            // After animation, update state
-            setTimeout(() => {
-                clone.remove();
-
-                // Logic update
-                const elIndex = this.state.currentTask.elements.findIndex(e => e.id === elId);
-                if (elIndex !== -1) {
-                    const element = this.state.currentTask.elements[elIndex];
-                    this.state.userTerm.push(element);
-                    this.updateGameUI();
-                }
-            }, 400);
-        },
-
-        backspace() {
-            if (this.state.userTerm.length === 0) return;
-            this.state.userTerm.pop();
-            this.updateGameUI();
-        },
-
-        checkSolution() {
-            if (this.state.isFinished) return;
-
-            const feedback = document.getElementById('feedback-area');
-            const checkBtn = document.getElementById('check-btn');
-            const successArea = document.getElementById('success-area');
-
-            // Reset previous feedback state
-            checkBtn.textContent = 'Überprüfen';
-            checkBtn.classList.remove('bg-red-500', 'hover:bg-red-600', 'animate-shake');
-            checkBtn.classList.add('bg-primary');
-            feedback.innerHTML = '';
-
-            let termStr = this.state.userTerm.map(e => e.val.toString().replace('×', '*').replace('÷', '/')).join(' ');
-
-            try {
-                if (!/^[0-9+\-*/().\s]+$/.test(termStr)) throw "Format";
-                const result = eval(termStr);
-
-                if (result === this.state.currentTask.target) {
-                    const numbersUsed = this.state.userTerm.filter(e => e.type === 'number').length;
-                    if (numbersUsed >= 2) {
-                        this.state.isFinished = true;
-                        // Show success overlay
-                        successArea.classList.remove('hidden');
-                        return;
-                    }
-                    this.showError("Nutze mehr Zahlen!");
-                } else {
-                    this.showError("Falsches Ergebnis");
-                }
-            } catch (e) {
-                this.showError("Ungültige Rechnung");
-            }
-        },
-
-        showError(msg) {
-            const checkBtn = document.getElementById('check-btn');
-            const feedback = document.getElementById('feedback-area');
-
-            checkBtn.classList.add('animate-shake', 'bg-red-500', 'hover:bg-red-600');
-            checkBtn.classList.remove('bg-primary');
-            checkBtn.textContent = 'Falsch ❌';
-
-            feedback.innerHTML = `<span class="text-red-400 font-bold bg-background/80 px-2 py-1 rounded shadow-sm">${msg}</span>`;
-
-            setTimeout(() => {
-                checkBtn.classList.remove('animate-shake');
-            }, 500);
-        },
-
-        renderGame(success = false) {
-            this.initGameUI();
         }
-    };
-```
+    },
+
+    handleElementClick(elId) {
+        if (this.state.isFinished) return;
+
+        const btn = document.getElementById(`btn-${elId}`);
+        if (!btn || btn.classList.contains('pointer-events-none')) return;
+
+        // Disable interaction immediately to prevent double-click
+        btn.classList.add('opacity-50', 'pointer-events-none');
+
+        // Clone button for animation
+        const rect = btn.getBoundingClientRect();
+        const clone = btn.cloneNode(true);
+        clone.style.position = 'fixed';
+        clone.style.left = rect.left + 'px';
+        clone.style.top = rect.top + 'px';
+        clone.style.width = rect.width + 'px';
+        clone.style.height = rect.height + 'px';
+        clone.style.zIndex = '100';
+        clone.style.transition = 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+        clone.style.margin = '0';
+        document.body.appendChild(clone);
+
+        // Find target position (end of equation container)
+        const container = document.getElementById('equation-container');
+        const containerRect = container.getBoundingClientRect();
+
+        // If container empty, center. Else, after last child.
+        // Approximate center of container for simplicity, or slightly to the right of last child.
+        // Let's aim for center of container for "flying in" effect
+        const targetX = containerRect.left + containerRect.width / 2 - rect.width / 2; // Center
+        const targetY = containerRect.top + containerRect.height / 2 - rect.height / 2;
+
+        // Force reflow
+        clone.getBoundingClientRect();
+
+        // Animate
+        clone.style.left = targetX + 'px';
+        clone.style.top = targetY + 'px';
+        clone.style.opacity = '0.5';
+        clone.style.transform = 'scale(0.8)';
+
+        // After animation, update state
+        setTimeout(() => {
+            clone.remove();
+
+            // Logic update
+            const elIndex = this.state.currentTask.elements.findIndex(e => e.id === elId);
+            if (elIndex !== -1) {
+                const element = this.state.currentTask.elements[elIndex];
+                this.state.userTerm.push(element);
+                this.updateGameUI();
+            }
+        }, 400);
+    },
+
+    backspace() {
+        if (this.state.userTerm.length === 0) return;
+        this.state.userTerm.pop();
+        this.updateGameUI();
+    },
+
+    checkSolution() {
+        if (this.state.isFinished) return;
+
+        const feedback = document.getElementById('feedback-area');
+        const checkBtn = document.getElementById('check-btn');
+        const successArea = document.getElementById('success-area');
+
+        // Reset previous feedback state
+        checkBtn.textContent = 'Überprüfen';
+        checkBtn.classList.remove('bg-red-500', 'hover:bg-red-600', 'animate-shake');
+        checkBtn.classList.add('bg-primary');
+        feedback.innerHTML = '';
+
+        let termStr = this.state.userTerm.map(e => e.val.toString().replace('×', '*').replace('÷', '/')).join(' ');
+
+        try {
+            if (!/^[0-9+\-*/().\s]+$/.test(termStr)) throw "Format";
+            const result = eval(termStr);
+
+            if (result === this.state.currentTask.target) {
+                const numbersUsed = this.state.userTerm.filter(e => e.type === 'number').length;
+                if (numbersUsed >= 2) {
+                    this.state.isFinished = true;
+                    // Show success overlay
+                    successArea.classList.remove('hidden');
+                    return;
+                }
+                this.showError("Nutze mehr Zahlen!");
+            } else {
+                this.showError("Falsches Ergebnis");
+            }
+        } catch (e) {
+            this.showError("Ungültige Rechnung");
+        }
+    },
+
+    showError(msg) {
+        const checkBtn = document.getElementById('check-btn');
+        const feedback = document.getElementById('feedback-area');
+
+        checkBtn.classList.add('animate-shake', 'bg-red-500', 'hover:bg-red-600');
+        checkBtn.classList.remove('bg-primary');
+        checkBtn.textContent = 'Falsch ❌';
+
+        feedback.innerHTML = `<span class="text-red-400 font-bold bg-background/80 px-2 py-1 rounded shadow-sm">${msg}</span>`;
+
+        setTimeout(() => {
+            checkBtn.classList.remove('animate-shake');
+        }, 500);
+    },
+
+    renderGame(success = false) {
+        this.initGameUI();
+    }
+};

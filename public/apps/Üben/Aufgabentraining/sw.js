@@ -1,6 +1,6 @@
 self.addEventListener('install', (e) => {
     e.waitUntil(
-        caches.open('numo-store-v1').then((cache) => cache.addAll([
+        caches.open('numo-store-v2').then((cache) => cache.addAll([
             './',
             './index.html',
             './script.js',
