@@ -1,0 +1,30 @@
+import type { ReactNode } from 'react';
+
+export function DashboardLayout({ children }: { children: ReactNode }) {
+    return (
+        <div className="min-h-screen bg-slate-950 text-slate-100 selection:bg-cyan-500/30 font-sans">
+            <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-slate-950 to-slate-950 -z-10" />
+
+            <header className="sticky top-0 z-50 border-b border-white/5 bg-slate-950/80 backdrop-blur-xl">
+                <div className="container mx-auto px-6 h-16 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center font-bold text-white shadow-lg shadow-cyan-500/20">
+                            N
+                        </div>
+                        <span className="font-bold text-lg tracking-tight text-white">Numo</span>
+                    </div>
+                    {/* 
+                <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-400">
+                    <a href="#" className="hover:text-white transition-colors">Dashboard</a>
+                    <a href="#" className="hover:text-white transition-colors">Settings</a>
+                </nav> 
+                */}
+                </div>
+            </header>
+
+            <main className="container mx-auto px-6 py-12">
+                {children}
+            </main>
+        </div>
+    )
+}
