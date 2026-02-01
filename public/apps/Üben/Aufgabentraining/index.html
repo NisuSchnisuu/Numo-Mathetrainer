@@ -69,8 +69,15 @@
 
         <!-- Welcome Section -->
         <section class="mb-8">
-            <h2 class="text-3xl font-bold mb-2">Übungsaufgaben</h2>
-            <p class="text-muted-foreground">Wähle eine Kategorie, um unbegrenzt Aufgaben zu lösen.</p>
+            <div class="flex items-center gap-4 mb-4">
+                <button id="back-button" onclick="goBack()" class="hidden p-2 rounded-lg hover:bg-white/10 text-muted-foreground hover:text-foreground transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                </button>
+                <div>
+                    <h2 id="section-title" class="text-3xl font-bold mb-2">Übungsaufgaben</h2>
+                    <p id="section-desc" class="text-muted-foreground">Wähle eine Kategorie, um unbegrenzt Aufgaben zu lösen.</p>
+                </div>
+            </div>
         </section>
 
         <!-- Dashboard Grid -->
