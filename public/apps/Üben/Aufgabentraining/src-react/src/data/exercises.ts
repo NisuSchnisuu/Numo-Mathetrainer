@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react';
-import { TermGame } from '../exercises/numbers/terms/TermGame';
+import { TermBaumeister } from '../exercises/numbers/terms/TermBaumeister';
 
 // Definition einer Übung
 export interface Exercise {
@@ -14,9 +14,9 @@ export const exercises: Record<string, Exercise[]> = {
     'terms': [
         {
             id: 'term_calc_1',
-            title: 'Rechenzeichen-Training',
+            title: 'Term-Baumeister',
             description: 'Übe das Rechnen mit Punkt-vor-Strich und Klammern in verschiedenen Schwierigkeitsstufen.',
-            component: TermGame
+            component: TermBaumeister
         },
         // Hier können später einfach weitere Übungen hinzugefügt werden:
         // {

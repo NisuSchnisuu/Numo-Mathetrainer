@@ -20,7 +20,7 @@ src-react/
         │
         ├── numbers/    # Kategorie-ID (z.B. Zahlen & Rechnen)
         │   ├── terms/  # Themen-ID (z.B. Terme & Klammern)
-        │   │   ├── TermGame.tsx        # Die konkrete Übung
+        │   │   ├── TermBaumeister.tsx  # Die konkrete Übung
         │   │   └── AnotherGame.tsx     # Eine weitere Übung im gleichen Thema
         │   │
         │   └── fractions/  # Anderes Thema

@@ -27,11 +27,11 @@ interface Task {
     elements: GameElement[];
 }
 
-interface TermGameProps {
+interface TermBaumeisterProps {
     onBack: () => void;
 }
 
-export function TermGame({ onBack }: TermGameProps) {
+export function TermBaumeister({ onBack }: TermBaumeisterProps) {
     const [isPlaying, setIsPlaying] = useState(false);
     const [config, setConfig] = useState<Config>({
         ops: { plus: true, minus: true, mult: true, div: true, brackets: false },
@@ -57,7 +57,10 @@ function ConfigView({ config, setConfig, onStart, onBack }: { config: Config, se
     const setDiff = (d: Difficulty) => setConfig({ ...config, difficulty: d });
     const setRange = (r: number) => setConfig({ ...config, range: r });
 
-    const isValid = (config.ops.plus || config.ops.minus) && (config.ops.mult || config.ops.div);
+    // Validate that we have at least one line op and one point op for mixed calculations
+    const hasLineOp = config.ops.plus || config.ops.minus;
+    const hasPointOp = config.ops.mult || config.ops.div;
+    const isValid = hasLineOp && hasPointOp;
 
     return (
         <div className="max-w-lg mx-auto static-card rounded-xl p-6 animate-fade-in flex flex-col justify-center min-h-[500px] relative">
@@ -68,7 +71,8 @@ function ConfigView({ config, setConfig, onStart, onBack }: { config: Config, se
 
             {/* Operators */}
             <div className="mb-4">
-                <label className="block text-xs font-medium mb-2 text-muted-foreground">Rechenzeichen</label>
+                <label className="block text-xs font-medium mb-1 text-muted-foreground">Rechenzeichen</label>
+                <p className="text-xs text-muted-foreground/60 mb-3">Wähle die Rechenarten, die in den Aufgaben vorkommen sollen.</p>
                 <div className="grid grid-cols-5 gap-2">
                     <OpToggle label="+" active={config.ops.plus} onClick={() => toggleOp('plus')} />
                     <OpToggle label="-" active={config.ops.minus} onClick={() => toggleOp('minus')} />
@@ -80,7 +84,8 @@ function ConfigView({ config, setConfig, onStart, onBack }: { config: Config, se
 
             {/* Range */}
             <div className="mb-4">
-                <label className="block text-xs font-medium mb-2 text-muted-foreground">Zahlenraum</label>
+                <label className="block text-xs font-medium mb-1 text-muted-foreground">Zahlenraum</label>
+                <p className="text-xs text-muted-foreground/60 mb-2">Wie gross dürfen die Zahlen maximal werden?</p>
                 <select 
                     value={config.range} 
                     onChange={(e) => setRange(parseInt(e.target.value))}
@@ -94,7 +99,8 @@ function ConfigView({ config, setConfig, onStart, onBack }: { config: Config, se
 
             {/* Difficulty */}
             <div className="mb-6">
-                <label className="block text-xs font-medium mb-2 text-muted-foreground">Schwierigkeitsgrad</label>
+                <label className="block text-xs font-medium mb-1 text-muted-foreground">Schwierigkeitsgrad</label>
+                <p className="text-xs text-muted-foreground/60 mb-2">Bestimmt die Anzahl der Zahlen in der Rechnung.</p>
                 <div className="grid grid-cols-3 gap-2">
                     <DiffButton label="Normal" active={config.difficulty === 'normal'} onClick={() => setDiff('normal')} />
                     <DiffButton label="Fortgeschritten" active={config.difficulty === 'advanced'} onClick={() => setDiff('advanced')} />
@@ -103,7 +109,7 @@ function ConfigView({ config, setConfig, onStart, onBack }: { config: Config, se
             </div>
 
             <div className="mt-auto">
-                {!isValid && <p className="text-red-400 text-xs mb-2 text-center">Wähle mind. ein Punkt- und Strichzeichen!</p>}
+                {!isValid && <p className="text-red-400 text-xs mb-2 text-center">Wähle mindestens eine Strich- (+/-) und eine Punktrechnung (×/÷)!</p>}
                 <button 
                     onClick={onStart} 
                     disabled={!isValid}
@@ -121,7 +127,7 @@ function OpToggle({ label, active, onClick }: { label: string, active: boolean, 
         <button 
             onClick={onClick}
             className={`flex items-center justify-center p-2 rounded-md border border-white/5 transition-all duration-200 
-                ${active ? 'bg-primary text-primary-foreground ring-1 ring-primary ring-offset-1 ring-offset-[#0b1120] shadow-sm' : 'bg-white/5 text-muted-foreground hover:bg-white/10'}`}
+                ${active ? 'bg-green-500 text-white ring-1 ring-green-500 ring-offset-1 ring-offset-[#0b1120] shadow-sm' : 'bg-white/5 text-muted-foreground hover:bg-white/10'}`}
         >
             <span className="font-bold text-base">{label}</span>
         </button>
@@ -185,17 +191,19 @@ function GameSession({ config, onExit }: { config: Config, onExit: () => void })
             const result = eval(termStr);
 
             if (result === task.target) {
-                const numbersUsed = userTerm.filter(e => e.type === 'number').length;
-                if (numbersUsed >= 2) {
-                    setIsFinished(true);
+                // Check if all elements are used
+                if (userTerm.length === task.elements.length) {
+                     setIsFinished(true);
                 } else {
-                    showError("Nutze mehr Zahlen!");
+                    showError("Nutze alle Teile!");
                 }
             } else {
                 showError("Falsches Ergebnis");
+                setUserTerm([]); // Reset on error
             }
         } catch (e) {
             showError("Ungültige Rechnung");
+            setUserTerm([]); // Reset on error
         }
     };
 
@@ -207,6 +215,7 @@ function GameSession({ config, onExit }: { config: Config, onExit: () => void })
     if (!task) return <div>Loading...</div>;
 
     const usedIds = new Set(userTerm.map(u => u.id));
+    const allUsed = userTerm.length === task.elements.length;
 
     return (
         <div className="w-full max-w-3xl mx-auto flex flex-col h-[calc(100vh-120px)] animate-fade-in relative">
@@ -224,52 +233,60 @@ function GameSession({ config, onExit }: { config: Config, onExit: () => void })
 
             {/* Equation Area */}
             <div className="flex-1 flex flex-col justify-center items-center py-2 min-h-[100px]">
-                <div className="static-card w-full p-4 rounded-xl border-white/10 flex items-center justify-center relative min-h-[100px]">
-                     <div className="flex items-center flex-wrap justify-center gap-2 min-h-[40px]">
-                        {userTerm.length === 0 && <span className="text-white/20 italic text-lg">Wähle Zahlen & Zeichen...</span>}
+                {/* Visual Field / Container */}
+                <div className="w-full max-w-2xl p-6 rounded-2xl bg-white/5 border-2 border-dashed border-white/20 flex items-center justify-center relative min-h-[120px] transition-colors hover:border-white/30">
+                     <div className="flex items-center flex-wrap justify-center gap-2 min-h-[50px]">
+                        {userTerm.length === 0 && <span className="text-white/20 italic text-lg select-none">Rechnung hier bauen...</span>}
                         {userTerm.map((el, i) => (
-                            <span key={i} className="text-2xl font-bold mx-1">{el.val}</span>
+                            <span key={i} className="text-3xl font-bold mx-1 animate-scale-in">{el.val}</span>
                         ))}
                     </div>
-                    <span className="text-xl font-bold text-white/50 ml-3 absolute right-4">= {task.target}</span>
+                    <span className="text-2xl font-bold text-white/50 ml-4 absolute right-6">= {task.target}</span>
 
-                    <button onClick={backspace} className="absolute left-3 p-2 rounded-lg hover:bg-white/10 text-muted-foreground hover:text-white transition-colors" title="Rückgängig">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"></path><line x1="18" y1="9" x2="12" y2="15"></line><line x1="12" y1="9" x2="18" y2="15"></line></svg>
+                    <button onClick={backspace} className="absolute left-4 top-1/2 -translate-y-1/2 p-3 rounded-full hover:bg-white/10 text-muted-foreground hover:text-white transition-colors" title="Rückgängig">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"></path><line x1="18" y1="9" x2="12" y2="15"></line><line x1="12" y1="9" x2="18" y2="15"></line></svg>
                     </button>
                 </div>
                 
                 {/* Feedback Area */}
-                <div className="h-14 mt-4 w-full flex justify-center items-center relative">
+                <div className="h-14 mt-6 w-full flex justify-center items-center relative">
                     <button 
                         onClick={checkSolution} 
-                        disabled={userTerm.length < 3}
-                        className={`text-sm font-bold px-8 py-2 rounded-lg shadow-lg transition-all 
+                        disabled={!allUsed}
+                        className={`text-base font-bold px-10 py-3 rounded-xl shadow-lg transition-all 
                             ${errorMsg ? 'bg-red-500 animate-shake' : 'bg-primary'}
-                            ${userTerm.length < 3 ? 'opacity-50 cursor-not-allowed' : 'text-primary-foreground'}`}
+                            ${!allUsed ? 'opacity-50 cursor-not-allowed bg-slate-700 text-slate-400' : 'text-primary-foreground hover:scale-105'}`}
                     >
                         {errorMsg ? 'Falsch ❌' : 'Überprüfen'}
                     </button>
                     {errorMsg && (
-                        <div className="absolute top-12 w-full text-center pointer-events-none">
-                            <span className="text-red-400 font-bold bg-background/80 px-2 py-1 rounded shadow-sm">{errorMsg}</span>
+                        <div className="absolute top-14 w-full text-center pointer-events-none z-10">
+                            <span className="text-red-400 font-bold bg-[#0b1120] border border-red-500/30 px-4 py-2 rounded-lg shadow-xl">{errorMsg}</span>
                         </div>
                     )}
                 </div>
             </div>
 
             {/* Pool */}
-            <div className="flex flex-wrap justify-center gap-3 pb-4 content-end flex-shrink-0">
+            <div className="flex flex-wrap justify-center gap-3 pb-8 content-end flex-shrink-0">
                 {task.elements.map(el => {
                     const isUsed = usedIds.has(el.id);
-                    const colorClass = el.type === 'number' ? 'bg-blue-500/20 text-blue-100 border-blue-500/30' : 'bg-white/10 text-white border-white/10';
+                    const isBracket = el.val === '(' || el.val === ')';
                     
-                    if (isUsed) return <div key={el.id} style={{ width: 60, height: 50 }}></div>; // Placeholder
+                    let colorClass = 'bg-white/10 text-white border-white/10 hover:bg-white/20'; // Default Op
+                    if (el.type === 'number') {
+                        colorClass = 'bg-blue-500/20 text-blue-100 border-blue-500/30 hover:bg-blue-500/30';
+                    } else if (isBracket) {
+                        colorClass = 'bg-purple-500/20 text-purple-100 border-purple-500/30 hover:bg-purple-500/30';
+                    }
+                    
+                    if (isUsed) return <div key={el.id} className="w-[70px] h-[60px] rounded-lg border border-dashed border-white/5 bg-transparent"></div>; // Placeholder
 
                     return (
                         <button 
                             key={el.id}
                             onClick={() => addToTerm(el)}
-                            className={`${colorClass} border w-[60px] h-[50px] rounded-lg text-lg font-bold transition-all shadow-md backdrop-blur-sm flex items-center justify-center`}
+                            className={`${colorClass} border w-[70px] h-[60px] rounded-lg text-2xl font-bold transition-all shadow-lg backdrop-blur-sm flex items-center justify-center hover:scale-105 active:scale-95`}
                         >
                             {el.val}
                         </button>
@@ -280,8 +297,8 @@ function GameSession({ config, onExit }: { config: Config, onExit: () => void })
             {/* Success Overlay */}
             {isFinished && (
                 <div className="absolute inset-0 bg-background/90 backdrop-blur-md z-50 flex flex-col items-center justify-center rounded-xl animate-fade-in">
-                    <h3 className="text-3xl font-bold text-green-400 mb-6">Richtig! 🎉</h3>
-                    <button onClick={nextTask} className="bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-lg font-bold transition-colors shadow-lg shadow-green-900/20">
+                    <h3 className="text-4xl font-bold text-green-400 mb-8">Richtig! 🎉</h3>
+                    <button onClick={nextTask} className="bg-green-500 hover:bg-green-600 text-white px-10 py-4 rounded-xl font-bold text-lg transition-colors shadow-lg shadow-green-900/20 hover:scale-105">
                         Nächste Aufgabe
                     </button>
                 </div>
@@ -296,7 +313,7 @@ function generateTask(config: Config): Task {
     const { range, ops, difficulty } = config;
     let task: Task | null = null;
     let attempts = 0;
-    while (!task && attempts < 50) {
+    while (!task && attempts < 100) {
         attempts++;
         try { 
             task = createEquation(range, ops, difficulty); 
@@ -307,7 +324,10 @@ function generateTask(config: Config): Task {
     // Fallback
     if (!task) return { target: 10, elements: [{ type: 'number', val: 5, id: 'n1' }, { type: 'number', val: 2, id: 'n2' }, { type: 'op', val: '×', id: 'o1' }] };
     
-    // Sort elements: numbers first, then ops (optional, but looks cleaner)
+    // 1. Shuffle completely to randomize order within types
+    task.elements.sort(() => Math.random() - 0.5);
+
+    // 2. Sort by type to group them (Numbers first, then Ops)
     task.elements.sort((a, b) => {
         if (a.type === b.type) return 0;
         return a.type === 'number' ? -1 : 1;
@@ -318,10 +338,13 @@ function generateTask(config: Config): Task {
 
 function createEquation(range: number, ops: OperatorState, diff: Difficulty): Task {
     if (ops.brackets) {
-        // Brackets logic (simplified port from original)
+        // Brackets logic - Ensure mixed operations
         const lineOps = []; if (ops.plus) lineOps.push('+'); if (ops.minus) lineOps.push('-');
         const pointOps = []; if (ops.mult) pointOps.push('*'); if (ops.div) pointOps.push('/');
         
+        // If we don't have both types, we can't do mixed with brackets as effectively for this specific logic, 
+        // but the validation in ConfigView should prevent this. 
+        // Just in case, fallback to simple if one is missing.
         if (lineOps.length === 0 || pointOps.length === 0) return createSimpleEquation(range, ops, 3);
 
         const op1 = lineOps[Math.floor(Math.random() * lineOps.length)];
@@ -362,16 +385,30 @@ function createEquation(range: number, ops: OperatorState, diff: Difficulty): Ta
 }
 
 function createSimpleEquation(range: number, ops: OperatorState, numElements: number): Task {
-    const availOps = [];
-    if (ops.plus) availOps.push('+'); if (ops.minus) availOps.push('-');
-    if (ops.mult) availOps.push('*'); if (ops.div) availOps.push('/');
-    if (availOps.length === 0) throw "No ops";
-
+    const lineOps = []; if (ops.plus) lineOps.push('+'); if (ops.minus) lineOps.push('-');
+    const pointOps = []; if (ops.mult) pointOps.push('*'); if (ops.div) pointOps.push('/');
+    
+    // Fallback if not mixed (should be prevented by config validation)
+    if (lineOps.length === 0 && pointOps.length === 0) throw "No ops";
+    
     let nums = [];
     let operators = [];
 
+    // Ensure at least one line and one point op if possible
+    let requiredOps = [];
+    if (lineOps.length > 0) requiredOps.push(lineOps[Math.floor(Math.random() * lineOps.length)]);
+    if (pointOps.length > 0) requiredOps.push(pointOps[Math.floor(Math.random() * pointOps.length)]);
+
+    // Fill remaining spots with random ops from available
+    const allAvailOps = [...lineOps, ...pointOps];
+    while (requiredOps.length < numElements - 1) {
+        requiredOps.push(allAvailOps[Math.floor(Math.random() * allAvailOps.length)]);
+    }
+    
+    // Shuffle operators so the required ones aren't always first
+    operators = requiredOps.sort(() => Math.random() - 0.5);
+
     for (let i = 0; i < numElements; i++) nums.push(Math.floor(Math.random() * 20) + 1);
-    for (let i = 0; i < numElements - 1; i++) operators.push(availOps[Math.floor(Math.random() * availOps.length)]);
 
     let str = "";
     for (let i = 0; i < nums.length; i++) {
