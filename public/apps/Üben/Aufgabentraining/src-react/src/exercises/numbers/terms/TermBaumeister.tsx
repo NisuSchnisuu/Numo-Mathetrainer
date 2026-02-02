@@ -315,7 +315,7 @@ function GameSession({ config, onExit }: { config: Config, onExit: () => void })
             </div>
 
             {/* Stats Bar */}
-            <div className="flex justify-center mt-20 mb-4 z-10">
+            <div className="flex justify-center mt-16 mb-2 z-10">
                 <button 
                     onClick={() => setShowStats(true)}
                     className="flex items-center gap-4 px-4 py-2 bg-[#0b1120]/80 backdrop-blur-md border border-white/10 rounded-full shadow-lg hover:bg-white/5 transition-all"
@@ -335,7 +335,7 @@ function GameSession({ config, onExit }: { config: Config, onExit: () => void })
             </div>
 
             {/* Target */}
-            <div className="text-center py-2 flex-shrink-0 mt-0">
+            <div className="text-center py-2 flex-shrink-0 mt-2">
                 <div className="text-xs text-muted-foreground uppercase tracking-widest">Zielzahl</div>
                 <div className="text-5xl font-bold text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.3)] leading-tight">
                     {task.target}
@@ -343,7 +343,7 @@ function GameSession({ config, onExit }: { config: Config, onExit: () => void })
             </div>
 
             {/* Equation Area */}
-            <div className="flex-1 flex flex-col justify-center items-center py-2 min-h-[100px]">
+            <div className="flex-1 flex flex-col justify-center items-center py-1 min-h-[100px] mb-4">
                 {/* Visual Field / Container */}
                 <div className="w-full max-w-2xl p-6 rounded-2xl bg-white/5 border-2 border-dashed border-white/20 flex items-center justify-center relative min-h-[120px] transition-colors hover:border-white/30">
                      <div className="flex items-center flex-wrap justify-center gap-2 min-h-[50px]">
@@ -360,7 +360,7 @@ function GameSession({ config, onExit }: { config: Config, onExit: () => void })
                 </div>
                 
                 {/* Feedback Area */}
-                <div className="h-14 mt-6 w-full flex justify-center items-center relative">
+                <div className="h-14 mt-6 w-full flex justify-center items-center relative mb-2">
                     <button 
                         onClick={checkSolution} 
                         disabled={!allUsed}
@@ -477,15 +477,16 @@ function generateTask(config: Config): Task {
         try { 
             if (difficulty === 'allround') {
                 const r = Math.random();
-                if (r < 0.3) {
+                if (r < 0.5) { // 50% Normal
                     selectedDiff = 'normal';
-                    task = Math.random() < 0.5 ? createSimpleEquation(range, ops, 3) : createBracketEquationNormal(range, ops);
-                } else if (r < 0.7) {
+                    // Even in allround (where brackets are locked on), we want variety between simple and bracket
+                    task = createEquation(range, ops, 'normal');
+                } else if (r < 0.8) { // 30% Advanced (0.5 to 0.8)
                     selectedDiff = 'advanced';
-                    task = Math.random() < 0.5 ? createSimpleEquation(range, ops, 4) : createBracketEquationAdvanced(range, ops);
-                } else {
+                    task = createEquation(range, ops, 'advanced');
+                } else { // 20% Profi
                     selectedDiff = 'profi';
-                    task = createBracketEquationProfi(range, ops);
+                    task = createEquation(range, ops, 'profi');
                 }
             } else {
                 selectedDiff = difficulty;
@@ -512,13 +513,17 @@ function generateTask(config: Config): Task {
 }
 
 function createEquation(range: number, ops: OperatorState, diff: Difficulty): Task {
+    const useBrackets = ops.brackets && Math.random() < 0.5; // 50% chance to use brackets if enabled
+    
     switch (diff) {
         case 'normal':
-            // Normal: 3 numbers. If brackets active, use bracket logic, else linear
-            return ops.brackets ? createBracketEquationNormal(range, ops) : createSimpleEquation(range, ops, 3);
+            // Normal: 3 numbers. 
+            // If brackets enabled: 50% chance for Bracket Equation, 50% Simple Linear
+            return useBrackets ? createBracketEquationNormal(range, ops) : createSimpleEquation(range, ops, 3);
         case 'advanced':
-            // Advanced: 4 numbers. 
-            return ops.brackets ? createBracketEquationAdvanced(range, ops) : createSimpleEquation(range, ops, 4);
+            // Advanced: 4 numbers.
+            // If brackets enabled: 50% chance for Bracket Equation, 50% Simple Linear
+            return useBrackets ? createBracketEquationAdvanced(range, ops) : createSimpleEquation(range, ops, 4);
         case 'profi':
             // Profi: Always nested/complex brackets
             return createBracketEquationProfi(range, ops);
