@@ -1,4 +1,4 @@
-const CACHE_NAME = 'trio-v2';
+const CACHE_NAME = 'trio-v3';
 const ASSETS = [
     './',
     './index.html',

@@ -73,7 +73,10 @@ let appState = {
     teacherMode: false, // Local toggle state
 
     // Spectator State
-    localModalClosed: false // User manually closed the spectator modal
+    localModalClosed: false, // User manually closed the spectator modal
+
+    // Flow Control
+    isLeaving: false
 };
 
 // --- View Management ---
@@ -99,6 +102,7 @@ function switchView(viewName) {
 
 // --- Persistence Helpers ---
 function saveSession() {
+    if (appState.isLeaving) return; // Block save if leaving
     if (appState.gameId && appState.playerId) {
         const session = {
             gameId: appState.gameId,
@@ -453,7 +457,7 @@ function handleGlobalBack() {
         });
     } else {
         // Default fallback (though usually hidden in lobby)
-        location.reload();
+        switchView('lobby');
     }
 }
 
@@ -698,27 +702,71 @@ function enterWaitingRoom() {
 }
 
 function leaveGame() {
-    if (!appState.gameId || !appState.playerId) {
-        location.reload();
-        return;
+    // Crucial: Prevent Auto-Save and Firebase listener reactions
+    appState.isLeaving = true;
+
+    const gid = appState.gameId;
+    const pid = appState.playerId;
+    const isHost = appState.isHost;
+
+    // Unsubscribe from Firebase listeners BEFORE removing data
+    if (gid) {
+        const gameRef = db.ref(`games/${gid}`);
+        gameRef.off(); // Remove all listeners for this game
     }
 
-    const gameRef = db.ref(`games/${appState.gameId}`);
-
-    if (appState.isHost) {
-        // Host leaves -> Delete Game OR just remove host? 
-        // User requested: "Logik, die die Spiele automatisch aus firebase löscht, wenn ein spiel verlassen wird"
-        // Interpreted as: If everyone leaves OR host leaves (since host owns logic), delete it.
-        // Simplest for now: Host leaves = Game Over.
-        gameRef.remove();
-    } else {
-        // Client leaves
-        gameRef.child(`players/${appState.playerId}`).remove();
+    // Remove from Firebase
+    if (gid && pid) {
+        const gameRef = db.ref(`games/${gid}`);
+        if (isHost) {
+            // Host leaves -> Delete Game
+            gameRef.remove();
+        } else {
+            // Client leaves
+            gameRef.child(`players/${pid}`).remove();
+        }
     }
 
-    // Reset local state
+    // Clear session from localStorage
     clearSession();
-    location.reload();
+
+    // Reset app state to defaults (without page reload)
+    appState.gameId = null;
+    appState.playerId = null;
+    appState.isHost = false;
+    appState.gridData = [];
+    appState.target = 0;
+    appState.players = {};
+    appState.buzzerOwner = null;
+    appState.selectedCells = [];
+    appState.vetoVotes = {};
+    appState.isLocked = false;
+    appState.lockedUntil = null;
+    appState.settings = null;
+    appState.hostId = null;
+    appState.isLeaving = false; // Reset flag for next game
+
+    // Clear any running timers
+    if (appState.buzzerTimer) {
+        clearInterval(appState.buzzerTimer);
+        appState.buzzerTimer = null;
+    }
+    if (appState.penaltyInterval) {
+        clearInterval(appState.penaltyInterval);
+        appState.penaltyInterval = null;
+    }
+
+    // Reset UI elements
+    const grid = document.getElementById('game-grid');
+    if (grid) grid.innerHTML = '';
+
+    const targetNumber = document.getElementById('target-number');
+    if (targetNumber) targetNumber.innerText = '?';
+
+    // Switch to lobby view
+    switchView('lobby');
+
+    console.log("Left game successfully, returned to lobby.");
 }
 
 // ... existing code ...
@@ -769,17 +817,22 @@ function subscribeToGame(gameId) {
         // Host Disconnected / Game Ended
         // Host Disconnected / Game Ended
         if (!data) {
+            // Prevent action if we're already leaving or have already left
+            if (appState.isLeaving || !appState.gameId) {
+                console.log("Already leaving or no active game, skipping.");
+                return;
+            }
+
             if (!appState.isHost) {
+                // Non-host: Host has left the game
                 showModal("Spiel beendet", "Der Host hat das Spiel verlassen.", () => {
-                    clearSession(); // Prevents restoration loop
-                    location.reload();
+                    leaveGame(); // Clean up and return to lobby
                 }, true);
             } else {
                 // Host Zombie Session Fix:
                 // If I am Host but data is gone (e.g. auto-cleanup), we must reset.
                 console.warn("HOST: Game data not found (Zombie Session). Clearing.");
-                clearSession();
-                location.reload();
+                leaveGame(); // Clean up and return to lobby
             }
             return;
         }
@@ -2849,7 +2902,7 @@ function setupLobbyNewEvents() {
                 showConfirm("Lobby verlassen?", "Möchtest du die Lobby verlassen?", () => { leaveGame(); });
             } else {
                 if (confirm("Lobby verlassen?")) {
-                    window.location.reload();
+                    switchView('lobby');
                 }
             }
         });
