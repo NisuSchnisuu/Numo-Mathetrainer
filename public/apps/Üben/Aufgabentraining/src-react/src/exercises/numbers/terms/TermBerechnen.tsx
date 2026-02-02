@@ -349,23 +349,26 @@ function GameSession({ config, onExit }: { config: Config, onExit: () => void })
 
             {/* Content Area - Flex Grow to take available space, Center content vertically */}
             <div className="flex-1 flex flex-col justify-center items-center w-full relative min-h-0 overflow-y-auto">
-                 <div className="text-center w-full px-4 mb-4 md:mb-8">
-                    <div className="text-[10px] md:text-xs text-muted-foreground uppercase tracking-widest mb-2 md:mb-4 opacity-70">Berechne</div>
-                    <div className="inline-block text-3xl sm:text-4xl md:text-6xl font-bold text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.2)] leading-relaxed px-6 py-6 sm:px-10 sm:py-10 bg-white/5 rounded-3xl border border-white/10">
+                <div className="text-[10px] text-muted-foreground uppercase tracking-widest mb-2 opacity-70">Berechne</div>
+                
+                {/* Combined Equation Row */}
+                <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 mb-6 px-2 w-full">
+                    {/* Term */}
+                    <div className="text-xl sm:text-2xl md:text-4xl font-bold text-white leading-relaxed px-4 py-3 bg-white/5 rounded-xl border border-white/10 shadow-sm">
                         {task.termString}
                     </div>
-                </div>
 
-                {/* Input Area */}
-                <div className="flex items-center gap-4 mb-4 md:mb-8">
-                    <div className="text-2xl md:text-4xl text-white/50">=</div>
-                    <div className={`w-32 h-14 md:w-48 md:h-20 bg-white/10 border-2 ${errorMsg ? 'border-red-500 animate-shake' : 'border-white/20'} rounded-2xl flex items-center justify-center text-3xl md:text-5xl font-bold text-white shadow-inner transition-colors`}>
+                    {/* Equals */}
+                    <div className="text-xl sm:text-2xl md:text-4xl text-white/50 font-bold">=</div>
+
+                    {/* Input Area */}
+                    <div className={`w-24 h-12 sm:w-32 sm:h-14 md:w-40 md:h-16 bg-white/10 border-2 ${errorMsg ? 'border-red-500 animate-shake' : 'border-white/20'} rounded-xl flex items-center justify-center text-xl sm:text-2xl md:text-4xl font-bold text-white shadow-inner transition-colors`}>
                         {input || <span className="animate-pulse text-white/10">?</span>}
                     </div>
                 </div>
                 
                 {/* Feedback/Check Button */}
-                <div className="h-12 w-full flex justify-center items-center relative z-20">
+                <div className="h-12 w-full flex justify-center items-center relative z-20 mb-2">
                     <button 
                         onClick={checkSolution} 
                         disabled={input.length === 0}
