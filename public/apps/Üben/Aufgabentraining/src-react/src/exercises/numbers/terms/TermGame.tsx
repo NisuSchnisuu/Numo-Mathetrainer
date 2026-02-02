@@ -244,7 +244,7 @@ function GameSession({ config, onExit }: { config: Config, onExit: () => void })
                         onClick={checkSolution} 
                         disabled={userTerm.length < 3}
                         className={`text-sm font-bold px-8 py-2 rounded-lg shadow-lg transition-all 
-                            ${errorMsg ? 'bg-red-500 animate-shake' : 'bg-primary hover:scale-105 active:scale-95'}
+                            ${errorMsg ? 'bg-red-500 animate-shake' : 'bg-primary'}
                             ${userTerm.length < 3 ? 'opacity-50 cursor-not-allowed' : 'text-primary-foreground'}`}
                     >
                         {errorMsg ? 'Falsch ❌' : 'Überprüfen'}
@@ -269,7 +269,7 @@ function GameSession({ config, onExit }: { config: Config, onExit: () => void })
                         <button 
                             key={el.id}
                             onClick={() => addToTerm(el)}
-                            className={`${colorClass} border w-[60px] h-[50px] rounded-lg text-lg font-bold hover:scale-110 active:scale-95 transition-all shadow-md backdrop-blur-sm flex items-center justify-center`}
+                            className={`${colorClass} border w-[60px] h-[50px] rounded-lg text-lg font-bold transition-all shadow-md backdrop-blur-sm flex items-center justify-center`}
                         >
                             {el.val}
                         </button>

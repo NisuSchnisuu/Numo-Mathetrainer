@@ -40,7 +40,7 @@ export function ExerciseList({ topicId, exercises, onSelectExercise, onBack }: E
                         <div 
                             key={ex.id}
                             onClick={() => onSelectExercise(ex.id)}
-                            className="glass-card rounded-xl p-6 cursor-pointer transition-all duration-200 hover:scale-[1.02] group"
+                            className="glass-card rounded-xl p-6 cursor-pointer transition-all duration-200 group"
                             style={{ animationDelay: `${index * 50}ms` }}
                         >
                             <div className="mb-4 flex items-center justify-between">

@@ -41,7 +41,7 @@ export function Dashboard({ onSelectTopic }: DashboardProps) {
                         <div 
                             key={cat.id}
                             onClick={() => setSelectedCategory(cat.id)}
-                            className="glass-card rounded-xl p-6 cursor-pointer transition-all duration-200 hover:scale-[1.02] group"
+                            className="glass-card rounded-xl p-6 cursor-pointer transition-all duration-200 group"
                             style={{ animationDelay: `${index * 50}ms` }}
                         >
                             <div className="flex items-start justify-between mb-4">
@@ -117,7 +117,7 @@ function TopicCard({ topic, colorClass, onClick }: { topic: any, colorClass: str
     return (
         <div 
             onClick={onClick}
-            className="glass-card rounded-xl p-6 cursor-pointer transition-all duration-200 hover:scale-[1.02] group"
+            className="glass-card rounded-xl p-6 cursor-pointer transition-all duration-200 group"
         >
             <div className="mb-4">
                 <div className={`h-1.5 w-10 rounded-full ${dotColor} mb-3 opacity-60 group-hover:opacity-100 transition-opacity`}></div>
