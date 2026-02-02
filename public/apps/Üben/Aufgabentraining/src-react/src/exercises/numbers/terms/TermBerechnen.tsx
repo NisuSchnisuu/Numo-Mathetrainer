@@ -17,23 +17,17 @@ interface Config {
     difficulty: Difficulty;
 }
 
-interface GameElement {
-    type: 'number' | 'op';
-    val: string | number;
-    id: string;
-}
-
 interface Task {
     target: number;
-    elements: GameElement[];
+    termString: string;
     currentDiff?: Difficulty;
 }
 
-interface TermBaumeisterProps {
+interface TermBerechnenProps {
     onBack: () => void;
 }
 
-export function TermBaumeister({ onBack }: TermBaumeisterProps) {
+export function TermBerechnen({ onBack }: TermBerechnenProps) {
     const [isPlaying, setIsPlaying] = useState(false);
     const [config, setConfig] = useState<Config>({
         ops: { plus: true, minus: true, mult: true, div: true, brackets: false },
@@ -73,7 +67,7 @@ function ConfigView({ config, setConfig, onStart, onBack }: { config: Config, se
                 return;
             }
         }
-        
+
         setConfig({
             ...config,
             ops: { ...config.ops, [key]: !config.ops[key] }
@@ -236,7 +230,7 @@ const initialStats: SessionStats = {
 
 function GameSession({ config, onExit }: { config: Config, onExit: () => void }) {
     const [task, setTask] = useState<Task | null>(null);
-    const [userTerm, setUserTerm] = useState<GameElement[]>([]);
+    const [input, setInput] = useState<string>("");
     const [isFinished, setIsFinished] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     
@@ -255,7 +249,6 @@ function GameSession({ config, onExit }: { config: Config, onExit: () => void })
         
         setStats(prev => {
             const next = { ...prev };
-            // Copy to avoid mutation of nested objects if shallow copy
             next.total = { ...prev.total, [type]: prev.total[type] + 1 };
             next.byDifficulty = { ...prev.byDifficulty };
             next.byDifficulty[diff] = { ...prev.byDifficulty[diff], [type]: prev.byDifficulty[diff][type] + 1 };
@@ -265,7 +258,7 @@ function GameSession({ config, onExit }: { config: Config, onExit: () => void })
 
     const nextTask = () => {
         setIsFinished(false);
-        setUserTerm([]);
+        setInput("");
         setErrorMsg(null);
         setTask(generateTask(config));
     };
@@ -275,47 +268,36 @@ function GameSession({ config, onExit }: { config: Config, onExit: () => void })
         nextTask();
     };
 
-    const addToTerm = (el: GameElement) => {
+    const handleInput = (val: string) => {
         if (isFinished) return;
-        // Don't allow using same element twice (by ID)
-        if (userTerm.find(u => u.id === el.id)) return;
-        
-        setUserTerm([...userTerm, el]);
+        if (input.length > 5) return; // Limit length
+        setInput(prev => prev + val);
         setErrorMsg(null);
     };
 
     const backspace = () => {
         if (isFinished) return;
-        setUserTerm(prev => prev.slice(0, -1));
+        setInput(prev => prev.slice(0, -1));
         setErrorMsg(null);
     };
 
     const checkSolution = () => {
         if (!task) return;
-        const termStr = userTerm.map(e => e.val.toString().replace('×', '*').replace('÷', '/')).join(' ');
+        
+        const userVal = parseInt(input);
+        
+        if (isNaN(userVal)) {
+            showError("Bitte Zahl eingeben");
+            return;
+        }
 
-        try {
-            if (!/^[0-9+\-*/().\s]+$/.test(termStr)) throw "Format";
-            // eslint-disable-next-line no-eval
-            const result = eval(termStr);
-
-            if (result === task.target) {
-                // Check if all elements are used
-                if (userTerm.length === task.elements.length) {
-                     setIsFinished(true);
-                     updateStats('correct');
-                } else {
-                    showError("Nutze alle Teile!");
-                }
-            } else {
-                showError("Falsches Ergebnis");
-                updateStats('wrong');
-                setUserTerm([]); // Reset on error
-            }
-        } catch (e) {
-            showError("Ungültige Rechnung");
+        if (userVal === task.target) {
+            setIsFinished(true);
+            updateStats('correct');
+        } else {
+            showError("Leider falsch");
             updateStats('wrong');
-            setUserTerm([]); // Reset on error
+            setInput(""); // Optional: reset input on wrong? Or let user correct it. User said "like TermBaumeister", there it resets userTerm. So reset here.
         }
     };
 
@@ -326,9 +308,6 @@ function GameSession({ config, onExit }: { config: Config, onExit: () => void })
 
     if (!task) return <div>Loading...</div>;
 
-    const usedIds = new Set(userTerm.map(u => u.id));
-    const allUsed = userTerm.length === task.elements.length;
-
     const diffLabels: Record<Difficulty, string> = {
         normal: "Normal",
         advanced: "Fortgeschritten",
@@ -337,116 +316,113 @@ function GameSession({ config, onExit }: { config: Config, onExit: () => void })
     };
 
     return (
-        <div className="w-full max-w-3xl mx-auto flex flex-col h-[calc(100vh-120px)] animate-fade-in relative">
-            <div className="absolute top-4 left-4 right-4 flex justify-between items-center z-10">
-                <button onClick={onExit} className="flex items-center gap-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-lg text-red-400 font-medium transition-all hover:scale-105 active:scale-95">
-                    &larr; Beenden
+        <div className="w-full max-w-3xl mx-auto flex flex-col h-full animate-fade-in relative pb-4 md:pb-8">
+            {/* Header / Top Bar */}
+            <div className="flex justify-between items-center z-10 p-4">
+                <button onClick={onExit} className="flex items-center gap-2 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-lg text-red-400 text-sm font-medium transition-colors">
+                    &larr; Exit
                 </button>
                 
-                <div className="bg-white/10 border border-white/10 px-3 py-1 rounded-full text-[10px] uppercase tracking-wider font-bold text-muted-foreground">
-                    Modus: <span className="text-primary">{diffLabels[task.currentDiff || config.difficulty]}</span>
-                </div>
-
-                <button onClick={skipTask} className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-white font-medium transition-all hover:scale-105 active:scale-95 text-sm">
-                    Überspringen &rarr;
-                </button>
-            </div>
-
-            {/* Stats Bar */}
-            <div className="flex justify-center mt-16 mb-2 z-10">
-                <button 
-                    onClick={() => setShowStats(true)}
-                    className="flex items-center gap-4 px-4 py-2 bg-[#0b1120]/80 backdrop-blur-md border border-white/10 rounded-full shadow-lg hover:bg-white/5 transition-all"
-                >
-                    <div className="flex items-center gap-2 text-green-400 font-bold" title="Gelöst">
-                        <span className="text-xs">✔</span> {stats.total.correct}
+                <div className="flex items-center gap-2">
+                    <div className="hidden md:block bg-white/5 border border-white/10 px-3 py-1 rounded-full text-[10px] uppercase tracking-wider font-bold text-muted-foreground">
+                        {diffLabels[task.currentDiff || config.difficulty]}
                     </div>
-                    <div className="w-px h-4 bg-white/10"></div>
-                    <div className="flex items-center gap-2 text-red-400 font-bold" title="Falsch">
-                        <span className="text-xs">✖</span> {stats.total.wrong}
-                    </div>
-                    <div className="w-px h-4 bg-white/10"></div>
-                    <div className="flex items-center gap-2 text-yellow-400 font-bold" title="Übersprungen">
-                        <span className="text-xs">⏭</span> {stats.total.skipped}
-                    </div>
-                </button>
-            </div>
-
-            {/* Target */}
-            <div className="text-center py-2 flex-shrink-0 mt-2">
-                <div className="text-xs text-muted-foreground uppercase tracking-widest">Zielzahl</div>
-                <div className="text-5xl font-bold text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.3)] leading-tight">
-                    {task.target}
-                </div>
-            </div>
-
-            {/* Equation Area */}
-            <div className="flex-1 flex flex-col justify-center items-center py-1 min-h-[100px] mb-4">
-                {/* Visual Field / Container */}
-                <div className="w-full max-w-2xl p-6 rounded-2xl bg-white/5 border-2 border-dashed border-white/20 flex items-center justify-center relative min-h-[120px] transition-colors hover:border-white/30">
-                     <div className="flex items-center flex-wrap justify-center gap-2 min-h-[50px]">
-                        {userTerm.length === 0 && <span className="text-white/20 italic text-lg select-none">Rechnung hier bauen...</span>}
-                        {userTerm.map((el, i) => (
-                            <span key={i} className="text-3xl font-bold mx-1 animate-scale-in">{el.val}</span>
-                        ))}
-                    </div>
-                    <span className="text-2xl font-bold text-white/50 ml-4 absolute right-6">= {task.target}</span>
-
-                    <button onClick={backspace} className="absolute left-4 top-1/2 -translate-y-1/2 p-3 rounded-full hover:bg-white/10 text-muted-foreground hover:text-white transition-colors" title="Rückgängig">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"></path><line x1="18" y1="9" x2="12" y2="15"></line><line x1="12" y1="9" x2="18" y2="15"></line></svg>
+                    
+                    <button 
+                        onClick={() => setShowStats(true)}
+                        className="flex items-center gap-3 px-3 py-1.5 bg-[#0b1120]/80 backdrop-blur-md border border-white/10 rounded-full shadow-lg hover:bg-white/5 transition-all"
+                    >
+                        <div className="flex items-center gap-1.5 text-green-400 font-bold" title="Gelöst">
+                            <span className="text-[10px]">✔</span> {stats.total.correct}
+                        </div>
+                        <div className="w-px h-3 bg-white/10"></div>
+                        <div className="flex items-center gap-1.5 text-red-400 font-bold" title="Falsch">
+                            <span className="text-[10px]">✖</span> {stats.total.wrong}
+                        </div>
                     </button>
                 </div>
+
+                <button onClick={skipTask} className="flex items-center gap-2 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-white text-sm font-medium transition-colors">
+                    Skip &rarr;
+                </button>
+            </div>
+
+            {/* Content Area - Flex Grow to take available space, Center content vertically */}
+            <div className="flex-1 flex flex-col justify-center items-center w-full relative min-h-0 overflow-y-auto">
+                 <div className="text-center w-full px-4 mb-4 md:mb-8">
+                    <div className="text-[10px] md:text-xs text-muted-foreground uppercase tracking-widest mb-2 md:mb-4 opacity-70">Berechne</div>
+                    <div className="inline-block text-3xl sm:text-4xl md:text-6xl font-bold text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.2)] leading-relaxed px-6 py-6 sm:px-10 sm:py-10 bg-white/5 rounded-3xl border border-white/10">
+                        {task.termString}
+                    </div>
+                </div>
+
+                {/* Input Area */}
+                <div className="flex items-center gap-4 mb-4 md:mb-8">
+                    <div className="text-2xl md:text-4xl text-white/50">=</div>
+                    <div className={`w-32 h-14 md:w-48 md:h-20 bg-white/10 border-2 ${errorMsg ? 'border-red-500 animate-shake' : 'border-white/20'} rounded-2xl flex items-center justify-center text-3xl md:text-5xl font-bold text-white shadow-inner transition-colors`}>
+                        {input || <span className="animate-pulse text-white/10">?</span>}
+                    </div>
+                </div>
                 
-                {/* Feedback Area */}
-                <div className="h-14 mt-6 w-full flex justify-center items-center relative mb-2">
+                {/* Feedback/Check Button */}
+                <div className="h-12 w-full flex justify-center items-center relative z-20">
                     <button 
                         onClick={checkSolution} 
-                        disabled={!allUsed}
-                        className={`text-base font-bold px-10 py-3 rounded-xl shadow-lg transition-all 
-                            ${errorMsg ? 'bg-red-500 animate-shake' : 'bg-primary'}
-                            ${!allUsed ? 'opacity-50 cursor-not-allowed bg-slate-700 text-slate-400' : 'text-primary-foreground hover:scale-105'}`}
+                        disabled={input.length === 0}
+                        className={`text-sm md:text-base font-bold px-8 py-3 rounded-xl shadow-lg transition-all 
+                            ${errorMsg ? 'bg-red-500 shadow-red-500/20' : 'bg-primary shadow-primary/20'}
+                            ${input.length === 0 ? 'opacity-50 cursor-not-allowed bg-slate-700 text-slate-400 shadow-none' : 'text-primary-foreground hover:scale-105 active:scale-95'}`}
                     >
                         {errorMsg ? 'Falsch ❌' : 'Überprüfen'}
                     </button>
                     {errorMsg && (
                         <div className="absolute top-14 w-full text-center pointer-events-none z-10">
-                            <span className="text-red-400 font-bold bg-[#0b1120] border border-red-500/30 px-4 py-2 rounded-lg shadow-xl">{errorMsg}</span>
+                            <span className="text-red-400 font-bold bg-[#0b1120] border border-red-500/30 px-4 py-2 rounded-lg shadow-xl text-sm">{errorMsg}</span>
                         </div>
                     )}
                 </div>
             </div>
 
-            {/* Pool */}
-            <div className="flex flex-wrap justify-center gap-3 pb-8 content-end flex-shrink-0">
-                {task.elements.map(el => {
-                    const isUsed = usedIds.has(el.id);
-                    const isBracket = el.val === '(' || el.val === ')';
-                    
-                    let colorClass = 'bg-white/10 text-white border-white/10 hover:bg-white/20'; // Default Op
-                    if (el.type === 'number') {
-                        colorClass = 'bg-blue-500/20 text-blue-100 border-blue-500/30 hover:bg-blue-500/30';
-                    } else if (isBracket) {
-                        colorClass = 'bg-purple-500/20 text-purple-100 border-purple-500/30 hover:bg-purple-500/30';
-                    }
-                    
-                    if (isUsed) return <div key={el.id} className="w-[70px] h-[60px] rounded-lg border border-dashed border-white/5 bg-transparent"></div>; // Placeholder
-
-                    return (
+            {/* Numpad - Fixed height, consistent */}
+            <div className="flex justify-center flex-shrink-0 pt-2 px-2">
+                <div className="grid grid-cols-3 gap-2 md:gap-3 p-2 bg-white/5 rounded-2xl border border-white/5">
+                    {[7, 8, 9, 4, 5, 6, 1, 2, 3].map(n => (
                         <button 
-                            key={el.id}
-                            onClick={() => addToTerm(el)}
-                            className={`${colorClass} border w-[70px] h-[60px] rounded-lg text-2xl font-bold transition-all shadow-lg backdrop-blur-sm flex items-center justify-center hover:scale-105 active:scale-95`}
+                            key={n} 
+                            onClick={() => handleInput(n.toString())}
+                            className="w-16 h-12 sm:w-20 sm:h-14 md:w-24 md:h-16 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xl md:text-2xl font-bold text-white transition-all active:bg-white/20 active:scale-95 shadow-sm"
                         >
-                            {el.val}
+                            {n}
                         </button>
-                    );
-                })}
+                    ))}
+                    <button 
+                        onClick={() => setInput("")}
+                        className="w-16 h-12 sm:w-20 sm:h-14 md:w-24 md:h-16 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-xl text-lg md:text-xl font-bold text-red-400 transition-all active:scale-95"
+                    >
+                        C
+                    </button>
+                    <button 
+                        onClick={() => handleInput("0")}
+                        className="w-16 h-12 sm:w-20 sm:h-14 md:w-24 md:h-16 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xl md:text-2xl font-bold text-white transition-all active:bg-white/20 active:scale-95"
+                    >
+                        0
+                    </button>
+                    <button 
+                        onClick={backspace}
+                        className="w-16 h-12 sm:w-20 sm:h-14 md:w-24 md:h-16 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white transition-all flex items-center justify-center active:bg-white/20 active:scale-95"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"></path><line x1="18" y1="9" x2="12" y2="15"></line><line x1="12" y1="9" x2="18" y2="15"></line></svg>
+                    </button>
+                </div>
             </div>
 
             {/* Success Overlay */}
             {isFinished && (
                 <div className="absolute inset-0 bg-background/90 backdrop-blur-md z-50 flex flex-col items-center justify-center rounded-xl animate-fade-in">
                     <h3 className="text-4xl font-bold text-green-400 mb-8">Richtig! 🎉</h3>
+                    <div className="text-2xl text-white mb-8 bg-white/5 px-8 py-4 rounded-xl border border-white/10">
+                        {task.termString} = <span className="font-bold text-green-400">{task.target}</span>
+                    </div>
                     <button onClick={nextTask} className="bg-green-500 hover:bg-green-600 text-white px-10 py-4 rounded-xl font-bold text-lg transition-colors shadow-lg shadow-green-900/20 hover:scale-105">
                         Nächste Aufgabe
                     </button>
@@ -518,7 +494,6 @@ function generateTask(config: Config): Task {
                 const r = Math.random();
                 if (r < 0.5) { // 50% Normal
                     selectedDiff = 'normal';
-                    // Even in allround (where brackets are locked on), we want variety between simple and bracket
                     task = createEquation(range, ops, 'normal');
                 } else if (r < 0.8) { // 30% Advanced (0.5 to 0.8)
                     selectedDiff = 'advanced';
@@ -536,16 +511,7 @@ function generateTask(config: Config): Task {
         }
     }
     // Fallback
-    if (!task) return { target: 10, currentDiff: 'normal', elements: [{ type: 'number', val: 5, id: 'n1' }, { type: 'number', val: 2, id: 'n2' }, { type: 'op', val: '×', id: 'o1' }] };
-    
-    // 1. Shuffle completely to randomize order within types
-    task.elements.sort(() => Math.random() - 0.5);
-
-    // 2. Sort by type to group them (Numbers first, then Ops)
-    task.elements.sort((a, b) => {
-        if (a.type === b.type) return 0;
-        return a.type === 'number' ? -1 : 1;
-    });
+    if (!task) return { target: 10, currentDiff: 'normal', termString: "5 × 2" };
     
     task.currentDiff = selectedDiff;
     return task;
@@ -556,19 +522,20 @@ function createEquation(range: number, ops: OperatorState, diff: Difficulty): Ta
     
     switch (diff) {
         case 'normal':
-            // Normal: 3 numbers. 
-            // If brackets enabled: 50% chance for Bracket Equation, 50% Simple Linear
             return useBrackets ? createBracketEquationNormal(range, ops) : createSimpleEquation(range, ops, 3);
         case 'advanced':
-            // Advanced: 4 numbers.
-            // If brackets enabled: 50% chance for Bracket Equation, 50% Simple Linear
             return useBrackets ? createBracketEquationAdvanced(range, ops) : createSimpleEquation(range, ops, 4);
         case 'profi':
-            // Profi: Always nested/complex brackets
             return createBracketEquationProfi(range, ops);
         default:
             return createSimpleEquation(range, ops, 3);
     }
+}
+
+function formatOp(op: string): string {
+    if (op === '*') return '×';
+    if (op === '/') return '÷';
+    return op;
 }
 
 // 1. Simple Linear Equation (e.g. A + B * C)
@@ -581,9 +548,7 @@ function createSimpleEquation(range: number, ops: OperatorState, numElements: nu
     let nums = [];
     let operators = [];
 
-    // Ensure at least one line and one point op if possible (for mixed ops requirements)
     let requiredOps = [];
-    // Only force mixed if we have enough slots
     if (numElements >= 3) {
         if (lineOps.length > 0) requiredOps.push(lineOps[Math.floor(Math.random() * lineOps.length)]);
         if (pointOps.length > 0) requiredOps.push(pointOps[Math.floor(Math.random() * pointOps.length)]);
@@ -601,27 +566,28 @@ function createSimpleEquation(range: number, ops: OperatorState, numElements: nu
     const maxNum = range <= 20 ? 10 : (range <= 100 ? 15 : 50);
     for (let i = 0; i < numElements; i++) nums.push(Math.floor(Math.random() * maxNum) + 1);
 
-    let str = "";
+    let evalStr = "";
+    let displayStr = "";
     for (let i = 0; i < nums.length; i++) {
-        str += nums[i];
-        if (i < operators.length) str += " " + operators[i] + " ";
+        evalStr += nums[i];
+        displayStr += nums[i];
+        if (i < operators.length) {
+            evalStr += " " + operators[i] + " ";
+            displayStr += " " + formatOp(operators[i]) + " ";
+        }
     }
 
     // eslint-disable-next-line no-eval
-    const res = eval(str);
+    const res = eval(evalStr);
     if (!Number.isInteger(res)) throw "Decimal";
     if (res < 0 || res > range) throw "Range";
-    if (res === 0) throw "Zero result"; // Optional, but usually better to avoid trivial 0
+    if (res === 0) throw "Zero result";
 
-    const elements: GameElement[] = nums.map((n, i) => ({ type: 'number', val: n, id: 'n' + i }));
-    operators.forEach((o, i) => elements.push({ type: 'op', val: o === '*' ? '×' : (o === '/' ? '÷' : o), id: 'o' + i }));
-
-    return { target: res, elements };
+    return { target: res, termString: displayStr };
 }
 
 // 2. Normal Bracket Equation: (A +/- B) * C  or similar
 function createBracketEquationNormal(range: number, ops: OperatorState): Task {
-    // Requires at least one line and one point op typically for this pattern
     const lineOps = []; if (ops.plus) lineOps.push('+'); if (ops.minus) lineOps.push('-');
     const pointOps = []; if (ops.mult) pointOps.push('*'); if (ops.div) pointOps.push('/');
 
@@ -636,54 +602,43 @@ function createBracketEquationNormal(range: number, ops: OperatorState): Task {
 
     let c;
     let innerRes = (opLine === '+') ? a + b : a - b;
-    // Avoid 0 or negative inner if possible for simplicity, though negative is fine if students know it. 
-    // Assuming positive integers mostly:
     if (innerRes <= 0) throw "Negative inner";
 
     if (opPoint === '*') {
         c = Math.floor(Math.random() * 8) + 2;
     } else {
-        // Division: find factor
         const factors = [];
         for (let i = 2; i < innerRes; i++) if (innerRes % i === 0) factors.push(i);
         if (factors.length === 0) c = 1; else c = factors[Math.floor(Math.random() * factors.length)];
     }
 
-    // Pattern: (a opLine b) opPoint c
-    // Or: c opPoint (a opLine b)
     const isPost = Math.random() < 0.5;
     
     let target;
-    let str;
+    let evalStr;
+    let displayStr;
+
+    const opLineDisplay = formatOp(opLine);
+    const opPointDisplay = formatOp(opPoint);
+
     if (isPost) {
-        str = `(${a} ${opLine} ${b}) ${opPoint} ${c}`;
+        evalStr = `(${a} ${opLine} ${b}) ${opPoint} ${c}`;
+        displayStr = `(${a} ${opLineDisplay} ${b}) ${opPointDisplay} ${c}`;
     } else {
-        str = `${c} ${opPoint} (${a} ${opLine} ${b})`;
+        evalStr = `${c} ${opPoint} (${a} ${opLine} ${b})`;
+        displayStr = `${c} ${opPointDisplay} (${a} ${opLineDisplay} ${b})`;
     }
     
     // eslint-disable-next-line no-eval
-    target = eval(str);
+    target = eval(evalStr);
     if (target > range || target < 0 || !Number.isInteger(target)) throw "Invalid result";
 
-    const elements: GameElement[] = [
-        { type: 'number', val: a, id: 'n1' },
-        { type: 'number', val: b, id: 'n2' },
-        { type: 'number', val: c, id: 'n3' },
-        { type: 'op', val: opLine, id: 'o1' },
-        { type: 'op', val: opPoint === '*' ? '×' : '÷', id: 'o2' },
-        { type: 'op', val: '(', id: 'b1' },
-        { type: 'op', val: ')', id: 'b2' }
-    ];
-
-    return { target, elements };
+    return { target, termString: displayStr };
 }
 
 // 3. Advanced Bracket Equation: 4 numbers. e.g. (A + B) * C - D
 function createBracketEquationAdvanced(range: number, ops: OperatorState): Task {
-    // Similar to Normal but adds a 4th number linear operation
     const baseTask = createBracketEquationNormal(range, ops); // (A op B) op C
-    // baseTask has 3 nums, 2 ops, 2 brackets.
-    // We add one op and one num.
     
     const allOps = []; 
     if (ops.plus) allOps.push('+'); if (ops.minus) allOps.push('-');
@@ -693,41 +648,77 @@ function createBracketEquationAdvanced(range: number, ops: OperatorState): Task 
     const newOp = allOps[Math.floor(Math.random() * allOps.length)];
     const d = Math.floor(Math.random() * (range <= 20 ? 5 : 20)) + 1;
 
-    // Pattern: [Block] op d   OR   d op [Block]
-    // Block is the target of baseTask
-    const blockVal = baseTask.target;
-    
     let total;
-    let str;
+    let evalStr;
+    let displayStr;
     const isPost = Math.random() < 0.5;
 
+    // Use baseTask termString but wrap in brackets if needed?
+    // baseTask.termString is already "(A+B)*C" or "C*(A+B)".
+    // If newOp is Point and base has Line outside brackets, we might need brackets.
+    // BUT baseTask logic guarantees it's a solid block. 
+    // Wait, createBracketEquationNormal returns e.g. "(3 + 2) * 4" = 20.
+    // If we do 20 + 5 -> "(3 + 2) * 4 + 5". correct.
+    // If we do 20 * 5 -> "(3 + 2) * 4 * 5". correct.
+    // What if baseTask was "4 * (3 + 2)" ? Same.
+    // So we can just append.
+
+    // WAIT: normal bracket equation is (Line) Point or Point (Line).
+    // Result is a number.
+    // If we add another op, e.g. + D.
+    // ((A+B)*C) + D.
+    // Since * binds stronger than +, we don't need outer brackets for the base block usually.
+    // BUT if newOp is * and base main op was + (not possible in Normal generator which mixes Line/Point).
+    // Normal generator ALWAYS has a Point op as the "outer" op or "connector" op?
+    // No: "(A+B) * C". Outer op is *.
+    // "C * (A+B)". Outer op is *.
+    // So base block is "Point-bound".
+    // If newOp is +, -, *, / it should be fine without extra brackets around the base block 
+    // UNLESS newOp is Point and base was Line-bound... but base is Point-bound.
+    // Wait. If base is Point-bound, e.g. X * Y.
+    // And newOp is *. X * Y * Z. Fine.
+    // And newOp is +. X * Y + Z. Fine.
+    // So we don't need extra brackets around baseTask.termString.
+
     if (isPost) {
-        str = `${blockVal} ${newOp} ${d}`;
+        // Recalculate full string to be safe with eval? 
+        // We don't have the raw numbers of base easily.
+        // We can just take the result of base and operate on it for checking validity,
+        // but for display we need the string.
+        // Re-eval the combined string? Yes.
+        
+        // baseTask.termString has '×', '÷'. Need to revert for eval?
+        // Or better: pass the raw string from baseTask?
+        // I didn't save raw string in baseTask.
+        // Let's rely on the blockVal for calculation logic check, but for the final eval check we should reconstruct.
+        
+        // Let's assume the string composition is safe:
+        // displayStr = baseTask.termString + " " + formatOp(newOp) + " " + d;
+        // But to verify, we need valid eval string.
+        // Let's replace ×/÷ back to */.
+        const baseEval = baseTask.termString.replace(/×/g, '*').replace(/÷/g, '/');
+        evalStr = `${baseEval} ${newOp} ${d}`;
+        displayStr = `${baseTask.termString} ${formatOp(newOp)} ${d}`;
     } else {
-        str = `${d} ${newOp} ${blockVal}`;
+        const baseEval = baseTask.termString.replace(/×/g, '*').replace(/÷/g, '/');
+        evalStr = `${d} ${newOp} ${baseEval}`;
+        displayStr = `${d} ${formatOp(newOp)} ${baseTask.termString}`;
     }
     
     // eslint-disable-next-line no-eval
-    total = eval(str);
+    total = eval(evalStr);
 
     if (total > range || total < 0 || !Number.isInteger(total)) throw "Invalid result";
 
-    // Add elements
-    const elements = [...baseTask.elements];
-    elements.push({ type: 'number', val: d, id: 'n4' });
-    elements.push({ type: 'op', val: newOp === '*' ? '×' : (newOp === '/' ? '÷' : newOp), id: 'o3' });
-
-    return { target: total, elements };
+    return { target: total, termString: displayStr };
 }
 
-// 4. Profi Bracket Equation: Nested or Double Brackets
-// Patterns: ((A op B) op C) op D   OR   (A op B) op (C op D)
+// 4. Profi Bracket Equation
 function createBracketEquationProfi(range: number, ops: OperatorState): Task {
     const pattern = Math.random() < 0.5 ? 'nested' : 'double';
     
     const lineOps = []; if (ops.plus) lineOps.push('+'); if (ops.minus) lineOps.push('-');
     const pointOps = []; if (ops.mult) pointOps.push('*'); if (ops.div) pointOps.push('/');
-    // Profi needs variety
     const availOps = [...lineOps, ...pointOps];
     if (availOps.length < 2) throw "Not enough ops for profi";
 
@@ -735,55 +726,34 @@ function createBracketEquationProfi(range: number, ops: OperatorState): Task {
     const randNum = () => Math.floor(Math.random() * maxNum) + 1;
     const randOp = () => availOps[Math.floor(Math.random() * availOps.length)];
 
-    let str = "";
-    let elements: GameElement[] = [];
+    let evalStr = "";
+    let displayStr = "";
 
     if (pattern === 'double') {
         // (A op1 B) op2 (C op3 D)
         const a = randNum(), b = randNum(), c = randNum(), d = randNum();
         const op1 = randOp(), op2 = randOp(), op3 = randOp();
         
-        // Ensure inner parts are valid (positive)
         // eslint-disable-next-line no-eval
         if (eval(`${a} ${op1} ${b}`) < 0) throw "Neg inner";
         // eslint-disable-next-line no-eval
         if (eval(`${c} ${op3} ${d}`) < 0) throw "Neg inner";
 
-        str = `(${a} ${op1} ${b}) ${op2} (${c} ${op3} ${d})`;
-        
-        elements = [
-            { type: 'number', val: a, id: 'n1' }, { type: 'number', val: b, id: 'n2' },
-            { type: 'number', val: c, id: 'n3' }, { type: 'number', val: d, id: 'n4' },
-            { type: 'op', val: op1 === '*' ? '×' : (op1 === '/' ? '÷' : op1), id: 'o1' },
-            { type: 'op', val: op2 === '*' ? '×' : (op2 === '/' ? '÷' : op2), id: 'o2' },
-            { type: 'op', val: op3 === '*' ? '×' : (op3 === '/' ? '÷' : op3), id: 'o3' },
-            { type: 'op', val: '(', id: 'b1' }, { type: 'op', val: ')', id: 'b2' },
-            { type: 'op', val: '(', id: 'b3' }, { type: 'op', val: ')', id: 'b4' }
-        ];
+        evalStr = `(${a} ${op1} ${b}) ${op2} (${c} ${op3} ${d})`;
+        displayStr = `(${a} ${formatOp(op1)} ${b}) ${formatOp(op2)} (${c} ${formatOp(op3)} ${d})`;
 
     } else {
-        // Nested: ((A op1 B) op2 C) op3 D  (simplest nested form)
-        // Or A op1 (B op2 (C op3 D)) ?
-        // Let's do ((A op1 B) op2 C) op3 D
+        // Nested: ((A op1 B) op2 C) op3 D
         const a = randNum(), b = randNum(), c = randNum(), d = randNum();
         const op1 = randOp(), op2 = randOp(), op3 = randOp();
 
-        str = `((${a} ${op1} ${b}) ${op2} ${c}) ${op3} ${d}`;
-
-        elements = [
-            { type: 'number', val: a, id: 'n1' }, { type: 'number', val: b, id: 'n2' },
-            { type: 'number', val: c, id: 'n3' }, { type: 'number', val: d, id: 'n4' },
-            { type: 'op', val: op1 === '*' ? '×' : (op1 === '/' ? '÷' : op1), id: 'o1' },
-            { type: 'op', val: op2 === '*' ? '×' : (op2 === '/' ? '÷' : op2), id: 'o2' },
-            { type: 'op', val: op3 === '*' ? '×' : (op3 === '/' ? '÷' : op3), id: 'o3' },
-            { type: 'op', val: '(', id: 'b1' }, { type: 'op', val: ')', id: 'b2' },
-            { type: 'op', val: '(', id: 'b3' }, { type: 'op', val: ')', id: 'b4' }
-        ];
+        evalStr = `((${a} ${op1} ${b}) ${op2} ${c}) ${op3} ${d}`;
+        displayStr = `((${a} ${formatOp(op1)} ${b}) ${formatOp(op2)} ${c}) ${formatOp(op3)} ${d}`;
     }
 
     // eslint-disable-next-line no-eval
-    const res = eval(str);
+    const res = eval(evalStr);
     if (!Number.isInteger(res) || res < 0 || res > range) throw "Invalid result";
 
-    return { target: res, elements };
+    return { target: res, termString: displayStr };
 }

@@ -1,5 +1,6 @@
 import type { ComponentType } from 'react';
 import { TermBaumeister } from '../exercises/numbers/terms/TermBaumeister';
+import { TermBerechnen } from '../exercises/numbers/terms/TermBerechnen';
 
 // Definition einer Übung
 export interface Exercise {
@@ -17,6 +18,12 @@ export const exercises: Record<string, Exercise[]> = {
             title: 'Term-Baumeister',
             description: 'Übe das Rechnen mit Punkt-vor-Strich und Klammern in verschiedenen Schwierigkeitsstufen.',
             component: TermBaumeister
+        },
+        {
+            id: 'term_calc_2',
+            title: 'Terme berechnen',
+            description: 'Berechne das Ergebnis der angezeigten Terme mit Punkt-vor-Strich und Klammern.',
+            component: TermBerechnen
         },
         // Hier können später einfach weitere Übungen hinzugefügt werden:
         // {
