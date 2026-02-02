@@ -1,0 +1,40 @@
+import type { ComponentType } from 'react';
+import { TermGame } from '../exercises/numbers/terms/TermGame';
+
+// Definition einer Übung
+export interface Exercise {
+    id: string;
+    title: string;
+    description: string;
+    component: ComponentType<{ onBack: () => void }>;
+}
+
+// Map: Topic ID -> Liste von Übungen
+export const exercises: Record<string, Exercise[]> = {
+    'terms': [
+        {
+            id: 'term_calc_1',
+            title: 'Rechenzeichen-Training',
+            description: 'Übe das Rechnen mit Punkt-vor-Strich und Klammern in verschiedenen Schwierigkeitsstufen.',
+            component: TermGame
+        },
+        // Hier können später einfach weitere Übungen hinzugefügt werden:
+        // {
+        //     id: 'term_calc_2',
+        //     title: 'Lückenfüller',
+        //     description: 'Finde die fehlende Zahl in der Gleichung.',
+        //     component: GapFillGame
+        // }
+    ],
+    // Platzhalter für andere Themen, damit die App nicht abstürzt
+    'number_space': [],
+    'arithmetic_basic': [],
+    'fractions': [],
+    'shapes': [],
+    'symmetry': [],
+    'bodies': [],
+    'measurement_geo': [],
+    'money_time': [],
+    'units': [],
+    'stats': []
+};
