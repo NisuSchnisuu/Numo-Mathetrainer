@@ -1,4 +1,4 @@
-const CACHE_NAME = 'trio-v4';
+const CACHE_NAME = 'trio-v5';
 const ASSETS = [
     './',
     './index.html',
@@ -11,9 +11,29 @@ const ASSETS = [
 
 // Install Event
 self.addEventListener('install', (event) => {
+    self.skipWaiting(); // Force activation
     event.waitUntil(
         caches.open(CACHE_NAME)
             .then((cache) => cache.addAll(ASSETS))
+    );
+});
+
+// Activate Event - Clean up old caches
+self.addEventListener('activate', (event) => {
+    event.waitUntil(
+        Promise.all([
+            clients.claim(), // Take control of all clients immediately
+            caches.keys().then((cacheNames) => {
+                return Promise.all(
+                    cacheNames.map((cache) => {
+                        if (cache !== CACHE_NAME) {
+                            console.log('Clearing old cache:', cache);
+                            return caches.delete(cache);
+                        }
+                    })
+                );
+            })
+        ])
     );
 });
 
