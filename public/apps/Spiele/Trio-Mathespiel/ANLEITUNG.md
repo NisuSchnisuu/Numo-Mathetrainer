@@ -5,14 +5,93 @@ Willkommen bei **Trio**, dem ultimativen Mathe-Battle! Hier geht es um Kopfrechn
 ---
 
 ## 1. Das Spielprinzip
-Das Ziel ist es, in einem Gitter aus Zahlen drei Zahlen zu finden, die mathematisch so kombiniert werden können, dass sie eine **Zielzahl** ergeben.
 
-**Ablauf:**
-1.  **Suchen & Buzzern:** Alle Spieler sehen das gleiche Gitter und die gleiche Zielzahl. Wer eine Lösung hat, drückt den **"TRIO!"-Buzzer**.
-2.  **Auswählen:** Der Spieler, der gebuzzert hat, muss innerhalb von **10 Sekunden** drei Zahlen im Gitter auswählen.
-    *   Die Zahlen müssen **auf einer Linie** liegen (Horizontal, Vertikal oder Diagonal).
-    *   Die Abstände zwischen den Zahlen müssen gleich sein (direkt nebeneinander oder immer eine Lücke dazwischen).
-3.  **Rechnen:** Ein Taschenrechner öffnet sich. Du musst nun mit den drei ausgewählten Zahlen eine Rechnung erstellen, die genau die Zielzahl ergibt.
+**Kurzfassung:** Finde 3 Zahlen im Gitter, die du zu einer vorgegebenen Zielzahl verrechnen kannst!
+
+Hier ist der genaue Ablauf einer Spielrunde Schritt für Schritt erklärt:
+
+### Schritt 1: Das Ziel erkennen 🎯
+Oben in der Mitte steht groß die **Zielzahl** (z.B. **24**).
+Deine Aufgabe ist es, drei Zahlen im Gitter zu finden, mit denen du genau dieses Ergebnis errechnen kannst.
+
+### Schritt 2: Ein "Trio" finden (Das Muster) 🔍
+Du darfst nicht irgendwelche Zahlen wählen! Die drei Zahlen müssen ein **geometrisches Muster** bilden.
+Das ist die wichtigste Regel im Spiel. Ein gültiges Trio liegt immer auf einer **geraden Linie**.
+
+**Die 3 Regeln für die Auswahl:**
+1.  **Linie:** Horizontal (waagerecht), Vertikal (senkrecht) oder Diagonal.
+2.  **Abstand:** Die Abstände zwischen den Zahlen müssen **gleichmäßig** sein (Äquidistanz).
+3.  **Anzahl:** Es müssen genau 3 Zahlen sein.
+
+#### Visualisierung der gültigen Muster:
+
+**(A) Direkt nebeneinander (Abstand 0)**
+Die einfachste Variante. 3 Zahlen direkt nebeneinander.
+```text
+✅ GÜLTIG: Waagerecht
++---+---+---+
+| 3 | 5 | 2 |
++---+---+---+
+```
+
+**(B) Mit Lücken (Abstand 1 oder mehr)**
+Du kannst Zahlen überspringen, solange du *immer gleich viele* überspringst.
+```text
+✅ GÜLTIG: Senkrecht
++---+
+| 7 |
++---+
+| 4 |
++---+
+| 9 |
++---+
+```
+
+**(C) Diagonal**
+Auch quer über das Feld ist erlaubt, solange die Abstände stimmen.
+```text
+✅ GÜLTIG: Diagonal
++---+---+---+
+| 1 | . | . |
++---+---+---+
+| . | 5 | . |
++---+---+---+
+| . | . | 8 |
++---+---+---+
+```
+
+❌ **UNGÜLTIG - Das geht NICHT:**
+*   **Keine Linie:** "L-Formen", "Dreiecke" oder krumme Linien, Abstand zwischen den Zahlen sind verboten.
+*   **Ungleiche Abstände:** Z.B. erst direkt daneben, dann eine Lücke (`[2][4]...[8]`) -> Verboten!
+
+---
+
+### Schritt 3: Buzzern! 🚨
+Sobald du ein Trio im Kopf hast, drücke sofort den roten **"TRIO!"-Buzzer**.
+*   Das Spiel stoppt für alle anderen.
+*   Du hast jetzt **10 Sekunden Zeit**, deine Zahlen auf dem Feld anzutippen.
+*   *Tipp:* Buzzer erst, wenn du dir sicher bist! Ein falscher Buzzer gibt eine Zeitsperre.
+
+### Schritt 4: Auswählen 👆
+Tippe die drei gefundenen Zahlen auf dem Spielfeld an.
+*   Die Reihenfolge, in der du sie antippst, ist egal.
+*   Das Spiel prüft automatisch, ob sie geometrisch korrekt (Linie & Abstand) liegen.
+*   Gültige Zahlen werden **grün** markiert.
+
+### Schritt 5: Rechnen 🧮
+Ein Taschenrechner öffnet sich.
+*   Du siehst deine 3 ausgewählten Zahlen als große Buttons.
+*   **Aufgabe:** Baue eine Rechnung, die exakt die Zielzahl ergibt.
+*   **Regel:** Du musst **alle drei** Zahlen verwenden! Jede Zahl genau einmal.
+
+**Beispiel:**
+*   Zielzahl: **10**
+*   Gewählte Zahlen: **2, 3, 4**
+*   Mögliche Rechnung: `3 · 4 - 2 = 10` ✅
+
+Sobald du `=` drückst, wird geprüft:
+*   Ergebnis richtig? -> **Punkt für dich!** 🎉 Du bekommst den Punkt und eine neue Runde startet.
+*   Ergebnis falsch? -> **Fehler!** ⛔ Du wirst für kurze Zeit gesperrt, die anderen dürfen weitersuchen.
 
 ---
 

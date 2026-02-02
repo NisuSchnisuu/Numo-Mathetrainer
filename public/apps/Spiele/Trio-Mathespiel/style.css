@@ -2243,22 +2243,29 @@ body {
     grid-template-columns: repeat(3, 1fr);
     gap: 2px;
     background: #334155;
-    padding: 2px;
+    padding: 3px;
     border-radius: 4px;
-    width: 60px;
-    height: 60px;
+    /* Flexible size based on content */
+    display: inline-grid; 
 }
 
 .mini-cell {
     background: #1e293b;
     border-radius: 2px;
-    width: 100%;
-    height: 100%;
+    width: 18px;
+    height: 18px;
 }
 
 .mini-cell.selected {
     background: var(--success);
     box-shadow: 0 0 4px var(--success);
+    animation: miniPulse 2s infinite;
+}
+
+@keyframes miniPulse {
+    0% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.8; transform: scale(0.95); }
+    100% { opacity: 1; transform: scale(1); }
 }
 
 .mini-cell.invalid {

@@ -3165,70 +3165,124 @@ const helpPages = {
     gameplay: {
         title: "Spielprinzip",
         content: `
-            <h3>So wird gespielt</h3>
+            <h3>So funktioniert Trio</h3>
             
-            <div style="margin-bottom:25px;">
-                <div style="display:flex;align-items:center;margin-bottom:10px;">
-                    <span class="help-step-number">1</span>
-                    <strong style="color:white;font-size:1.1rem;">Suchen & Buzzern</strong>
-                </div>
-                <p style="margin-left:32px;">Alle suchen gleichzeitig im Zahlen-Gitter nach einer Lösung für die <strong>Zielzahl</strong>. Wer eine hat: 🔴 <strong>Buzzer drücken!</strong></p>
-            </div>
-
-            <div style="margin-bottom:25px;">
-                <div style="display:flex;align-items:center;margin-bottom:10px;">
-                    <span class="help-step-number">2</span>
-                    <strong style="color:white;font-size:1.1rem;">Auswählen (10s)</strong>
-                </div>
-                <p style="margin-left:32px;">Wähle 3 Zahlen. Sie müssen auf einer <strong>Linie</strong> liegen und den <strong>gleichen Abstand</strong> haben.</p>
+            <!-- 1. ZIEL & ABLAUF -->
+            <div style="margin-bottom:30px;">
+                <h4 style="color:var(--primary-color); margin-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:5px;">1. Das Ziel & Ablauf</h4>
+                <p style="margin-bottom:15px;">Dein Ziel ist es, <strong>3 Zahlen</strong> im Gitter zu finden, mit denen du genau die <strong>Zielzahl</strong> (oben rechts) ausrechnen kannst.</p>
                 
-                <!-- VISUALIZATIONS -->
-                <div class="help-grid-examples">
-                    <div class="mini-grid-container">
-                        <div class="mini-grid">
-                            <div class="mini-cell"></div><div class="mini-cell"></div><div class="mini-cell"></div>
-                            <div class="mini-cell selected"></div><div class="mini-cell selected"></div><div class="mini-cell selected"></div>
-                            <div class="mini-cell"></div><div class="mini-cell"></div><div class="mini-cell"></div>
-                        </div>
-                        <span class="mini-grid-label">Waagerecht</span>
-                    </div>
+                <div style="background:rgba(255,255,255,0.03); padding:15px; border-radius:12px;">
+                    <ul style="margin:0; padding-left:20px; line-height:1.6; color:#e2e8f0;">
+                        <li style="margin-bottom:10px;">👁️ <strong>Suchen:</strong> Alle Spieler suchen gleichzeitig auf dem gleichen Spielfeld.</li>
+                        <li style="margin-bottom:10px;">🔵 <strong>Buzzern:</strong> Lösung gefunden? Drücke den blauen <strong>"TRIO!"-Button</strong>!</li>
+                        <li style="margin-bottom:10px;">👆 <strong>Auswählen:</strong> Du hast jetzt <strong>10 Sekunden</strong> Zeit, deine 3 Zahlen anzutippen.</li>
+                        <li>🧮 <strong>Rechnen:</strong> Gib deine Rechnung in den Taschenrechner ein.</li>
+                    </ul>
+                </div>
+            </div>
 
-                    <div class="mini-grid-container">
-                        <div class="mini-grid">
-                            <div class="mini-cell"></div><div class="mini-cell selected"></div><div class="mini-cell"></div>
-                            <div class="mini-cell"></div><div class="mini-cell selected"></div><div class="mini-cell"></div>
-                            <div class="mini-cell"></div><div class="mini-cell selected"></div><div class="mini-cell"></div>
-                        </div>
-                        <span class="mini-grid-label">Senkrecht</span>
-                    </div>
-
-                    <div class="mini-grid-container">
-                        <div class="mini-grid">
-                            <div class="mini-cell selected"></div><div class="mini-cell"></div><div class="mini-cell"></div>
-                            <div class="mini-cell"></div><div class="mini-cell selected"></div><div class="mini-cell"></div>
-                            <div class="mini-cell"></div><div class="mini-cell"></div><div class="mini-cell selected"></div>
-                        </div>
-                        <span class="mini-grid-label">Diagonal</span>
-                    </div>
+            <!-- 2. RECHNEN REGELN -->
+             <div style="margin-bottom:30px;">
+                <h4 style="color:var(--primary-color); margin-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:5px;">2. Die Rechen-Regel</h4>
+                <p style="margin-bottom:10px;">Du musst die 3 Zahlen mathematisch kombinieren. Dabei gilt die <strong>Mix-Pflicht</strong>:</p>
+                
+                <div style="background:rgba(255,255,255,0.03); padding:15px; border-radius:12px; text-align:center;">
+                    <p style="font-size:0.95rem; margin-bottom:15px;">Du brauchst immer genau <strong>eine Strichrechnung</strong> & <strong>eine Punktrechnung</strong>.</p>
                     
-                     <div class="mini-grid-container">
-                        <div class="mini-grid">
-                            <div class="mini-cell selected"></div><div class="mini-cell"></div><div class="mini-cell selected"></div>
-                            <div class="mini-cell"></div><div class="mini-cell"></div><div class="mini-cell"></div>
-                            <div class="mini-cell selected"></div><div class="mini-cell"></div><div class="mini-cell"></div>
+                    <div style="display:flex; justify-content:center; gap:15px; align-items:center; margin-bottom:15px;">
+                        <div style="background:#334155; padding:8px 15px; border-radius:8px; border:1px solid #4ade80;">
+                            <span style="display:block; font-size:1.2rem; color:#4ade80; font-weight:bold;">+ / -</span>
+                            <span style="font-size:0.7rem; color:#94a3b8;">STRICH</span>
                         </div>
-                        <span class="mini-grid-label" style="color:var(--danger)">Ungültig</span>
+                        <span style="font-size:1.5rem;">&</span>
+                        <div style="background:#334155; padding:8px 15px; border-radius:8px; border:1px solid #facc15;">
+                            <span style="display:block; font-size:1.2rem; color:#facc15; font-weight:bold;">· / :</span>
+                            <span style="font-size:0.7rem; color:#94a3b8;">PUNKT</span>
+                        </div>
+                    </div>
+
+                    <div style="text-align:left; background:#1e293b; padding:10px; border-radius:6px; font-size:0.9rem;">
+                        <div style="margin-bottom:5px;">✅ <code>3 · 4 + 5</code> (Mix = Gültig)</div>
+                        <div style="color:#f87171;">❌ <code>3 + 4 + 5</code> (Nur Strich = Verboten)</div>
+                        <div style="color:#f87171;">❌ <code>3 · 4 · 5</code> (Nur Punkt = Verboten)</div>
                     </div>
                 </div>
             </div>
 
-            <div>
-                <div style="display:flex;align-items:center;margin-bottom:10px;">
-                    <span class="help-step-number">3</span>
-                    <strong style="color:white;font-size:1.1rem;">Rechnen</strong>
+            <!-- 3. AUSWAHL-REGELN -->
+            <div style="margin-bottom:30px;">
+                <h4 style="color:var(--primary-color); margin-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:5px;">3. Die Auswahl-Regeln</h4>
+                <p style="margin-bottom:15px;">Es gelten strenge geometrische Regeln für die Auswahl der 3 Zahlen:</p>
+                
+                <div style="background:rgba(255,255,255,0.03); padding:15px; border-radius:12px; border-left:4px solid var(--warning); margin-bottom:20px;">
+                    <p style="margin-bottom:10px;"><strong>Die "3-Gewinnt" Regel:</strong></p>
+                    <ul style="margin:0; padding-left:20px;">
+                        <li>Die 3 Zahlen müssen auf einer <strong>geraden Linie</strong> liegen.</li>
+                        <li>Sie müssen <strong>direkt nebeneinander</strong> liegen.</li>
+                        <li>❌ <strong>KEINE Lücken</strong> oder Abstände erlaubt!</li>
+                        <li>❌ <strong>KEINE Ecken</strong> oder Kanten erlaubt!</li>
+                    </ul>
                 </div>
-                <p style="margin-left:32px;">Erstelle eine Rechnung, die genau die Zielzahl ergibt.</p>
-                <code style="display:block;margin-left:32px;background:#1e293b;padding:8px;border-radius:6px;width:fit-content;">3 · 4 + 5 = 17</code>
+
+                <!-- BEISPIELE (SUB-POINT) -->
+                <div style="margin-left:10px;">
+                    <span style="font-size:0.9rem; color:#4ade80; font-weight:bold; display:block; margin-bottom:10px;">✅ GÜLTIG (Direkt benachbart):</span>
+                    <div class="help-grid-examples" style="margin:0 0 20px 0; justify-content:flex-start; gap:20px;">
+                        <!-- Horizontal -->
+                        <div class="mini-grid-container">
+                            <div class="mini-grid">
+                                <div class="mini-cell"></div><div class="mini-cell"></div><div class="mini-cell"></div>
+                                <div class="mini-cell selected"></div><div class="mini-cell selected"></div><div class="mini-cell selected"></div>
+                                <div class="mini-cell"></div><div class="mini-cell"></div><div class="mini-cell"></div>
+                            </div>
+                            <span class="mini-grid-label">Waagerecht</span>
+                        </div>
+                        <!-- Vertical -->
+                        <div class="mini-grid-container">
+                            <div class="mini-grid">
+                                <div class="mini-cell"></div><div class="mini-cell selected"></div><div class="mini-cell"></div>
+                                <div class="mini-cell"></div><div class="mini-cell selected"></div><div class="mini-cell"></div>
+                                <div class="mini-cell"></div><div class="mini-cell selected"></div><div class="mini-cell"></div>
+                            </div>
+                            <span class="mini-grid-label">Senkrecht</span>
+                        </div>
+                         <!-- Diagonal -->
+                        <div class="mini-grid-container">
+                            <div class="mini-grid">
+                                <div class="mini-cell selected"></div><div class="mini-cell"></div><div class="mini-cell"></div>
+                                <div class="mini-cell"></div><div class="mini-cell selected"></div><div class="mini-cell"></div>
+                                <div class="mini-cell"></div><div class="mini-cell"></div><div class="mini-cell selected"></div>
+                            </div>
+                            <span class="mini-grid-label">Diagonal</span>
+                        </div>
+                    </div>
+
+                    <span style="font-size:0.9rem; color:#f87171; font-weight:bold; display:block; margin-bottom:10px;">❌ UNGÜLTIG (Verboten):</span>
+                    <div class="help-grid-examples" style="margin:0; justify-content:flex-start; gap:20px;">
+                        <!-- Gap Invalid -->
+                        <div class="mini-grid-container">
+                            <div class="mini-grid" style="grid-template-columns: repeat(5, 1fr);">
+                                <div class="mini-cell invalid" style="background:var(--danger)"></div>
+                                <div class="mini-cell"></div>
+                                <div class="mini-cell invalid" style="background:var(--danger)"></div>
+                                <div class="mini-cell"></div>
+                                <div class="mini-cell invalid" style="background:var(--danger)"></div>
+                            </div>
+                            <span class="mini-grid-label" style="color:var(--danger)">Mit Lücke</span>
+                        </div>
+
+                        <!-- Corner Invalid -->
+                        <div class="mini-grid-container">
+                            <div class="mini-grid">
+                                <div class="mini-cell invalid" style="background:var(--danger)"></div><div class="mini-cell invalid" style="background:var(--danger)"></div><div class="mini-cell"></div>
+                                <div class="mini-cell invalid" style="background:var(--danger)"></div><div class="mini-cell"></div><div class="mini-cell"></div>
+                                <div class="mini-cell"></div><div class="mini-cell"></div><div class="mini-cell"></div>
+                            </div>
+                            <span class="mini-grid-label" style="color:var(--danger)">Über Eck</span>
+                        </div>
+                    </div>
+                </div>
             </div>
         `
     },
