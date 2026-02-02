@@ -301,6 +301,24 @@ function enableQuickJoinMode() {
     const btnClass = document.getElementById('btn-class-game');
     if (btnCreate) btnCreate.style.display = 'none';
     if (btnClass) btnClass.style.display = 'none';
+
+    // Add "Back to Main Menu" button
+    const joinContainer = document.getElementById('join-container');
+    if (joinContainer) {
+        // Check if button already exists
+        if (!document.getElementById('btn-quick-join-back')) {
+            const backBtn = document.createElement('button');
+            backBtn.id = 'btn-quick-join-back';
+            backBtn.className = 'btn-secondary';
+            backBtn.style.cssText = 'width: 100%; margin-top: 15px; padding: 12px; font-size: 0.95rem;';
+            backBtn.innerHTML = '← Zurück zum Hauptmenü';
+            backBtn.addEventListener('click', () => {
+                // Remove the game code from URL and reload to show full lobby
+                window.location.href = window.location.pathname;
+            });
+            joinContainer.appendChild(backBtn);
+        }
+    }
 }
 
 // --- Event Listeners ---
@@ -959,10 +977,19 @@ function subscribeToGame(gameId) {
         if (data.players) {
             appState.players = data.players;
 
+            // Check if current player was removed by host
+            const myData = data.players[appState.playerId];
+            if (!myData && !appState.isHost && !appState.isLeaving) {
+                // Player was removed from the game by host
+                showModal("Entfernt", "Du wurdest vom Host aus der Lobby entfernt.", () => {
+                    leaveGame();
+                }, true);
+                return; // Stop processing
+            }
+
             renderLobbySlots(data.players);
             renderPlayersList(data.players);
 
-            const myData = data.players[appState.playerId];
             if (myData && myData.lockedUntil) {
                 if (myData.lockedUntil > Date.now()) {
                     appState.lockedUntil = myData.lockedUntil;
