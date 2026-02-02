@@ -522,7 +522,11 @@
                 <button class="btn-calc action" id="btn-clear" style="grid-column: 4; grid-row: 2;">C</button>
             </div>
 
-            <button class="btn-primary" id="btn-solve" style="width:100%; margin-top:20px;">LÖSEN</button>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button class="btn-secondary" id="btn-give-up"
+                    style="flex: 1; padding: 14px; background: transparent; border: 2px solid var(--danger); color: var(--danger);">AUFGEBEN</button>
+                <button class="btn-primary" id="btn-solve" style="flex: 2; padding: 14px;">LÖSEN</button>
+            </div>
         </div>
     </div> <!-- Close calc-modal -->
 

@@ -918,6 +918,21 @@ function subscribeToGame(gameId) {
         if (data.target) {
             console.log("SYNC: Target update received:", data.target);
             if (appState.target !== data.target || forceRender) {
+                // Target changed = someone solved correctly
+                // Reset local penalty timer so everyone can participate in new round
+                if (appState.penaltyInterval) {
+                    clearInterval(appState.penaltyInterval);
+                    appState.penaltyInterval = null;
+                }
+                appState.lockedUntil = null;
+                appState.isLocked = false;
+
+                // Reset buzzer button if it was showing penalty
+                if (buttons.buzzer && !appState.buzzerOwner) {
+                    buttons.buzzer.innerText = "TRIO!";
+                    buttons.buzzer.disabled = false;
+                }
+
                 appState.target = data.target;
                 elements.targetNumber.innerText = appState.target;
 
@@ -1319,6 +1334,20 @@ function handleGameWin(winnerId, players) {
     const winnerName = players[winnerId]?.name || "Unbekannt";
     const isMe = winnerId === appState.playerId;
 
+    // Clear local penalty state immediately for all players
+    if (appState.penaltyInterval) {
+        clearInterval(appState.penaltyInterval);
+        appState.penaltyInterval = null;
+    }
+    appState.lockedUntil = null;
+    appState.isLocked = false;
+
+    // Reset buzzer button text if it was showing penalty countdown
+    if (buttons.buzzer) {
+        buttons.buzzer.innerText = "TRIO!";
+        buttons.buzzer.disabled = false;
+    }
+
     showModal(
         "SPIEL VORBEI! 🏆",
         isMe ? "Glückwunsch! Du hast gewonnen!" : `${winnerName} hat gewonnen!`,
@@ -1334,11 +1363,12 @@ function handleGameWin(winnerId, players) {
                     target: 0,
                     vote: null
                 });
-                // Reset scores?
+                // Reset scores and clear penalty timers for all players
                 const updates = {};
                 Object.keys(players).forEach(pid => {
                     updates[`players/${pid}/score`] = 0;
                     updates[`players/${pid}/status`] = 'waiting';
+                    updates[`players/${pid}/lockedUntil`] = null; // Clear penalty timer
                 });
                 db.ref(`games/${appState.gameId}`).update(updates);
             }
@@ -1490,14 +1520,14 @@ function updateBuzzerTimerDisplay(seconds) {
 
 function handleSelectionTimeout() {
     if (appState.buzzerOwner !== appState.playerId) return;
-    showMessage("Zu langsam!", "Du hast nicht rechtzeitig ausgewählt. 20s Sperre!");
+    showMessage("Zu langsam!", "Du hast nicht rechtzeitig ausgewählt. 10s Sperre!");
 
     // Apply Penalty Logic locally -> Trigger standard failure path
     // We can reuse the failure part of validateAttempt logic?
     // Or simpler: Push a fail state or just set lockedUntil directly.
 
     const gameRef = db.ref(`games/${appState.gameId}`);
-    const lockTime = Date.now() + 20000;
+    const lockTime = Date.now() + 10000; // 10 seconds for timeout
 
     // Reset state & Lock
     const updates = {};
@@ -1863,6 +1893,41 @@ function populateModalButtons(preserveFormula = false) {
     document.getElementById('btn-clear').onclick = handleClear;
     const btnBack = document.getElementById('btn-backspace');
     if (btnBack) btnBack.onclick = handleBackspace;
+
+    // Give Up Button
+    const btnGiveUp = document.getElementById('btn-give-up');
+    if (btnGiveUp) btnGiveUp.onclick = handleGiveUp;
+}
+
+// Handle Give Up - Player voluntarily forfeits their turn with 20s penalty
+function handleGiveUp() {
+    if (appState.buzzerOwner !== appState.playerId) return;
+
+    showConfirm(
+        "Aufgeben?",
+        "Möchtest du wirklich aufgeben? Du erhältst eine 20s Sperre.",
+        () => {
+            // Close the calculation modal
+            document.getElementById('calc-modal').classList.remove('active');
+            document.getElementById('calc-modal').style.display = '';
+
+            // Apply 20s penalty
+            const gameRef = db.ref(`games/${appState.gameId}`);
+            const lockTime = Date.now() + 20000; // 20 seconds penalty
+
+            // Reset state & Lock
+            const updates = {};
+            updates[`players/${appState.playerId}/lockedUntil`] = lockTime;
+            updates['status'] = null; // Clears buzzer owner
+            gameRef.update(updates);
+
+            // Reset local selection
+            updateSelection([]);
+
+            // Show message
+            showMessage("Aufgegeben", "Du bist für 20s gesperrt.");
+        }
+    );
 }
 
 function closeCalculationModal(push = true) {
@@ -2321,6 +2386,16 @@ function validateAttempt(attempt, attemptKey) {
             }
         });
 
+        // Reset all penalty timers when someone solves correctly
+        // This allows everyone to participate in the new round
+        if (appState.players) {
+            const penaltyResets = {};
+            Object.keys(appState.players).forEach(pid => {
+                penaltyResets[`players/${pid}/lockedUntil`] = null;
+            });
+            gameRef.update(penaltyResets);
+        }
+
         gameRef.child('status').set(null);
         generateNewTarget();
     } else {
@@ -2333,8 +2408,8 @@ function validateAttempt(attempt, attemptKey) {
             });
         }
 
-        // Standard 30s Penalty (Requested Global Change)
-        const lockTime = Date.now() + 30000;
+        // 20s Penalty for wrong calculation
+        const lockTime = Date.now() + 20000;
         gameRef.child(`players/${attempt.playerId}/lockedUntil`).set(lockTime);
         gameRef.child('status').set(null);
     }
@@ -2594,7 +2669,8 @@ function renderLobbySlots(playersObj) {
     if (!slotsContainer) return;
 
     slotsContainer.innerHTML = '';
-    const players = Object.values(playersObj || {});
+    const playersEntries = Object.entries(playersObj || {});
+    const players = playersEntries.map(([id, data]) => ({ id, ...data }));
 
     // UPDATE GRID CLASS BASED ON COUNT
     slotsContainer.className = 'player-grid-dynamic'; // reset base class
@@ -2613,12 +2689,51 @@ function renderLobbySlots(playersObj) {
         // Avatar (First letter)
         const initial = p.name ? p.name.charAt(0).toUpperCase() : '?';
 
+        // Check if this is the host's own card (can't remove yourself)
+        const isOwnCard = p.id === appState.playerId;
+        const canRemove = appState.isHost && !isOwnCard;
+
         card.innerHTML = `
+            ${canRemove ? `<button class="btn-remove-player" data-player-id="${p.id}" data-player-name="${p.name}" title="Spieler entfernen">×</button>` : ''}
             <div class="avatar">${initial}</div>
             <div class="name">${p.name}</div>
         `;
+
+        // Add click handler for remove button
+        if (canRemove) {
+            const removeBtn = card.querySelector('.btn-remove-player');
+            if (removeBtn) {
+                removeBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const playerId = removeBtn.getAttribute('data-player-id');
+                    const playerName = removeBtn.getAttribute('data-player-name');
+                    removePlayerFromLobby(playerId, playerName);
+                });
+            }
+        }
+
         slotsContainer.appendChild(card);
     });
+}
+
+// Remove a player from the lobby (host only)
+function removePlayerFromLobby(playerId, playerName) {
+    if (!appState.isHost || !appState.gameId) return;
+
+    showConfirm(
+        "Spieler entfernen?",
+        `Möchtest du ${playerName} wirklich aus der Lobby entfernen?`,
+        () => {
+            db.ref(`games/${appState.gameId}/players/${playerId}`).remove()
+                .then(() => {
+                    console.log(`Player ${playerName} removed from lobby`);
+                })
+                .catch(err => {
+                    console.error("Error removing player:", err);
+                    showMessage("Fehler", "Spieler konnte nicht entfernt werden.");
+                });
+        }
+    );
 }
 
 function renderPlayersList(players) {
