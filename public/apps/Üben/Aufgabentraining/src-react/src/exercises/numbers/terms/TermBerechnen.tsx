@@ -378,13 +378,20 @@ function GameSession({ config, onExit }: { config: Config, onExit: () => void })
                     >
                         {errorMsg ? 'Falsch ❌' : 'Überprüfen'}
                     </button>
-                    {errorMsg && (
-                        <div className="absolute top-14 w-full text-center pointer-events-none z-10">
-                            <span className="text-red-400 font-bold bg-[#0b1120] border border-red-500/30 px-4 py-2 rounded-lg shadow-xl text-sm">{errorMsg}</span>
-                        </div>
-                    )}
                 </div>
             </div>
+
+            {/* Error Popup at the bottom of the screen */}
+            {errorMsg && (
+                <div className="fixed bottom-10 left-0 right-0 flex justify-center z-[100] pointer-events-none px-4">
+                    <div className="bg-red-600 text-white font-bold px-8 py-4 rounded-2xl shadow-[0_20px_50px_rgba(220,38,38,0.3)] border-2 border-red-400 animate-shake flex items-center gap-4 scale-110">
+                        <div className="bg-white/20 rounded-full p-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                        </div>
+                        <span className="text-lg md:text-xl tracking-wide">{errorMsg}</span>
+                    </div>
+                </div>
+            )}
 
             {/* Numpad - Fixed height, consistent */}
             <div className="flex justify-center flex-shrink-0 pt-2 px-2">
@@ -486,31 +493,78 @@ function GameSession({ config, onExit }: { config: Config, onExit: () => void })
 
 function generateTask(config: Config): Task {
     const { range, ops, difficulty } = config;
+    
+    // Helper to check what kind of task we generated
+    const getTaskType = (str: string): 'mixed' | 'pure' => {
+        const hasLine = str.includes('+') || str.includes('-');
+        const hasPoint = str.includes('×') || str.includes('÷');
+        return (hasLine && hasPoint) ? 'mixed' : 'pure';
+    };
+
+    const hasLine = ops.plus || ops.minus;
+    const hasPoint = ops.mult || ops.div;
+    const canMix = hasLine && hasPoint;
+
     let task: Task | null = null;
     let attempts = 0;
     let selectedDiff: Difficulty = difficulty;
 
-    while (!task && attempts < 100) {
+    // Determine target type (if mixing is possible)
+    // 80% Mixed, 20% Pure
+    let targetType: 'mixed' | 'pure' = 'pure';
+    if (canMix) {
+        targetType = Math.random() < 0.8 ? 'mixed' : 'pure';
+    }
+
+    while (!task && attempts < 50) {
         attempts++;
-        try { 
+        try {
+            // Prepare ops for this attempt
+            let currentOps = { ...ops };
+            
+            if (canMix && targetType === 'pure') {
+                // Force pure by disabling one set
+                if (Math.random() < 0.5) {
+                    // Force Line (disable point)
+                    currentOps.mult = false; currentOps.div = false;
+                } else {
+                    // Force Point (disable line)
+                    currentOps.plus = false; currentOps.minus = false;
+                }
+            }
+
             if (difficulty === 'allround') {
                 const r = Math.random();
                 if (r < 0.5) { // 50% Normal
                     selectedDiff = 'normal';
-                    task = createEquation(range, ops, 'normal');
+                    task = createEquation(range, currentOps, 'normal');
                 } else if (r < 0.8) { // 30% Advanced (0.5 to 0.8)
                     selectedDiff = 'advanced';
-                    task = createEquation(range, ops, 'advanced');
+                    task = createEquation(range, currentOps, 'advanced');
                 } else { // 20% Profi
                     selectedDiff = 'profi';
-                    task = createEquation(range, ops, 'profi');
+                    task = createEquation(range, currentOps, 'profi');
                 }
             } else {
                 selectedDiff = difficulty;
-                task = createEquation(range, ops, difficulty); 
+                task = createEquation(range, currentOps, difficulty); 
             }
+
+            // Check if result matches targetType (only if we can mix)
+            if (canMix && task) {
+                const actualType = getTaskType(task.termString);
+                // If we wanted mixed but got pure, reject (unless it's impossible to get mixed, e.g. very simple task)
+                if (targetType === 'mixed' && actualType === 'pure') {
+                    // Heuristic: If normal/advanced/profi, we should be able to mix.
+                    // But if randomly selected ops were pure, we retry.
+                    task = null; 
+                }
+                // If we wanted pure, we already restricted ops, so it SHOULD be pure.
+            }
+
         } catch (e) { 
             // retry
+            task = null;
         }
     }
     // Fallback
@@ -548,45 +602,115 @@ function createSimpleEquation(range: number, ops: OperatorState, numElements: nu
     
     if (lineOps.length === 0 && pointOps.length === 0) throw "No ops";
     
-    let nums = [];
-    let operators = [];
-
-    let requiredOps = [];
-    if (numElements >= 3) {
-        if (lineOps.length > 0) requiredOps.push(lineOps[Math.floor(Math.random() * lineOps.length)]);
-        if (pointOps.length > 0) requiredOps.push(pointOps[Math.floor(Math.random() * pointOps.length)]);
-    }
-
-    const allAvailOps = [...lineOps, ...pointOps];
-    if (allAvailOps.length === 0) throw "No ops available";
-
-    while (requiredOps.length < numElements - 1) {
-        requiredOps.push(allAvailOps[Math.floor(Math.random() * allAvailOps.length)]);
+    // We construct the equation by grouping terms (product/division chains) separated by line ops
+    // This allows us to ensure every division results in an integer immediately.
+    
+    // Total numbers: numElements
+    // We decide structure first: how many groups?
+    // At least 1. Each group has >=1 numbers.
+    // Separators are + or -.
+    
+    // If only point ops allowed: 1 group.
+    // If only line ops allowed: numElements groups (each 1 number).
+    
+    let groups: { val: number, str: string, display: string }[] = [];
+    
+    let remainingNums = numElements;
+    
+    while (remainingNums > 0) {
+        // Decide size of next group
+        // If line ops avail: size can be anything from 1 to remaining
+        // If NO line ops: size MUST be remaining
+        let size = 1;
+        if (lineOps.length > 0) {
+            // Random size, bias towards 1 or 2
+            size = Math.floor(Math.random() * Math.min(3, remainingNums)) + 1;
+            // If it's the last one, take all
+            if (remainingNums - size === 0) size = remainingNums;
+        } else {
+            size = remainingNums;
+        }
+        
+        remainingNums -= size;
+        
+        // Generate group of 'size' numbers connected by point ops
+        let groupStr = "";
+        let groupDisplay = "";
+        
+        const minNum = range <= 20 ? 1 : (range <= 100 ? 4 : 10);
+        const maxNum = range <= 20 ? 10 : (range <= 100 ? 25 : 50); // Slightly smaller for components
+        
+        // Init first num
+        let currentVal = Math.floor(Math.random() * (maxNum - minNum + 1)) + minNum;
+        groupStr = "" + currentVal;
+        groupDisplay = "" + currentVal;
+        
+        for (let k = 1; k < size; k++) {
+            // Pick point op
+            const op = pointOps[Math.floor(Math.random() * pointOps.length)];
+            let nextNum = Math.floor(Math.random() * (maxNum - minNum + 1)) + minNum;
+            
+            if (op === '/') {
+                // Ensure currentVal is multiple of nextNum
+                // or adjust nextNum to be factor
+                // Find factors of currentVal
+                const factors = [];
+                for(let f=1; f<=currentVal; f++) if(currentVal%f===0) factors.push(f);
+                nextNum = factors[Math.floor(Math.random() * factors.length)];
+                
+                // Avoid divide by 1 too often if possible, but it is valid
+            }
+            
+            // eslint-disable-next-line no-eval
+            currentVal = eval(`${currentVal} ${op} ${nextNum}`);
+            groupStr += ` ${op} ${nextNum}`;
+            groupDisplay += ` ${formatOp(op)} ${nextNum}`;
+        }
+        
+        groups.push({ val: currentVal, str: groupStr, display: groupDisplay });
     }
     
-    operators = requiredOps.sort(() => Math.random() - 0.5);
-
-    const maxNum = range <= 20 ? 10 : (range <= 100 ? 15 : 50);
-    for (let i = 0; i < numElements; i++) nums.push(Math.floor(Math.random() * maxNum) + 1);
-
-    let evalStr = "";
-    let displayStr = "";
-    for (let i = 0; i < nums.length; i++) {
-        evalStr += nums[i];
-        displayStr += nums[i];
-        if (i < operators.length) {
-            evalStr += " " + operators[i] + " ";
-            displayStr += " " + formatOp(operators[i]) + " ";
+    // Now join groups with Line Ops
+    let totalEval = groups[0].str;
+    let totalDisplay = groups[0].display;
+    let currentTotal = groups[0].val;
+    
+    for (let i = 1; i < groups.length; i++) {
+        const op = lineOps[Math.floor(Math.random() * lineOps.length)];
+        // Check for negative result prevention?
+        // If op is -, check if currentTotal < groups[i].val
+        // But in simple equations, intermediate negatives might be allowed or disallowed depending on rules.
+        // User asked for "Ganze Zahlen" (Integers). Negatives are integers.
+        // But usually for kids "Natural numbers" (Non-negative) is preferred.
+        // Let's prevent negative intermediate if simple.
+        
+        if (op === '-' && currentTotal < groups[i].val) {
+            // Swap logic is hard here because order matters for string.
+            // Just change op to +?
+            // Or only allow - if valid.
+            if (ops.plus) {
+                totalEval += ` + ${groups[i].str}`;
+                totalDisplay += ` + ${groups[i].display}`;
+                currentTotal += groups[i].val;
+            } else {
+                // Must subtract. Results in negative.
+                // Re-generate or throw to retry?
+                // Throwing is safer to restart cleanly.
+                throw "Negative result in simple eq";
+            }
+        } else {
+            totalEval += ` ${op} ${groups[i].str}`;
+            totalDisplay += ` ${formatOp(op)} ${groups[i].display}`;
+            // eslint-disable-next-line no-eval
+            currentTotal = eval(`${currentTotal} ${op} ${groups[i].val}`);
         }
     }
 
-    // eslint-disable-next-line no-eval
-    const res = eval(evalStr);
-    if (!Number.isInteger(res)) throw "Decimal";
-    if (res < 0 || res > range) throw "Range";
-    if (res === 0) throw "Zero result";
+    // Final checks
+    if (!Number.isInteger(currentTotal)) throw "Non-integer final";
+    if (currentTotal < 0 || currentTotal > range) throw "Range error";
 
-    return { target: res, termString: displayStr };
+    return { target: currentTotal, termString: totalDisplay };
 }
 
 // 2. Normal Bracket Equation: (A +/- B) * C  or similar
@@ -599,28 +723,45 @@ function createBracketEquationNormal(range: number, ops: OperatorState): Task {
     const opLine = lineOps[Math.floor(Math.random() * lineOps.length)];
     const opPoint = pointOps[Math.floor(Math.random() * pointOps.length)];
 
-    const maxNum = range <= 20 ? 10 : (range <= 100 ? 12 : 30);
-    const a = Math.floor(Math.random() * maxNum) + 1;
-    const b = Math.floor(Math.random() * maxNum) + 1;
-
-    let c;
-    let innerRes = (opLine === '+') ? a + b : a - b;
-    if (innerRes <= 0) throw "Negative inner";
-
-    if (opPoint === '*') {
-        c = Math.floor(Math.random() * 8) + 2;
-    } else {
-        const factors = [];
-        for (let i = 2; i < innerRes; i++) if (innerRes % i === 0) factors.push(i);
-        if (factors.length === 0) c = 1; else c = factors[Math.floor(Math.random() * factors.length)];
+    const minNum = range <= 20 ? 1 : (range <= 100 ? 3 : 10);
+    const maxNum = range <= 20 ? 10 : (range <= 100 ? 25 : 40);
+    
+    // Generate inner part first (A +/- B)
+    let a = Math.floor(Math.random() * (maxNum - minNum + 1)) + minNum;
+    let b = Math.floor(Math.random() * (maxNum - minNum + 1)) + minNum;
+    
+    // Ensure A - B > 0 if minus
+    if (opLine === '-' && a <= b) {
+        a = b + Math.floor(Math.random() * 5) + 1;
     }
 
+    const innerRes = (opLine === '+') ? a + b : a - b;
+    let c;
+
+    // Pattern: (A opLine B) opPoint C   OR   C opPoint (A opLine B)
     const isPost = Math.random() < 0.5;
-    
-    let target;
+
+    if (opPoint === '*') {
+        c = Math.floor(Math.random() * (range <= 20 ? 4 : 8)) + 2;
+    } else {
+        // Division: ensure integer result
+        if (isPost) {
+            // (a +/- b) / c  -> c must be factor of innerRes
+            const factors = [];
+            for (let i = 2; i <= innerRes; i++) if (innerRes % i === 0) factors.push(i);
+            if (factors.length === 0) { c = 1; } // Fallback
+            else c = factors[Math.floor(Math.random() * factors.length)];
+        } else {
+            // c / (a +/- b) -> c must be multiple of innerRes
+            const maxMult = Math.floor(range / innerRes);
+            if (maxMult < 1) throw "Range too small for reverse div";
+            const mult = Math.floor(Math.random() * Math.min(5, maxMult)) + 1;
+            c = innerRes * mult;
+        }
+    }
+
     let evalStr;
     let displayStr;
-
     const opLineDisplay = formatOp(opLine);
     const opPointDisplay = formatOp(opPoint);
 
@@ -633,7 +774,7 @@ function createBracketEquationNormal(range: number, ops: OperatorState): Task {
     }
     
     // eslint-disable-next-line no-eval
-    target = eval(evalStr);
+    const target = eval(evalStr);
     if (target > range || target < 0 || !Number.isInteger(target)) throw "Invalid result";
 
     return { target, termString: displayStr };
@@ -641,7 +782,8 @@ function createBracketEquationNormal(range: number, ops: OperatorState): Task {
 
 // 3. Advanced Bracket Equation: 4 numbers. e.g. (A + B) * C - D
 function createBracketEquationAdvanced(range: number, ops: OperatorState): Task {
-    const baseTask = createBracketEquationNormal(range, ops); // (A op B) op C
+    // Generate base: (A op B) op C
+    const baseTask = createBracketEquationNormal(range, ops); 
     
     const allOps = []; 
     if (ops.plus) allOps.push('+'); if (ops.minus) allOps.push('-');
@@ -649,114 +791,206 @@ function createBracketEquationAdvanced(range: number, ops: OperatorState): Task 
     if (allOps.length === 0) throw "No ops";
 
     const newOp = allOps[Math.floor(Math.random() * allOps.length)];
-    const d = Math.floor(Math.random() * (range <= 20 ? 5 : 20)) + 1;
+    let d = Math.floor(Math.random() * (range <= 20 ? 5 : (range <= 100 ? 25 : 50))) + 5;
 
-    let total;
+    const blockVal = baseTask.target;
     let evalStr;
     let displayStr;
+    
     const isPost = Math.random() < 0.5;
 
-    // Use baseTask termString but wrap in brackets if needed?
-    // baseTask.termString is already "(A+B)*C" or "C*(A+B)".
-    // If newOp is Point and base has Line outside brackets, we might need brackets.
-    // BUT baseTask logic guarantees it's a solid block. 
-    // Wait, createBracketEquationNormal returns e.g. "(3 + 2) * 4" = 20.
-    // If we do 20 + 5 -> "(3 + 2) * 4 + 5". correct.
-    // If we do 20 * 5 -> "(3 + 2) * 4 * 5". correct.
-    // What if baseTask was "4 * (3 + 2)" ? Same.
-    // So we can just append.
-
-    // WAIT: normal bracket equation is (Line) Point or Point (Line).
-    // Result is a number.
-    // If we add another op, e.g. + D.
-    // ((A+B)*C) + D.
-    // Since * binds stronger than +, we don't need outer brackets for the base block usually.
-    // BUT if newOp is * and base main op was + (not possible in Normal generator which mixes Line/Point).
-    // Normal generator ALWAYS has a Point op as the "outer" op or "connector" op?
-    // No: "(A+B) * C". Outer op is *.
-    // "C * (A+B)". Outer op is *.
-    // So base block is "Point-bound".
-    // If newOp is +, -, *, / it should be fine without extra brackets around the base block 
-    // UNLESS newOp is Point and base was Line-bound... but base is Point-bound.
-    // Wait. If base is Point-bound, e.g. X * Y.
-    // And newOp is *. X * Y * Z. Fine.
-    // And newOp is +. X * Y + Z. Fine.
-    // So we don't need extra brackets around baseTask.termString.
+    // Handle Division Integrity
+    if (newOp === '/') {
+        if (isPost) {
+            // blockVal / d -> d must be factor of blockVal
+            const factors = [];
+            for (let i = 2; i <= blockVal; i++) if (blockVal % i === 0) factors.push(i);
+            if (factors.length === 0) {
+                // If prime or 1, fallback to multiplication or addition
+                if (ops.mult) { /* retry as mult */ return createBracketEquationAdvanced(range, { ...ops, div: false }); }
+                if (ops.plus) { /* retry as plus */ return createBracketEquationAdvanced(range, { ...ops, div: false }); }
+                d = 1; 
+            } else {
+                d = factors[Math.floor(Math.random() * factors.length)];
+            }
+        } else {
+            // d / blockVal -> d must be multiple
+            if (blockVal === 0) throw "Div by zero";
+            const maxMult = Math.floor(range / blockVal);
+            if (maxMult < 1) throw "Range too small";
+            d = blockVal * (Math.floor(Math.random() * Math.min(5, maxMult)) + 1);
+        }
+    } else if (newOp === '-') {
+        // Prevent negative result if strict
+        if (isPost && blockVal < d) {
+             // Swap if blockVal is smaller? No, just pick smaller d
+             d = Math.floor(Math.random() * blockVal); 
+        } else if (!isPost && d < blockVal) {
+             d = blockVal + Math.floor(Math.random() * 10) + 1;
+        }
+    }
 
     if (isPost) {
-        // Recalculate full string to be safe with eval? 
-        // We don't have the raw numbers of base easily.
-        // We can just take the result of base and operate on it for checking validity,
-        // but for display we need the string.
-        // Re-eval the combined string? Yes.
-        
-        // baseTask.termString has '×', '÷'. Need to revert for eval?
-        // Or better: pass the raw string from baseTask?
-        // I didn't save raw string in baseTask.
-        // Let's rely on the blockVal for calculation logic check, but for the final eval check we should reconstruct.
-        
-        // Let's assume the string composition is safe:
-        // displayStr = baseTask.termString + " " + formatOp(newOp) + " " + d;
-        // But to verify, we need valid eval string.
-        // Let's replace ×/÷ back to */.
-        const baseEval = baseTask.termString.replace(/×/g, '*').replace(/÷/g, '/');
-        evalStr = `${baseEval} ${newOp} ${d}`;
+        // Reconstruct string
+        // baseTask.termString uses '×', need to be careful.
+        // We trust baseTask.target is correct.
+        // We just display: baseString op d
         displayStr = `${baseTask.termString} ${formatOp(newOp)} ${d}`;
+        // eval check:
+        evalStr = `${blockVal} ${newOp} ${d}`;
     } else {
-        const baseEval = baseTask.termString.replace(/×/g, '*').replace(/÷/g, '/');
-        evalStr = `${d} ${newOp} ${baseEval}`;
         displayStr = `${d} ${formatOp(newOp)} ${baseTask.termString}`;
+        evalStr = `${d} ${newOp} ${blockVal}`;
     }
     
     // eslint-disable-next-line no-eval
-    total = eval(evalStr);
+    const total = eval(evalStr);
 
     if (total > range || total < 0 || !Number.isInteger(total)) throw "Invalid result";
 
     return { target: total, termString: displayStr };
 }
 
-// 4. Profi Bracket Equation
+// 4. Profi: Patterns: ((A op B) op C) op D   OR   (A op B) op (C op D)
 function createBracketEquationProfi(range: number, ops: OperatorState): Task {
-    const pattern = Math.random() < 0.5 ? 'nested' : 'double';
+    const pattern = Math.random() < 0.5 ? 'double' : 'nested';
     
     const lineOps = []; if (ops.plus) lineOps.push('+'); if (ops.minus) lineOps.push('-');
     const pointOps = []; if (ops.mult) pointOps.push('*'); if (ops.div) pointOps.push('/');
     const availOps = [...lineOps, ...pointOps];
-    if (availOps.length < 2) throw "Not enough ops for profi";
+    if (availOps.length < 2) throw "Not enough ops";
 
-    const maxNum = range <= 20 ? 8 : (range <= 100 ? 12 : 25);
-    const randNum = () => Math.floor(Math.random() * maxNum) + 1;
     const randOp = () => availOps[Math.floor(Math.random() * availOps.length)];
+    
+    const minNum = range <= 20 ? 1 : (range <= 100 ? 3 : 5);
+    const maxNum = range <= 20 ? 8 : (range <= 100 ? 15 : 30);
+    const randNum = () => Math.floor(Math.random() * (maxNum - minNum + 1)) + minNum;
 
-    let evalStr = "";
-    let displayStr = "";
+    // Helper to create a safe simple term (A op B) that results in integer > 0
+    const createSafeTerm = (): { str: string, val: number, display: string } => {
+        let op = randOp();
+        let a = randNum();
+        let b = randNum();
+        
+        if (op === '/') {
+            // Ensure a is multiple of b
+            a = b * (Math.floor(Math.random() * 5) + 1);
+        } else if (op === '-') {
+            if (a < b) [a, b] = [b, a]; // Swap
+        }
+        
+        // eslint-disable-next-line no-eval
+        const val = eval(`${a} ${op} ${b}`);
+        return { str: `(${a} ${op} ${b})`, val, display: `(${a} ${formatOp(op)} ${b})` };
+    };
 
     if (pattern === 'double') {
         // (A op1 B) op2 (C op3 D)
-        const a = randNum(), b = randNum(), c = randNum(), d = randNum();
-        const op1 = randOp(), op2 = randOp(), op3 = randOp();
+        // Create left part
+        let left = createSafeTerm();
+        // Create right part
+        let right = createSafeTerm();
         
-        // eslint-disable-next-line no-eval
-        if (eval(`${a} ${op1} ${b}`) < 0) throw "Neg inner";
-        // eslint-disable-next-line no-eval
-        if (eval(`${c} ${op3} ${d}`) < 0) throw "Neg inner";
+        let op2 = randOp();
+        
+        // Check middle op compatibility
+        if (op2 === '/') {
+            // left.val must be divisible by right.val
+            // It's hard to force random trees to match.
+            // Strategy: Adjust right part to be a factor of left part.
+            // If left.val is small/prime, this is hard.
+            // Retry loop or fallback to +/-/*.
+            if (left.val === 0) throw "Zero left";
+            const factors = [];
+            for (let i = 1; i <= left.val; i++) if (left.val % i === 0) factors.push(i);
+            
+            // Force right val to be one of these factors
+            const targetRight = factors[Math.floor(Math.random() * factors.length)];
+            // Now we need (C op3 D) == targetRight.
+            // It's easier to just construct C and D to match targetRight.
+            // Reverse construct:
+            let op3 = randOp();
+            let c, d;
+            if (op3 === '+') {
+                c = Math.floor(Math.random() * (targetRight - 1)) + 1;
+                d = targetRight - c;
+            } else if (op3 === '-') {
+                d = Math.floor(Math.random() * 10) + 1;
+                c = targetRight + d;
+            } else if (op3 === '*') {
+                // Find factors of targetRight
+                const tFactors = [];
+                for(let i=1; i<=targetRight; i++) if(targetRight%i===0) tFactors.push(i);
+                c = tFactors[Math.floor(Math.random() * tFactors.length)];
+                d = targetRight / c;
+            } else { // /
+                d = Math.floor(Math.random() * 5) + 1;
+                c = targetRight * d;
+            }
+            // Filter invalid 0/neg
+            if (c <= 0 || d <= 0) throw "Invalid generation";
+            
+            right = { str: `(${c} ${op3} ${d})`, val: targetRight, display: `(${c} ${formatOp(op3)} ${d})` };
+        } else if (op2 === '-') {
+            // Ensure left >= right
+            if (left.val < right.val) {
+                // Swap left and right
+                [left, right] = [right, left];
+            }
+        }
 
-        evalStr = `(${a} ${op1} ${b}) ${op2} (${c} ${op3} ${d})`;
-        displayStr = `(${a} ${formatOp(op1)} ${b}) ${formatOp(op2)} (${c} ${formatOp(op3)} ${d})`;
+        // eslint-disable-next-line no-eval
+        const res = eval(`${left.val} ${op2} ${right.val}`);
+        if (!Number.isInteger(res) || res < 0 || res > range) throw "Invalid result";
+
+        return { 
+            target: res, 
+            termString: `${left.display} ${formatOp(op2)} ${right.display}`
+        };
 
     } else {
         // Nested: ((A op1 B) op2 C) op3 D
-        const a = randNum(), b = randNum(), c = randNum(), d = randNum();
-        const op1 = randOp(), op2 = randOp(), op3 = randOp();
+        // Step 1: (A op1 B)
+        let t1 = createSafeTerm(); // result t1.val
+        
+        // Step 2: t1.val op2 C
+        let op2 = randOp();
+        let c = randNum();
+        
+        if (op2 === '/') {
+            // t1.val / c -> c factor of t1.val
+            const factors = [];
+            for (let i = 1; i <= t1.val; i++) if (t1.val % i === 0) factors.push(i);
+            c = factors[Math.floor(Math.random() * factors.length)];
+        } else if (op2 === '-') {
+            if (t1.val < c) c = Math.floor(Math.random() * t1.val); // Reduce c
+        }
+        
+        // eslint-disable-next-line no-eval
+        let res2 = eval(`${t1.val} ${op2} ${c}`);
+        let t2Str = `(${t1.display} ${formatOp(op2)} ${c})`;
+        
+        // Step 3: res2 op3 D
+        let op3 = randOp();
+        let d = randNum();
+        
+        if (op3 === '/') {
+            if (res2 === 0) throw "Zero div";
+            const factors = [];
+            for (let i = 1; i <= res2; i++) if (res2 % i === 0) factors.push(i);
+            if (factors.length === 0) throw "No factors";
+            d = factors[Math.floor(Math.random() * factors.length)];
+        } else if (op3 === '-') {
+            if (res2 < d) d = Math.floor(Math.random() * res2);
+        }
 
-        evalStr = `((${a} ${op1} ${b}) ${op2} ${c}) ${op3} ${d}`;
-        displayStr = `((${a} ${formatOp(op1)} ${b}) ${formatOp(op2)} ${c}) ${formatOp(op3)} ${d}`;
+        // eslint-disable-next-line no-eval
+        const finalRes = eval(`${res2} ${op3} ${d}`);
+        if (!Number.isInteger(finalRes) || finalRes < 0 || finalRes > range) throw "Invalid result";
+
+        return {
+            target: finalRes,
+            termString: `${t2Str} ${formatOp(op3)} ${d}`
+        };
     }
-
-    // eslint-disable-next-line no-eval
-    const res = eval(evalStr);
-    if (!Number.isInteger(res) || res < 0 || res > range) throw "Invalid result";
-
-    return { target: res, termString: displayStr };
 }

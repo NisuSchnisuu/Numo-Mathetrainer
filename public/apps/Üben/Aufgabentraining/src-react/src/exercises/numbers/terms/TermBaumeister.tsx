@@ -518,7 +518,6 @@ function generateTask(config: Config): Task {
                 const r = Math.random();
                 if (r < 0.5) { // 50% Normal
                     selectedDiff = 'normal';
-                    // Even in allround (where brackets are locked on), we want variety between simple and bracket
                     task = createEquation(range, ops, 'normal');
                 } else if (r < 0.8) { // 30% Advanced (0.5 to 0.8)
                     selectedDiff = 'advanced';
@@ -556,19 +555,20 @@ function createEquation(range: number, ops: OperatorState, diff: Difficulty): Ta
     
     switch (diff) {
         case 'normal':
-            // Normal: 3 numbers. 
-            // If brackets enabled: 50% chance for Bracket Equation, 50% Simple Linear
             return useBrackets ? createBracketEquationNormal(range, ops) : createSimpleEquation(range, ops, 3);
         case 'advanced':
-            // Advanced: 4 numbers.
-            // If brackets enabled: 50% chance for Bracket Equation, 50% Simple Linear
             return useBrackets ? createBracketEquationAdvanced(range, ops) : createSimpleEquation(range, ops, 4);
         case 'profi':
-            // Profi: Always nested/complex brackets
             return createBracketEquationProfi(range, ops);
         default:
             return createSimpleEquation(range, ops, 3);
     }
+}
+
+function formatOp(op: string): string {
+    if (op === '*') return '×';
+    if (op === '/') return '÷';
+    return op;
 }
 
 // 1. Simple Linear Equation (e.g. A + B * C)
@@ -578,50 +578,74 @@ function createSimpleEquation(range: number, ops: OperatorState, numElements: nu
     
     if (lineOps.length === 0 && pointOps.length === 0) throw "No ops";
     
-    let nums = [];
-    let operators = [];
+    // Grouping strategy ensures intermediate division integers
+    let groups: { val: number, elements: GameElement[] }[] = [];
+    let remainingNums = numElements;
+    
+    let elementCounter = 0; // ID counter
 
-    // Ensure at least one line and one point op if possible (for mixed ops requirements)
-    let requiredOps = [];
-    // Only force mixed if we have enough slots
-    if (numElements >= 3) {
-        if (lineOps.length > 0) requiredOps.push(lineOps[Math.floor(Math.random() * lineOps.length)]);
-        if (pointOps.length > 0) requiredOps.push(pointOps[Math.floor(Math.random() * pointOps.length)]);
-    }
-
-    const allAvailOps = [...lineOps, ...pointOps];
-    if (allAvailOps.length === 0) throw "No ops available";
-
-    while (requiredOps.length < numElements - 1) {
-        requiredOps.push(allAvailOps[Math.floor(Math.random() * allAvailOps.length)]);
+    while (remainingNums > 0) {
+        let size = 1;
+        if (lineOps.length > 0) {
+            size = Math.floor(Math.random() * Math.min(3, remainingNums)) + 1;
+            if (remainingNums - size === 0) size = remainingNums;
+        } else {
+            size = remainingNums;
+        }
+        remainingNums -= size;
+        
+        const minNum = range <= 20 ? 1 : (range <= 100 ? 4 : 10);
+        const maxNum = range <= 20 ? 10 : (range <= 100 ? 25 : 50);
+        
+        let currentVal = Math.floor(Math.random() * (maxNum - minNum + 1)) + minNum;
+        let groupElems: GameElement[] = [{ type: 'number', val: currentVal, id: 'n' + (elementCounter++) }];
+        
+        for (let k = 1; k < size; k++) {
+            const op = pointOps[Math.floor(Math.random() * pointOps.length)];
+            let nextNum = Math.floor(Math.random() * (maxNum - minNum + 1)) + minNum;
+            
+            if (op === '/') {
+                const factors = [];
+                for(let f=1; f<=currentVal; f++) if(currentVal%f===0) factors.push(f);
+                nextNum = factors[Math.floor(Math.random() * factors.length)];
+            }
+            
+            // eslint-disable-next-line no-eval
+            currentVal = eval(`${currentVal} ${op} ${nextNum}`);
+            groupElems.push({ type: 'op', val: formatOp(op), id: 'o' + (elementCounter++) });
+            groupElems.push({ type: 'number', val: nextNum, id: 'n' + (elementCounter++) });
+        }
+        groups.push({ val: currentVal, elements: groupElems });
     }
     
-    operators = requiredOps.sort(() => Math.random() - 0.5);
-
-    const maxNum = range <= 20 ? 10 : (range <= 100 ? 15 : 50);
-    for (let i = 0; i < numElements; i++) nums.push(Math.floor(Math.random() * maxNum) + 1);
-
-    let str = "";
-    for (let i = 0; i < nums.length; i++) {
-        str += nums[i];
-        if (i < operators.length) str += " " + operators[i] + " ";
+    let currentTotal = groups[0].val;
+    let allElements = [...groups[0].elements];
+    
+    for (let i = 1; i < groups.length; i++) {
+        const op = lineOps[Math.floor(Math.random() * lineOps.length)];
+        
+        if (op === '-' && currentTotal < groups[i].val) {
+            if (ops.plus) {
+                currentTotal += groups[i].val;
+                allElements.push({ type: 'op', val: '+', id: 'o' + (elementCounter++) });
+            } else {
+                throw "Negative result";
+            }
+        } else {
+            // eslint-disable-next-line no-eval
+            currentTotal = eval(`${currentTotal} ${op} ${groups[i].val}`);
+            allElements.push({ type: 'op', val: formatOp(op), id: 'o' + (elementCounter++) });
+        }
+        allElements.push(...groups[i].elements);
     }
 
-    // eslint-disable-next-line no-eval
-    const res = eval(str);
-    if (!Number.isInteger(res)) throw "Decimal";
-    if (res < 0 || res > range) throw "Range";
-    if (res === 0) throw "Zero result"; // Optional, but usually better to avoid trivial 0
+    if (!Number.isInteger(currentTotal) || currentTotal < 0 || currentTotal > range) throw "Invalid";
 
-    const elements: GameElement[] = nums.map((n, i) => ({ type: 'number', val: n, id: 'n' + i }));
-    operators.forEach((o, i) => elements.push({ type: 'op', val: o === '*' ? '×' : (o === '/' ? '÷' : o), id: 'o' + i }));
-
-    return { target: res, elements };
+    return { target: currentTotal, elements: allElements };
 }
 
-// 2. Normal Bracket Equation: (A +/- B) * C  or similar
+// 2. Normal Bracket Equation
 function createBracketEquationNormal(range: number, ops: OperatorState): Task {
-    // Requires at least one line and one point op typically for this pattern
     const lineOps = []; if (ops.plus) lineOps.push('+'); if (ops.minus) lineOps.push('-');
     const pointOps = []; if (ops.mult) pointOps.push('*'); if (ops.div) pointOps.push('/');
 
@@ -630,47 +654,48 @@ function createBracketEquationNormal(range: number, ops: OperatorState): Task {
     const opLine = lineOps[Math.floor(Math.random() * lineOps.length)];
     const opPoint = pointOps[Math.floor(Math.random() * pointOps.length)];
 
-    const maxNum = range <= 20 ? 10 : (range <= 100 ? 12 : 30);
-    const a = Math.floor(Math.random() * maxNum) + 1;
-    const b = Math.floor(Math.random() * maxNum) + 1;
+    const minNum = range <= 20 ? 1 : (range <= 100 ? 3 : 10);
+    const maxNum = range <= 20 ? 10 : (range <= 100 ? 25 : 40);
+    
+    let a = Math.floor(Math.random() * (maxNum - minNum + 1)) + minNum;
+    let b = Math.floor(Math.random() * (maxNum - minNum + 1)) + minNum;
+    
+    if (opLine === '-' && a <= b) a = b + Math.floor(Math.random() * 5) + 1;
 
+    const innerRes = (opLine === '+') ? a + b : a - b;
     let c;
-    let innerRes = (opLine === '+') ? a + b : a - b;
-    // Avoid 0 or negative inner if possible for simplicity, though negative is fine if students know it. 
-    // Assuming positive integers mostly:
-    if (innerRes <= 0) throw "Negative inner";
+
+    const isPost = Math.random() < 0.5;
 
     if (opPoint === '*') {
-        c = Math.floor(Math.random() * 8) + 2;
+        c = Math.floor(Math.random() * (range <= 20 ? 4 : 8)) + 2;
     } else {
-        // Division: find factor
-        const factors = [];
-        for (let i = 2; i < innerRes; i++) if (innerRes % i === 0) factors.push(i);
-        if (factors.length === 0) c = 1; else c = factors[Math.floor(Math.random() * factors.length)];
+        if (isPost) {
+            const factors = [];
+            for (let i = 2; i <= innerRes; i++) if (innerRes % i === 0) factors.push(i);
+            if (factors.length === 0) c = 1; else c = factors[Math.floor(Math.random() * factors.length)];
+        } else {
+            const maxMult = Math.floor(range / innerRes);
+            if (maxMult < 1) throw "Range too small";
+            c = innerRes * (Math.floor(Math.random() * Math.min(5, maxMult)) + 1);
+        }
     }
 
-    // Pattern: (a opLine b) opPoint c
-    // Or: c opPoint (a opLine b)
-    const isPost = Math.random() < 0.5;
-    
-    let target;
-    let str;
-    if (isPost) {
-        str = `(${a} ${opLine} ${b}) ${opPoint} ${c}`;
-    } else {
-        str = `${c} ${opPoint} (${a} ${opLine} ${b})`;
-    }
+    let evalStr;
+    if (isPost) evalStr = `(${a} ${opLine} ${b}) ${opPoint} ${c}`;
+    else evalStr = `${c} ${opPoint} (${a} ${opLine} ${b})`;
     
     // eslint-disable-next-line no-eval
-    target = eval(str);
-    if (target > range || target < 0 || !Number.isInteger(target)) throw "Invalid result";
+    const target = eval(evalStr);
+    if (target > range || target < 0 || !Number.isInteger(target)) throw "Invalid";
 
+    // Build elements
     const elements: GameElement[] = [
         { type: 'number', val: a, id: 'n1' },
         { type: 'number', val: b, id: 'n2' },
         { type: 'number', val: c, id: 'n3' },
-        { type: 'op', val: opLine, id: 'o1' },
-        { type: 'op', val: opPoint === '*' ? '×' : '÷', id: 'o2' },
+        { type: 'op', val: formatOp(opLine), id: 'o1' },
+        { type: 'op', val: formatOp(opPoint), id: 'o2' },
         { type: 'op', val: '(', id: 'b1' },
         { type: 'op', val: ')', id: 'b2' }
     ];
@@ -678,12 +703,10 @@ function createBracketEquationNormal(range: number, ops: OperatorState): Task {
     return { target, elements };
 }
 
-// 3. Advanced Bracket Equation: 4 numbers. e.g. (A + B) * C - D
+// 3. Advanced Bracket
 function createBracketEquationAdvanced(range: number, ops: OperatorState): Task {
-    // Similar to Normal but adds a 4th number linear operation
-    const baseTask = createBracketEquationNormal(range, ops); // (A op B) op C
-    // baseTask has 3 nums, 2 ops, 2 brackets.
-    // We add one op and one num.
+    const baseTask = createBracketEquationNormal(range, ops);
+    const blockVal = baseTask.target;
     
     const allOps = []; 
     if (ops.plus) allOps.push('+'); if (ops.minus) allOps.push('-');
@@ -691,99 +714,158 @@ function createBracketEquationAdvanced(range: number, ops: OperatorState): Task 
     if (allOps.length === 0) throw "No ops";
 
     const newOp = allOps[Math.floor(Math.random() * allOps.length)];
-    const d = Math.floor(Math.random() * (range <= 20 ? 5 : 20)) + 1;
-
-    // Pattern: [Block] op d   OR   d op [Block]
-    // Block is the target of baseTask
-    const blockVal = baseTask.target;
+    let d = Math.floor(Math.random() * (range <= 20 ? 5 : (range <= 100 ? 25 : 50))) + 5;
     
-    let total;
-    let str;
     const isPost = Math.random() < 0.5;
 
-    if (isPost) {
-        str = `${blockVal} ${newOp} ${d}`;
-    } else {
-        str = `${d} ${newOp} ${blockVal}`;
+    if (newOp === '/') {
+        if (isPost) {
+            const factors = [];
+            for (let i = 2; i <= blockVal; i++) if (blockVal % i === 0) factors.push(i);
+            if (factors.length === 0) d = 1; else d = factors[Math.floor(Math.random() * factors.length)];
+        } else {
+            if (blockVal === 0) throw "Zero div";
+            const maxMult = Math.floor(range / blockVal);
+            if (maxMult < 1) throw "Range too small";
+            d = blockVal * (Math.floor(Math.random() * Math.min(5, maxMult)) + 1);
+        }
+    } else if (newOp === '-') {
+        if (isPost && blockVal < d) d = Math.floor(Math.random() * blockVal);
+        else if (!isPost && d < blockVal) d = blockVal + Math.floor(Math.random() * 10) + 1;
     }
+
+    let evalStr;
+    if (isPost) evalStr = `${blockVal} ${newOp} ${d}`;
+    else evalStr = `${d} ${newOp} ${blockVal}`;
     
     // eslint-disable-next-line no-eval
-    total = eval(str);
+    const total = eval(evalStr);
+    if (total > range || total < 0 || !Number.isInteger(total)) throw "Invalid";
 
-    if (total > range || total < 0 || !Number.isInteger(total)) throw "Invalid result";
-
-    // Add elements
     const elements = [...baseTask.elements];
     elements.push({ type: 'number', val: d, id: 'n4' });
-    elements.push({ type: 'op', val: newOp === '*' ? '×' : (newOp === '/' ? '÷' : newOp), id: 'o3' });
+    elements.push({ type: 'op', val: formatOp(newOp), id: 'o3' });
 
     return { target: total, elements };
 }
 
-// 4. Profi Bracket Equation: Nested or Double Brackets
-// Patterns: ((A op B) op C) op D   OR   (A op B) op (C op D)
+// 4. Profi Bracket
 function createBracketEquationProfi(range: number, ops: OperatorState): Task {
-    const pattern = Math.random() < 0.5 ? 'nested' : 'double';
+    const pattern = Math.random() < 0.5 ? 'double' : 'nested';
     
     const lineOps = []; if (ops.plus) lineOps.push('+'); if (ops.minus) lineOps.push('-');
     const pointOps = []; if (ops.mult) pointOps.push('*'); if (ops.div) pointOps.push('/');
-    // Profi needs variety
     const availOps = [...lineOps, ...pointOps];
-    if (availOps.length < 2) throw "Not enough ops for profi";
+    if (availOps.length < 2) throw "Not enough ops";
 
-    const maxNum = range <= 20 ? 8 : (range <= 100 ? 12 : 25);
-    const randNum = () => Math.floor(Math.random() * maxNum) + 1;
     const randOp = () => availOps[Math.floor(Math.random() * availOps.length)];
+    const minNum = range <= 20 ? 1 : (range <= 100 ? 3 : 5);
+    const maxNum = range <= 20 ? 8 : (range <= 100 ? 15 : 30);
+    const randNum = () => Math.floor(Math.random() * (maxNum - minNum + 1)) + minNum;
 
-    let str = "";
-    let elements: GameElement[] = [];
+    // Helper returns value + elements list
+    const createSafeTerm = (idOffset: number): { val: number, elements: GameElement[] } => {
+        let op = randOp();
+        let a = randNum();
+        let b = randNum();
+        
+        if (op === '/') {
+            a = b * (Math.floor(Math.random() * 5) + 1);
+        } else if (op === '-') {
+            if (a < b) [a, b] = [b, a];
+        }
+        
+        // eslint-disable-next-line no-eval
+        const val = eval(`${a} ${op} ${b}`);
+        const elements: GameElement[] = [
+            { type: 'number', val: a, id: 'n' + idOffset },
+            { type: 'number', val: b, id: 'n' + (idOffset + 1) },
+            { type: 'op', val: formatOp(op), id: 'o' + idOffset },
+            { type: 'op', val: '(', id: 'b' + idOffset },
+            { type: 'op', val: ')', id: 'b' + (idOffset + 1) }
+        ];
+        return { val, elements };
+    };
 
     if (pattern === 'double') {
-        // (A op1 B) op2 (C op3 D)
-        const a = randNum(), b = randNum(), c = randNum(), d = randNum();
-        const op1 = randOp(), op2 = randOp(), op3 = randOp();
+        let left = createSafeTerm(1);
+        let right = createSafeTerm(3);
+        let op2 = randOp();
         
-        // Ensure inner parts are valid (positive)
-        // eslint-disable-next-line no-eval
-        if (eval(`${a} ${op1} ${b}`) < 0) throw "Neg inner";
-        // eslint-disable-next-line no-eval
-        if (eval(`${c} ${op3} ${d}`) < 0) throw "Neg inner";
+        if (op2 === '/') {
+            if (left.val === 0) throw "Zero left";
+            const factors = [];
+            for (let i = 1; i <= left.val; i++) if (left.val % i === 0) factors.push(i);
+            const targetRight = factors[Math.floor(Math.random() * factors.length)];
+            
+            // Reconstruct right to match target
+            let op3 = randOp();
+            let c, d;
+            if (op3 === '+') { c = Math.floor(Math.random() * targetRight); d = targetRight - c; }
+            else if (op3 === '-') { d = Math.floor(Math.random() * 10) + 1; c = targetRight + d; }
+            else if (op3 === '*') { 
+                const fs = []; for(let i=1; i<=targetRight; i++) if(targetRight%i===0) fs.push(i);
+                c = fs[Math.floor(Math.random()*fs.length)]; d = targetRight/c;
+            } else { d = Math.floor(Math.random()*5)+1; c = targetRight*d; }
+            
+            if(c<=0 || d<=0) throw "Inv";
+            right = { val: targetRight, elements: [
+                {type:'number', val:c, id:'n3'}, {type:'number', val:d, id:'n4'},
+                {type:'op', val:formatOp(op3), id:'o3'},
+                {type:'op', val:'(', id:'b3'}, {type:'op', val:')', id:'b4'}
+            ]};
+        } else if (op2 === '-') {
+            if (left.val < right.val) [left, right] = [right, left];
+        }
 
-        str = `(${a} ${op1} ${b}) ${op2} (${c} ${op3} ${d})`;
-        
-        elements = [
-            { type: 'number', val: a, id: 'n1' }, { type: 'number', val: b, id: 'n2' },
-            { type: 'number', val: c, id: 'n3' }, { type: 'number', val: d, id: 'n4' },
-            { type: 'op', val: op1 === '*' ? '×' : (op1 === '/' ? '÷' : op1), id: 'o1' },
-            { type: 'op', val: op2 === '*' ? '×' : (op2 === '/' ? '÷' : op2), id: 'o2' },
-            { type: 'op', val: op3 === '*' ? '×' : (op3 === '/' ? '÷' : op3), id: 'o3' },
-            { type: 'op', val: '(', id: 'b1' }, { type: 'op', val: ')', id: 'b2' },
-            { type: 'op', val: '(', id: 'b3' }, { type: 'op', val: ')', id: 'b4' }
-        ];
+        // eslint-disable-next-line no-eval
+        const res = eval(`${left.val} ${op2} ${right.val}`);
+        if (!Number.isInteger(res) || res < 0 || res > range) throw "Invalid";
+
+        const elements = [...left.elements, ...right.elements];
+        elements.push({ type: 'op', val: formatOp(op2), id: 'o5' }); // middle op
+
+        return { target: res, elements };
 
     } else {
-        // Nested: ((A op1 B) op2 C) op3 D  (simplest nested form)
-        // Or A op1 (B op2 (C op3 D)) ?
-        // Let's do ((A op1 B) op2 C) op3 D
-        const a = randNum(), b = randNum(), c = randNum(), d = randNum();
-        const op1 = randOp(), op2 = randOp(), op3 = randOp();
+        // Nested: ((A op1 B) op2 C) op3 D
+        let t1 = createSafeTerm(1);
+        let op2 = randOp();
+        let c = randNum();
+        
+        if (op2 === '/') {
+            const fs = []; for(let i=1; i<=t1.val; i++) if(t1.val%i===0) fs.push(i);
+            c = fs[Math.floor(Math.random()*fs.length)];
+        } else if (op2 === '-') {
+            if (t1.val < c) c = Math.floor(Math.random() * t1.val);
+        }
+        
+        // eslint-disable-next-line no-eval
+        let res2 = eval(`${t1.val} ${op2} ${c}`);
+        let op3 = randOp();
+        let d = randNum();
+        
+        if (op3 === '/') {
+            if (res2 === 0) throw "Zero";
+            const fs = []; for(let i=1; i<=res2; i++) if(res2%i===0) fs.push(i);
+            if(fs.length===0) throw "No fact";
+            d = fs[Math.floor(Math.random()*fs.length)];
+        } else if (op3 === '-') {
+            if (res2 < d) d = Math.floor(Math.random() * res2);
+        }
 
-        str = `((${a} ${op1} ${b}) ${op2} ${c}) ${op3} ${d}`;
+        // eslint-disable-next-line no-eval
+        const finalRes = eval(`${res2} ${op3} ${d}`);
+        if (!Number.isInteger(finalRes) || finalRes < 0 || finalRes > range) throw "Invalid";
 
-        elements = [
-            { type: 'number', val: a, id: 'n1' }, { type: 'number', val: b, id: 'n2' },
-            { type: 'number', val: c, id: 'n3' }, { type: 'number', val: d, id: 'n4' },
-            { type: 'op', val: op1 === '*' ? '×' : (op1 === '/' ? '÷' : op1), id: 'o1' },
-            { type: 'op', val: op2 === '*' ? '×' : (op2 === '/' ? '÷' : op2), id: 'o2' },
-            { type: 'op', val: op3 === '*' ? '×' : (op3 === '/' ? '÷' : op3), id: 'o3' },
-            { type: 'op', val: '(', id: 'b1' }, { type: 'op', val: ')', id: 'b2' },
-            { type: 'op', val: '(', id: 'b3' }, { type: 'op', val: ')', id: 'b4' }
-        ];
+        const elements = [...t1.elements];
+        elements.push({type:'number', val:c, id:'n3'});
+        elements.push({type:'number', val:d, id:'n4'});
+        elements.push({type:'op', val:formatOp(op2), id:'o2'});
+        elements.push({type:'op', val:formatOp(op3), id:'o3'});
+        elements.push({type:'op', val:'(', id:'b3'}); // outer brackets
+        elements.push({type:'op', val:')', id:'b4'});
+
+        return { target: finalRes, elements };
     }
-
-    // eslint-disable-next-line no-eval
-    const res = eval(str);
-    if (!Number.isInteger(res) || res < 0 || res > range) throw "Invalid result";
-
-    return { target: res, elements };
 }
