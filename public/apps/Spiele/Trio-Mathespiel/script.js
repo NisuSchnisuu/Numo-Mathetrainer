@@ -282,35 +282,38 @@ function init() {
 
 function enableQuickJoinMode() {
     // Quick Join UI Mode
-    const createContainer = document.getElementById('create-container');
-    const joinDivider = document.querySelector('.join-section p'); // "ODER"
+    // 1. Hide "Create Game" related buttons
+    const btnCreate = document.getElementById('btn-open-create-modal');
+    const btnClass = document.getElementById('btn-class-game');
+    const separator = document.querySelector('.lobby-separator');
+    
+    if (btnCreate) btnCreate.style.display = 'none';
+    if (btnClass) btnClass.style.display = 'none';
+    if (separator) separator.style.display = 'none';
+
+    // 2. Hide "Join Code" input and divider (since code is prefilled)
     const joinInput = document.getElementById('join-code');
-    const scanBtn = document.getElementById('btn-scan-qr'); // Get the button
+    const scanBtn = document.getElementById('btn-scan-qr');
+    const joinLabel = document.querySelector('#join-container label');
 
-    if (createContainer) createContainer.style.display = 'none';
-    if (joinDivider) joinDivider.style.display = 'none';
     if (joinInput) joinInput.style.display = 'none';
-    if (scanBtn) scanBtn.style.display = 'none'; // Hide it
+    if (scanBtn) scanBtn.style.display = 'none';
+    if (joinLabel) joinLabel.style.display = 'none';
 
-    // Add specific layout class
+    // 3. Add specific layout class
     const lobbyContainer = document.querySelector('.lobby-container');
     if (lobbyContainer) lobbyContainer.classList.add('quick-join-mode');
 
-    // Hide Create Buttons explicitly
-    const btnCreate = document.getElementById('btn-open-create-modal');
-    const btnClass = document.getElementById('btn-class-game');
-    if (btnCreate) btnCreate.style.display = 'none';
-    if (btnClass) btnClass.style.display = 'none';
-
-    // Add "Back to Main Menu" button
+    // 4. Add "Back to Main Menu" button
     const joinContainer = document.getElementById('join-container');
     if (joinContainer) {
         // Check if button already exists
-        if (!document.getElementById('btn-quick-join-back')) {
-            const backBtn = document.createElement('button');
+        let backBtn = document.getElementById('btn-quick-join-back');
+        if (!backBtn) {
+            backBtn = document.createElement('button');
             backBtn.id = 'btn-quick-join-back';
             backBtn.className = 'btn-secondary';
-            backBtn.style.cssText = 'width: 100%; margin-top: 15px; padding: 12px; font-size: 0.95rem;';
+            backBtn.style.cssText = 'width: 100%; margin-top: 15px; padding: 12px; font-size: 0.95rem; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);';
             backBtn.innerHTML = '← Zurück zum Hauptmenü';
             backBtn.addEventListener('click', () => {
                 // Remove the game code from URL and reload to show full lobby
@@ -981,9 +984,8 @@ function subscribeToGame(gameId) {
             const myData = data.players[appState.playerId];
             if (!myData && !appState.isHost && !appState.isLeaving) {
                 // Player was removed from the game by host
-                showModal("Entfernt", "Du wurdest vom Host aus der Lobby entfernt.", () => {
-                    leaveGame();
-                }, true);
+                leaveGame();
+                showMessage("Entfernt", "Du wurdest vom Host aus der Lobby entfernt.");
                 return; // Stop processing
             }
 
