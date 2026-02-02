@@ -219,7 +219,7 @@ function GameSession({ config, onExit }: { config: Config, onExit: () => void })
 
     return (
         <div className="w-full max-w-3xl mx-auto flex flex-col h-[calc(100vh-120px)] animate-fade-in relative">
-            <button onClick={onExit} className="absolute top-0 left-0 text-muted-foreground hover:text-white text-sm">
+            <button onClick={onExit} className="absolute top-4 left-4 flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-white font-medium transition-all hover:scale-105 active:scale-95 z-10">
                 &larr; Beenden
             </button>
 
@@ -349,8 +349,10 @@ function createEquation(range: number, ops: OperatorState, diff: Difficulty): Ta
 
         const op1 = lineOps[Math.floor(Math.random() * lineOps.length)];
         const op2 = pointOps[Math.floor(Math.random() * pointOps.length)];
-        const a = Math.floor(Math.random() * 10) + 1;
-        const b = Math.floor(Math.random() * 10) + 1;
+        
+        const maxNum = range <= 20 ? 10 : (range <= 100 ? 15 : 50);
+        const a = Math.floor(Math.random() * maxNum) + 1;
+        const b = Math.floor(Math.random() * maxNum) + 1;
 
         let c;
         let term1Res = (op1 === '+') ? a + b : a - b;
@@ -408,7 +410,8 @@ function createSimpleEquation(range: number, ops: OperatorState, numElements: nu
     // Shuffle operators so the required ones aren't always first
     operators = requiredOps.sort(() => Math.random() - 0.5);
 
-    for (let i = 0; i < numElements; i++) nums.push(Math.floor(Math.random() * 20) + 1);
+    const maxNum = range <= 20 ? 10 : (range <= 100 ? 20 : 100);
+    for (let i = 0; i < numElements; i++) nums.push(Math.floor(Math.random() * maxNum) + 1);
 
     let str = "";
     for (let i = 0; i < nums.length; i++) {
