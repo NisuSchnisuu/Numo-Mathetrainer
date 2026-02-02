@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 type OperatorState = {
     plus: boolean;
@@ -301,7 +302,7 @@ function GameSession({ config, onExit }: { config: Config, onExit: () => void })
     return (
         <div className="w-full max-w-3xl mx-auto flex flex-col h-[calc(100vh-120px)] animate-fade-in relative">
             <div className="absolute top-4 left-4 right-4 flex justify-between items-center z-10">
-                <button onClick={onExit} className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-white font-medium transition-all hover:scale-105 active:scale-95">
+                <button onClick={onExit} className="flex items-center gap-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-lg text-red-400 font-medium transition-all hover:scale-105 active:scale-95">
                     &larr; Beenden
                 </button>
                 
@@ -416,8 +417,8 @@ function GameSession({ config, onExit }: { config: Config, onExit: () => void })
             )}
 
             {/* Stats Modal */}
-            {showStats && (
-                <div className="absolute inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+            {showStats && createPortal(
+                <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
                     <div className="bg-[#0b1120] border border-white/10 rounded-2xl w-full max-w-lg p-6 shadow-2xl relative">
                         <button 
                             onClick={() => setShowStats(false)}
@@ -458,7 +459,8 @@ function GameSession({ config, onExit }: { config: Config, onExit: () => void })
                             Schließen
                         </button>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );
