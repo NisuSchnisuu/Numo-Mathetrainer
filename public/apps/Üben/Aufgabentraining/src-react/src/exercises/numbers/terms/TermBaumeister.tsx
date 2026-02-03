@@ -27,6 +27,7 @@ interface Task {
     target: number;
     elements: GameElement[];
     currentDiff?: Difficulty;
+    topLevelOp?: string;
 }
 
 interface TermBaumeisterProps {
@@ -55,9 +56,9 @@ function ConfigView({ config, setConfig, onStart, onBack }: { config: Config, se
     const toggleOp = (key: keyof OperatorState) => {
         if (config.difficulty === 'allround') return; // Locked
         if (config.difficulty === 'profi' && key === 'brackets') return; // Locked
-        
+
         const isTurningOff = config.ops[key];
-        
+
         if (isTurningOff) {
             // Check if this would violate the rules
             const nextOps = { ...config.ops, [key]: false };
@@ -73,7 +74,7 @@ function ConfigView({ config, setConfig, onStart, onBack }: { config: Config, se
                 return;
             }
         }
-        
+
         setConfig({
             ...config,
             ops: { ...config.ops, [key]: !config.ops[key] }
@@ -82,7 +83,7 @@ function ConfigView({ config, setConfig, onStart, onBack }: { config: Config, se
 
     const setDiff = (d: Difficulty) => {
         let newOps = { ...config.ops };
-        
+
         if (d === 'profi') {
             newOps.brackets = true;
         } else if (d === 'allround') {
@@ -101,7 +102,7 @@ function ConfigView({ config, setConfig, onStart, onBack }: { config: Config, se
         <div className="w-full h-full flex items-center justify-center p-4">
             <div className="w-full max-w-lg glass-card rounded-2xl p-8 animate-fade-in flex flex-col relative shadow-2xl border border-white/10 bg-[#0b1120]/80">
                 <button onClick={onBack} className="absolute top-6 left-6 text-muted-foreground hover:text-white transition-colors p-2 hover:bg-white/10 rounded-full">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
                 </button>
                 <h2 className="text-2xl font-bold mb-6 text-center text-white">Einstellungen</h2>
                 <p className="text-center text-muted-foreground text-sm -mt-4 mb-8">Konfiguriere deine Übung</p>
@@ -128,8 +129,8 @@ function ConfigView({ config, setConfig, onStart, onBack }: { config: Config, se
                         <span className="text-xs text-muted-foreground">Maximales Ergebnis</span>
                     </div>
                     <div className="relative">
-                        <select 
-                            value={config.range} 
+                        <select
+                            value={config.range}
                             onChange={(e) => setRange(parseInt(e.target.value))}
                             className="w-full appearance-none bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary/50 hover:bg-white/10 transition-colors cursor-pointer"
                         >
@@ -138,7 +139,7 @@ function ConfigView({ config, setConfig, onStart, onBack }: { config: Config, se
                             <option value="1000" className="bg-[#0b1120]">bis 1'000</option>
                         </select>
                         <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
                         </div>
                     </div>
                 </div>
@@ -158,13 +159,13 @@ function ConfigView({ config, setConfig, onStart, onBack }: { config: Config, se
                 </div>
 
                 <div className="mt-auto pt-4 relative">
-                    <button 
-                        onClick={onStart} 
+                    <button
+                        onClick={onStart}
                         className="w-full bg-primary text-primary-foreground font-bold text-lg py-4 rounded-xl hover:opacity-90 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-lg shadow-primary/20"
                     >
                         Übung starten
                     </button>
-                    
+
                     {toastMsg && (
                         <div className="absolute -bottom-16 left-0 right-0 flex justify-center animate-fade-in z-20">
                             <div className="bg-red-500/90 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg border border-red-400/50 backdrop-blur-sm">
@@ -180,7 +181,7 @@ function ConfigView({ config, setConfig, onStart, onBack }: { config: Config, se
 
 function OpToggle({ label, active, locked, shake, onClick }: { label: string, active: boolean, locked?: boolean, shake?: boolean, onClick: () => void }) {
     return (
-        <button 
+        <button
             onClick={onClick}
             disabled={locked}
             className={`flex items-center justify-center h-12 rounded-xl border transition-all duration-200 relative
@@ -192,7 +193,7 @@ function OpToggle({ label, active, locked, shake, onClick }: { label: string, ac
             <span className="font-bold text-lg">{label}</span>
             {locked && (
                 <div className="absolute -top-1.5 -right-1.5 bg-[#0b1120] rounded-full p-0.5 border border-white/20 shadow-sm">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-white"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-white"><rect width="18" height="11" x="3" y="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
                 </div>
             )}
         </button>
@@ -201,7 +202,7 @@ function OpToggle({ label, active, locked, shake, onClick }: { label: string, ac
 
 function DiffButton({ label, sub, active, onClick }: { label: string, sub: string, active: boolean, onClick: () => void }) {
     return (
-        <button 
+        <button
             onClick={onClick}
             className={`px-3 py-3 rounded-xl border text-left transition-all duration-200 group relative overflow-hidden
                 ${active ? 'bg-primary/10 border-primary/50 text-white ring-1 ring-primary/50' : 'bg-white/5 border-white/10 hover:bg-white/10 text-muted-foreground hover:text-white'}`}
@@ -239,7 +240,7 @@ function GameSession({ config, onExit }: { config: Config, onExit: () => void })
     const [userTerm, setUserTerm] = useState<GameElement[]>([]);
     const [isFinished, setIsFinished] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
-    
+
     // Stats
     const [stats, setStats] = useState<SessionStats>(JSON.parse(JSON.stringify(initialStats))); // Deep copy
     const [showStats, setShowStats] = useState(false);
@@ -252,7 +253,7 @@ function GameSession({ config, onExit }: { config: Config, onExit: () => void })
     const updateStats = (type: 'correct' | 'wrong' | 'skipped') => {
         if (!task) return;
         const diff = task.currentDiff || config.difficulty;
-        
+
         setStats(prev => {
             const next = { ...prev };
             // Copy to avoid mutation of nested objects if shallow copy
@@ -279,7 +280,7 @@ function GameSession({ config, onExit }: { config: Config, onExit: () => void })
         if (isFinished) return;
         // Don't allow using same element twice (by ID)
         if (userTerm.find(u => u.id === el.id)) return;
-        
+
         setUserTerm([...userTerm, el]);
         setErrorMsg(null);
     };
@@ -302,8 +303,8 @@ function GameSession({ config, onExit }: { config: Config, onExit: () => void })
             if (result === task.target) {
                 // Check if all elements are used
                 if (userTerm.length === task.elements.length) {
-                     setIsFinished(true);
-                     updateStats('correct');
+                    setIsFinished(true);
+                    updateStats('correct');
                 } else {
                     showError("Nutze alle Teile!");
                 }
@@ -342,7 +343,7 @@ function GameSession({ config, onExit }: { config: Config, onExit: () => void })
                 <button onClick={onExit} className="flex items-center gap-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-lg text-red-400 font-medium transition-all hover:scale-105 active:scale-95">
                     &larr; Beenden
                 </button>
-                
+
                 <div className="bg-white/10 border border-white/10 px-3 py-1 rounded-full text-[10px] uppercase tracking-wider font-bold text-muted-foreground">
                     Modus: <span className="text-primary">{diffLabels[task.currentDiff || config.difficulty]}</span>
                 </div>
@@ -354,7 +355,7 @@ function GameSession({ config, onExit }: { config: Config, onExit: () => void })
 
             {/* Stats Bar */}
             <div className="flex justify-center mt-16 mb-2 z-10">
-                <button 
+                <button
                     onClick={() => setShowStats(true)}
                     className="flex items-center gap-4 px-4 py-2 bg-[#0b1120]/80 backdrop-blur-md border border-white/10 rounded-full shadow-lg hover:bg-white/5 transition-all"
                 >
@@ -384,7 +385,7 @@ function GameSession({ config, onExit }: { config: Config, onExit: () => void })
             <div className="flex-1 flex flex-col justify-center items-center py-1 min-h-[100px] mb-4">
                 {/* Visual Field / Container */}
                 <div className="w-full max-w-2xl p-6 rounded-2xl bg-white/5 border-2 border-dashed border-white/20 flex items-center justify-center relative min-h-[120px] transition-colors hover:border-white/30">
-                     <div className="flex items-center flex-wrap justify-center gap-2 min-h-[50px]">
+                    <div className="flex items-center flex-wrap justify-center gap-2 min-h-[50px]">
                         {userTerm.length === 0 && <span className="text-white/20 italic text-lg select-none">Rechnung hier bauen...</span>}
                         {userTerm.map((el, i) => (
                             <span key={i} className="text-3xl font-bold mx-1 animate-scale-in">{el.val}</span>
@@ -396,11 +397,11 @@ function GameSession({ config, onExit }: { config: Config, onExit: () => void })
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"></path><line x1="18" y1="9" x2="12" y2="15"></line><line x1="12" y1="9" x2="18" y2="15"></line></svg>
                     </button>
                 </div>
-                
+
                 {/* Feedback Area */}
                 <div className="h-14 mt-6 w-full flex justify-center items-center relative mb-2">
-                    <button 
-                        onClick={checkSolution} 
+                    <button
+                        onClick={checkSolution}
                         disabled={!allUsed}
                         className={`text-base font-bold px-10 py-3 rounded-xl shadow-lg transition-all 
                             ${errorMsg ? 'bg-red-500 animate-shake' : 'bg-primary'}
@@ -421,18 +422,18 @@ function GameSession({ config, onExit }: { config: Config, onExit: () => void })
                 {task.elements.map(el => {
                     const isUsed = usedIds.has(el.id);
                     const isBracket = el.val === '(' || el.val === ')';
-                    
+
                     let colorClass = 'bg-white/10 text-white border-white/10 hover:bg-white/20'; // Default Op
                     if (el.type === 'number') {
                         colorClass = 'bg-blue-500/20 text-blue-100 border-blue-500/30 hover:bg-blue-500/30';
                     } else if (isBracket) {
                         colorClass = 'bg-purple-500/20 text-purple-100 border-purple-500/30 hover:bg-purple-500/30';
                     }
-                    
+
                     if (isUsed) return <div key={el.id} className="w-[70px] h-[60px] rounded-lg border border-dashed border-white/5 bg-transparent"></div>; // Placeholder
 
                     return (
-                        <button 
+                        <button
                             key={el.id}
                             onClick={() => addToTerm(el)}
                             className={`${colorClass} border w-[70px] h-[60px] rounded-lg text-2xl font-bold transition-all shadow-lg backdrop-blur-sm flex items-center justify-center hover:scale-105 active:scale-95`}
@@ -457,11 +458,11 @@ function GameSession({ config, onExit }: { config: Config, onExit: () => void })
             {showStats && createPortal(
                 <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
                     <div className="bg-[#0b1120] border border-white/10 rounded-2xl w-full max-w-lg p-6 shadow-2xl relative">
-                        <button 
+                        <button
                             onClick={() => setShowStats(false)}
                             className="absolute top-4 right-4 text-muted-foreground hover:text-white"
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
                         </button>
 
                         <h3 className="text-xl font-bold mb-6 text-center">Statistik dieser Sitzung</h3>
@@ -489,7 +490,7 @@ function GameSession({ config, onExit }: { config: Config, onExit: () => void })
                             <div className="text-center text-yellow-400">{stats.total.skipped}</div>
                         </div>
 
-                        <button 
+                        <button
                             onClick={() => setShowStats(false)}
                             className="w-full mt-8 bg-white/10 hover:bg-white/20 text-white font-medium py-3 rounded-xl transition-colors"
                         >
@@ -513,7 +514,7 @@ function generateTask(config: Config): Task {
 
     while (!task && attempts < 100) {
         attempts++;
-        try { 
+        try {
             if (difficulty === 'allround') {
                 const r = Math.random();
                 if (r < 0.5) { // 50% Normal
@@ -528,15 +529,15 @@ function generateTask(config: Config): Task {
                 }
             } else {
                 selectedDiff = difficulty;
-                task = createEquation(range, ops, difficulty); 
+                task = createEquation(range, ops, difficulty);
             }
-        } catch (e) { 
+        } catch (e) {
             // retry
         }
     }
     // Fallback
     if (!task) return { target: 10, currentDiff: 'normal', elements: [{ type: 'number', val: 5, id: 'n1' }, { type: 'number', val: 2, id: 'n2' }, { type: 'op', val: '×', id: 'o1' }] };
-    
+
     // 1. Shuffle completely to randomize order within types
     task.elements.sort(() => Math.random() - 0.5);
 
@@ -545,14 +546,14 @@ function generateTask(config: Config): Task {
         if (a.type === b.type) return 0;
         return a.type === 'number' ? -1 : 1;
     });
-    
+
     task.currentDiff = selectedDiff;
     return task;
 }
 
 function createEquation(range: number, ops: OperatorState, diff: Difficulty): Task {
     const useBrackets = ops.brackets && Math.random() < 0.5; // 50% chance to use brackets if enabled
-    
+
     switch (diff) {
         case 'normal':
             return useBrackets ? createBracketEquationNormal(range, ops) : createSimpleEquation(range, ops, 3);
@@ -575,13 +576,13 @@ function formatOp(op: string): string {
 function createSimpleEquation(range: number, ops: OperatorState, numElements: number): Task {
     const lineOps = []; if (ops.plus) lineOps.push('+'); if (ops.minus) lineOps.push('-');
     const pointOps = []; if (ops.mult) pointOps.push('*'); if (ops.div) pointOps.push('/');
-    
+
     if (lineOps.length === 0 && pointOps.length === 0) throw "No ops";
-    
+
     // Grouping strategy ensures intermediate division integers
     let groups: { val: number, elements: GameElement[] }[] = [];
     let remainingNums = numElements;
-    
+
     let elementCounter = 0; // ID counter
 
     while (remainingNums > 0) {
@@ -593,23 +594,23 @@ function createSimpleEquation(range: number, ops: OperatorState, numElements: nu
             size = remainingNums;
         }
         remainingNums -= size;
-        
+
         const minNum = range <= 20 ? 1 : (range <= 100 ? 4 : 10);
         const maxNum = range <= 20 ? 10 : (range <= 100 ? 25 : 50);
-        
+
         let currentVal = Math.floor(Math.random() * (maxNum - minNum + 1)) + minNum;
         let groupElems: GameElement[] = [{ type: 'number', val: currentVal, id: 'n' + (elementCounter++) }];
-        
+
         for (let k = 1; k < size; k++) {
             const op = pointOps[Math.floor(Math.random() * pointOps.length)];
             let nextNum = Math.floor(Math.random() * (maxNum - minNum + 1)) + minNum;
-            
+
             if (op === '/') {
                 const factors = [];
-                for(let f=1; f<=currentVal; f++) if(currentVal%f===0) factors.push(f);
+                for (let f = 1; f <= currentVal; f++) if (currentVal % f === 0) factors.push(f);
                 nextNum = factors[Math.floor(Math.random() * factors.length)];
             }
-            
+
             // eslint-disable-next-line no-eval
             currentVal = eval(`${currentVal} ${op} ${nextNum}`);
             groupElems.push({ type: 'op', val: formatOp(op), id: 'o' + (elementCounter++) });
@@ -617,13 +618,13 @@ function createSimpleEquation(range: number, ops: OperatorState, numElements: nu
         }
         groups.push({ val: currentVal, elements: groupElems });
     }
-    
+
     let currentTotal = groups[0].val;
     let allElements = [...groups[0].elements];
-    
+
     for (let i = 1; i < groups.length; i++) {
         const op = lineOps[Math.floor(Math.random() * lineOps.length)];
-        
+
         if (op === '-' && currentTotal < groups[i].val) {
             if (ops.plus) {
                 currentTotal += groups[i].val;
@@ -641,7 +642,21 @@ function createSimpleEquation(range: number, ops: OperatorState, numElements: nu
 
     if (!Number.isInteger(currentTotal) || currentTotal < 0 || currentTotal > range) throw "Invalid";
 
-    return { target: currentTotal, elements: allElements };
+    if (!Number.isInteger(currentTotal) || currentTotal < 0 || currentTotal > range) throw "Invalid";
+
+    // Determine top level op
+    // If we had line ops loop (groups > 1), it's + or - (precedence 1).
+    // If not (groups == 1), it's * or / (precedence 2) IF there are multiple elements.
+    // If single number, no op.
+    let topOp = undefined;
+    if (groups.length > 1) {
+        topOp = '+'; // generic precedence 1 is enough for now, or track last one.
+        // Actually precedence is what matters.
+    } else if (allElements.some(e => e.type === 'op')) {
+        topOp = '*'; // generic precedence 2
+    }
+
+    return { target: currentTotal, elements: allElements, topLevelOp: topOp };
 }
 
 // 2. Normal Bracket Equation
@@ -656,10 +671,10 @@ function createBracketEquationNormal(range: number, ops: OperatorState): Task {
 
     const minNum = range <= 20 ? 1 : (range <= 100 ? 3 : 10);
     const maxNum = range <= 20 ? 10 : (range <= 100 ? 25 : 40);
-    
+
     let a = Math.floor(Math.random() * (maxNum - minNum + 1)) + minNum;
     let b = Math.floor(Math.random() * (maxNum - minNum + 1)) + minNum;
-    
+
     if (opLine === '-' && a <= b) a = b + Math.floor(Math.random() * 5) + 1;
 
     const innerRes = (opLine === '+') ? a + b : a - b;
@@ -684,7 +699,7 @@ function createBracketEquationNormal(range: number, ops: OperatorState): Task {
     let evalStr;
     if (isPost) evalStr = `(${a} ${opLine} ${b}) ${opPoint} ${c}`;
     else evalStr = `${c} ${opPoint} (${a} ${opLine} ${b})`;
-    
+
     // eslint-disable-next-line no-eval
     const target = eval(evalStr);
     if (target > range || target < 0 || !Number.isInteger(target)) throw "Invalid";
@@ -695,27 +710,31 @@ function createBracketEquationNormal(range: number, ops: OperatorState): Task {
         { type: 'number', val: b, id: 'n2' },
         { type: 'number', val: c, id: 'n3' },
         { type: 'op', val: formatOp(opLine), id: 'o1' },
-        { type: 'op', val: formatOp(opPoint), id: 'o2' },
-        { type: 'op', val: '(', id: 'b1' },
-        { type: 'op', val: ')', id: 'b2' }
+        { type: 'op', val: formatOp(opPoint), id: 'o2' }
     ];
 
-    return { target, elements };
+    const parens = needsParens(opLine, opPoint, !isPost);
+    if (parens) {
+        elements.push({ type: 'op', val: '(', id: 'b1' });
+        elements.push({ type: 'op', val: ')', id: 'b2' });
+    }
+
+    return { target, elements, topLevelOp: opPoint };
 }
 
 // 3. Advanced Bracket
 function createBracketEquationAdvanced(range: number, ops: OperatorState): Task {
     const baseTask = createBracketEquationNormal(range, ops);
     const blockVal = baseTask.target;
-    
-    const allOps = []; 
+
+    const allOps = [];
     if (ops.plus) allOps.push('+'); if (ops.minus) allOps.push('-');
     if (ops.mult) allOps.push('*'); if (ops.div) allOps.push('/');
     if (allOps.length === 0) throw "No ops";
 
     const newOp = allOps[Math.floor(Math.random() * allOps.length)];
     let d = Math.floor(Math.random() * (range <= 20 ? 5 : (range <= 100 ? 25 : 50))) + 5;
-    
+
     const isPost = Math.random() < 0.5;
 
     if (newOp === '/') {
@@ -737,7 +756,7 @@ function createBracketEquationAdvanced(range: number, ops: OperatorState): Task 
     let evalStr;
     if (isPost) evalStr = `${blockVal} ${newOp} ${d}`;
     else evalStr = `${d} ${newOp} ${blockVal}`;
-    
+
     // eslint-disable-next-line no-eval
     const total = eval(evalStr);
     if (total > range || total < 0 || !Number.isInteger(total)) throw "Invalid";
@@ -746,13 +765,20 @@ function createBracketEquationAdvanced(range: number, ops: OperatorState): Task 
     elements.push({ type: 'number', val: d, id: 'n4' });
     elements.push({ type: 'op', val: formatOp(newOp), id: 'o3' });
 
-    return { target: total, elements };
+    // Check if we need extra parens around baseTask
+    const parens = needsParens(baseTask.topLevelOp, newOp, !isPost);
+    if (parens) {
+        elements.push({ type: 'op', val: '(', id: 'b3' });
+        elements.push({ type: 'op', val: ')', id: 'b4' });
+    }
+
+    return { target: total, elements, topLevelOp: newOp };
 }
 
 // 4. Profi Bracket
 function createBracketEquationProfi(range: number, ops: OperatorState): Task {
     const pattern = Math.random() < 0.5 ? 'double' : 'nested';
-    
+
     const lineOps = []; if (ops.plus) lineOps.push('+'); if (ops.minus) lineOps.push('-');
     const pointOps = []; if (ops.mult) pointOps.push('*'); if (ops.div) pointOps.push('/');
     const availOps = [...lineOps, ...pointOps];
@@ -763,57 +789,57 @@ function createBracketEquationProfi(range: number, ops: OperatorState): Task {
     const maxNum = range <= 20 ? 8 : (range <= 100 ? 15 : 30);
     const randNum = () => Math.floor(Math.random() * (maxNum - minNum + 1)) + minNum;
 
-    // Helper returns value + elements list
-    const createSafeTerm = (idOffset: number): { val: number, elements: GameElement[] } => {
+    // Helper returns value + elements list + op
+    const createSafeTerm = (prefix: string): { val: number, elements: GameElement[], op: string } => {
         let op = randOp();
         let a = randNum();
         let b = randNum();
-        
+
         if (op === '/') {
             a = b * (Math.floor(Math.random() * 5) + 1);
         } else if (op === '-') {
             if (a < b) [a, b] = [b, a];
         }
-        
+
         // eslint-disable-next-line no-eval
         const val = eval(`${a} ${op} ${b}`);
         const elements: GameElement[] = [
-            { type: 'number', val: a, id: 'n' + idOffset },
-            { type: 'number', val: b, id: 'n' + (idOffset + 1) },
-            { type: 'op', val: formatOp(op), id: 'o' + idOffset },
-            { type: 'op', val: '(', id: 'b' + idOffset },
-            { type: 'op', val: ')', id: 'b' + (idOffset + 1) }
+            { type: 'number', val: a, id: 'n' + prefix + '1' },
+            { type: 'number', val: b, id: 'n' + prefix + '2' },
+            { type: 'op', val: formatOp(op), id: 'o' + prefix }
         ];
-        return { val, elements };
+        return { val, elements, op };
     };
 
     if (pattern === 'double') {
-        let left = createSafeTerm(1);
-        let right = createSafeTerm(3);
+        let left = createSafeTerm('L');
+        let right = createSafeTerm('R');
         let op2 = randOp();
-        
+
         if (op2 === '/') {
             if (left.val === 0) throw "Zero left";
             const factors = [];
             for (let i = 1; i <= left.val; i++) if (left.val % i === 0) factors.push(i);
             const targetRight = factors[Math.floor(Math.random() * factors.length)];
-            
+
             // Reconstruct right to match target
             let op3 = randOp();
             let c, d;
             if (op3 === '+') { c = Math.floor(Math.random() * targetRight); d = targetRight - c; }
             else if (op3 === '-') { d = Math.floor(Math.random() * 10) + 1; c = targetRight + d; }
-            else if (op3 === '*') { 
-                const fs = []; for(let i=1; i<=targetRight; i++) if(targetRight%i===0) fs.push(i);
-                c = fs[Math.floor(Math.random()*fs.length)]; d = targetRight/c;
-            } else { d = Math.floor(Math.random()*5)+1; c = targetRight*d; }
-            
-            if(c<=0 || d<=0) throw "Inv";
-            right = { val: targetRight, elements: [
-                {type:'number', val:c, id:'n3'}, {type:'number', val:d, id:'n4'},
-                {type:'op', val:formatOp(op3), id:'o3'},
-                {type:'op', val:'(', id:'b3'}, {type:'op', val:')', id:'b4'}
-            ]};
+            else if (op3 === '*') {
+                const fs = []; for (let i = 1; i <= targetRight; i++) if (targetRight % i === 0) fs.push(i);
+                c = fs[Math.floor(Math.random() * fs.length)]; d = targetRight / c;
+            } else { d = Math.floor(Math.random() * 5) + 1; c = targetRight * d; }
+
+            if (c <= 0 || d <= 0) throw "Inv";
+            // Overwrite right
+            right = {
+                val: targetRight, elements: [
+                    { type: 'number', val: c, id: 'nR3' }, { type: 'number', val: d, id: 'nR4' },
+                    { type: 'op', val: formatOp(op3), id: 'oR' }
+                ], op: op3
+            };
         } else if (op2 === '-') {
             if (left.val < right.val) [left, right] = [right, left];
         }
@@ -823,33 +849,52 @@ function createBracketEquationProfi(range: number, ops: OperatorState): Task {
         if (!Number.isInteger(res) || res < 0 || res > range) throw "Invalid";
 
         const elements = [...left.elements, ...right.elements];
-        elements.push({ type: 'op', val: formatOp(op2), id: 'o5' }); // middle op
+        elements.push({ type: 'op', val: formatOp(op2), id: 'oM' }); // middle op
 
-        return { target: res, elements };
+        if (needsParens(left.op, op2, false)) {
+            elements.push({ type: 'op', val: '(', id: 'bL1' });
+            elements.push({ type: 'op', val: ')', id: 'bL2' });
+        }
+        if (needsParens(right.op, op2, true)) {
+            elements.push({ type: 'op', val: '(', id: 'bR1' });
+            elements.push({ type: 'op', val: ')', id: 'bR2' });
+        }
+
+        return { target: res, elements, topLevelOp: op2 };
 
     } else {
         // Nested: ((A op1 B) op2 C) op3 D
-        let t1 = createSafeTerm(1);
+        let t1 = createSafeTerm('A');
         let op2 = randOp();
         let c = randNum();
-        
+
         if (op2 === '/') {
-            const fs = []; for(let i=1; i<=t1.val; i++) if(t1.val%i===0) fs.push(i);
-            c = fs[Math.floor(Math.random()*fs.length)];
+            const fs = []; for (let i = 1; i <= t1.val; i++) if (t1.val % i === 0) fs.push(i);
+            c = fs[Math.floor(Math.random() * fs.length)];
         } else if (op2 === '-') {
             if (t1.val < c) c = Math.floor(Math.random() * t1.val);
         }
-        
+
         // eslint-disable-next-line no-eval
         let res2 = eval(`${t1.val} ${op2} ${c}`);
+
+        const elements = [...t1.elements];
+        elements.push({ type: 'number', val: c, id: 'nC' });
+        elements.push({ type: 'op', val: formatOp(op2), id: 'oB' });
+
+        if (needsParens(t1.op, op2, false)) {
+            elements.push({ type: 'op', val: '(', id: 'bA1' });
+            elements.push({ type: 'op', val: ')', id: 'bA2' });
+        }
+
         let op3 = randOp();
         let d = randNum();
-        
+
         if (op3 === '/') {
             if (res2 === 0) throw "Zero";
-            const fs = []; for(let i=1; i<=res2; i++) if(res2%i===0) fs.push(i);
-            if(fs.length===0) throw "No fact";
-            d = fs[Math.floor(Math.random()*fs.length)];
+            const fs = []; for (let i = 1; i <= res2; i++) if (res2 % i === 0) fs.push(i);
+            if (fs.length === 0) throw "No fact";
+            d = fs[Math.floor(Math.random() * fs.length)];
         } else if (op3 === '-') {
             if (res2 < d) d = Math.floor(Math.random() * res2);
         }
@@ -858,14 +903,37 @@ function createBracketEquationProfi(range: number, ops: OperatorState): Task {
         const finalRes = eval(`${res2} ${op3} ${d}`);
         if (!Number.isInteger(finalRes) || finalRes < 0 || finalRes > range) throw "Invalid";
 
-        const elements = [...t1.elements];
-        elements.push({type:'number', val:c, id:'n3'});
-        elements.push({type:'number', val:d, id:'n4'});
-        elements.push({type:'op', val:formatOp(op2), id:'o2'});
-        elements.push({type:'op', val:formatOp(op3), id:'o3'});
-        elements.push({type:'op', val:'(', id:'b3'}); // outer brackets
-        elements.push({type:'op', val:')', id:'b4'});
+        elements.push({ type: 'number', val: d, id: 'nD' });
+        elements.push({ type: 'op', val: formatOp(op3), id: 'oC' });
 
-        return { target: finalRes, elements };
+        // t2 (res2) is left child of op3.
+        // t2 op is op2.
+        if (needsParens(op2, op3, false)) {
+            elements.push({ type: 'op', val: '(', id: 'bB1' });
+            elements.push({ type: 'op', val: ')', id: 'bB2' });
+        }
+
+        return { target: finalRes, elements, topLevelOp: op3 };
     }
+}
+
+function getPrecedence(op: string | undefined): number {
+    if (op === '*' || op === '/' || op === '×' || op === '÷') return 2;
+    if (op === '+' || op === '-') return 1;
+    return 0;
+}
+
+function needsParens(innerOp: string | undefined, outerOp: string, isRight: boolean): boolean {
+    if (!innerOp) return false;
+    const pInner = getPrecedence(innerOp);
+    const pOuter = getPrecedence(outerOp);
+
+    if (pInner < pOuter) return true;
+    if (pInner > pOuter) return false;
+
+    if (isRight) {
+        if (outerOp === '-' || outerOp === '/' || outerOp === '÷') return true;
+        return false;
+    }
+    return false;
 }
