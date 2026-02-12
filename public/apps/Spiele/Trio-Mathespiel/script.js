@@ -1923,14 +1923,17 @@ function populateModalButtons(preserveFormula = false) {
     const btnBack = document.getElementById('btn-backspace');
     if (btnBack) btnBack.onclick = handleBackspace;
 
-    // Give Up Button - Only in Teacher Mode
+    // Give Up Button - Available for the active player
     const btnGiveUp = document.getElementById('btn-give-up');
     if (btnGiveUp) {
         btnGiveUp.onclick = handleGiveUp;
-        // Only show if Teacher Mode is active (Game Setting OR Local Flag)
-        const isTeacherMode = (appState.settings && appState.settings.teacherMode) || appState.isTeacherMode;
-        console.log("Teacher Mode Check:", isTeacherMode, appState.settings);
-        btnGiveUp.style.display = isTeacherMode ? '' : 'none';
+        // Only show if I am the active player (Buzzer Owner)
+        if (appState.buzzerOwner === appState.playerId) {
+            btnGiveUp.style.display = 'block';
+            btnGiveUp.innerText = "AUFGEBEN (15s)";
+        } else {
+            btnGiveUp.style.display = 'none';
+        }
     }
 }
 
