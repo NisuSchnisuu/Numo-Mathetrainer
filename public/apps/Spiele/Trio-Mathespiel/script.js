@@ -286,7 +286,7 @@ function enableQuickJoinMode() {
     const btnCreate = document.getElementById('btn-open-create-modal');
     const btnClass = document.getElementById('btn-class-game');
     const separator = document.querySelector('.lobby-separator');
-    
+
     if (btnCreate) btnCreate.style.display = 'none';
     if (btnClass) btnClass.style.display = 'none';
     if (separator) separator.style.display = 'none';
@@ -1923,26 +1923,32 @@ function populateModalButtons(preserveFormula = false) {
     const btnBack = document.getElementById('btn-backspace');
     if (btnBack) btnBack.onclick = handleBackspace;
 
-    // Give Up Button
+    // Give Up Button - Only in Teacher Mode
     const btnGiveUp = document.getElementById('btn-give-up');
-    if (btnGiveUp) btnGiveUp.onclick = handleGiveUp;
+    if (btnGiveUp) {
+        btnGiveUp.onclick = handleGiveUp;
+        // Only show if Teacher Mode is active (Game Setting OR Local Flag)
+        const isTeacherMode = (appState.settings && appState.settings.teacherMode) || appState.isTeacherMode;
+        console.log("Teacher Mode Check:", isTeacherMode, appState.settings);
+        btnGiveUp.style.display = isTeacherMode ? '' : 'none';
+    }
 }
 
-// Handle Give Up - Player voluntarily forfeits their turn with 20s penalty
+// Handle Give Up - Player voluntarily forfeits their turn with 15s penalty
 function handleGiveUp() {
     if (appState.buzzerOwner !== appState.playerId) return;
 
     showConfirm(
         "Aufgeben?",
-        "Möchtest du wirklich aufgeben? Du erhältst eine 20s Sperre.",
+        "Möchtest du wirklich aufgeben? Du erhältst eine 15s Sperre.",
         () => {
             // Close the calculation modal
             document.getElementById('calc-modal').classList.remove('active');
             document.getElementById('calc-modal').style.display = '';
 
-            // Apply 20s penalty
+            // Apply 15s penalty
             const gameRef = db.ref(`games/${appState.gameId}`);
-            const lockTime = Date.now() + 20000; // 20 seconds penalty
+            const lockTime = Date.now() + 15000; // 15 seconds penalty
 
             // Reset state & Lock
             const updates = {};
@@ -1954,7 +1960,7 @@ function handleGiveUp() {
             updateSelection([]);
 
             // Show message
-            showMessage("Aufgegeben", "Du bist für 20s gesperrt.");
+            showMessage("Aufgegeben", "Du bist für 15s gesperrt.");
         }
     );
 }
@@ -2437,8 +2443,8 @@ function validateAttempt(attempt, attemptKey) {
             });
         }
 
-        // 20s Penalty for wrong calculation
-        const lockTime = Date.now() + 20000;
+        // 15s Penalty for wrong calculation
+        const lockTime = Date.now() + 15000;
         gameRef.child(`players/${attempt.playerId}/lockedUntil`).set(lockTime);
         gameRef.child('status').set(null);
     }

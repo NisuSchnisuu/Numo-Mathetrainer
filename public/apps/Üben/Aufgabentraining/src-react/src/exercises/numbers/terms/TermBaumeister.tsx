@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { generateTerm } from './termGenerator';
 
 type OperatorState = {
     plus: boolean;
@@ -307,8 +308,10 @@ function GameSession({ config, onExit }: { config: Config, onExit: () => void })
             const result = eval(termStr);
 
             if (result === task.target) {
-                // Check if all elements are used
-                if (userTerm.length === task.elements.length) {
+                // Check if all elements are used (ignoring separators)
+                const requiredCount = task.elements.filter(e => e.type !== 'separator').length;
+
+                if (userTerm.length === requiredCount) {
                     setIsFinished(true);
                     updateStats('correct');
                 } else {
@@ -334,7 +337,7 @@ function GameSession({ config, onExit }: { config: Config, onExit: () => void })
     if (!task) return <div>Loading...</div>;
 
     const usedIds = new Set(userTerm.map(u => u.id));
-    const allUsed = userTerm.length === task.elements.length;
+    // const allUsed = userTerm.length === task.elements.length;
 
     const diffLabels: Record<Difficulty, string> = {
         normal: "Normal",
@@ -417,10 +420,10 @@ function GameSession({ config, onExit }: { config: Config, onExit: () => void })
                 <div className="h-14 mt-2 w-full flex justify-center items-center relative mb-6">
                     <button
                         onClick={checkSolution}
-                        disabled={!allUsed}
+                        disabled={userTerm.length === 0}
                         className={`text-base font-bold px-10 py-4 rounded-xl shadow-lg transition-all 
                             ${errorMsg ? 'bg-red-500 animate-shake shadow-red-500/20 text-white' : 'bg-primary shadow-primary/20 text-primary-foreground'}
-                            ${!allUsed ? 'opacity-50 cursor-not-allowed bg-slate-700 text-slate-400' : 'hover:scale-105 active:scale-95'}`}
+                            ${userTerm.length === 0 ? 'opacity-50 cursor-not-allowed bg-slate-700 text-slate-400' : 'hover:scale-105 active:scale-95'}`}
                     >
                         {errorMsg ? 'Falsch ❌' : 'Überprüfen'}
                     </button>
@@ -533,27 +536,52 @@ function generateTask(config: Config): Task {
     const { range, ops, difficulty } = config;
     let task: Task | null = null;
     let attempts = 0;
-    let selectedDiff: Difficulty = difficulty;
+    // let selectedDiff: Difficulty = difficulty;
 
     while (!task && attempts < 100) {
         attempts++;
         try {
-            if (difficulty === 'allround') {
-                const r = Math.random();
-                if (r < 0.5) { // 50% Normal
-                    selectedDiff = 'normal';
-                    task = createEquation(range, ops, 'normal');
-                } else if (r < 0.8) { // 30% Advanced (0.5 to 0.8)
-                    selectedDiff = 'advanced';
-                    task = createEquation(range, ops, 'advanced');
-                } else { // 20% Profi
-                    selectedDiff = 'profi';
-                    task = createEquation(range, ops, 'profi');
+            const result = generateTerm(range, ops, difficulty);
+
+            let candidateTask: Task | null = {
+                target: result.task.target,
+                elements: result.task.elements,
+                topLevelOp: result.task.topLevelOp,
+                currentDiff: result.activeDiff
+            };
+
+            // selectedDiff = result.activeDiff; // removed unused assignment
+
+            // --- Variety Check ---
+            if (candidateTask) {
+                const usedOps = candidateTask.elements
+                    .filter(e => e.type === 'op' && ['+', '-', '×', '÷', '*', '/'].includes(String(e.val)))
+                    .map(e => String(e.val));
+
+                // Count available specific ops to see if variety is even possible
+                let contentOpsCount = 0;
+                if (ops.plus) contentOpsCount++;
+                if (ops.minus) contentOpsCount++;
+                if (ops.mult) contentOpsCount++;
+                if (ops.div) contentOpsCount++;
+
+                // If result has >= 2 operators, and we have > 1 operator type available,
+                // we reject "all same" results to encourage variety.
+                if (usedOps.length >= 2 && contentOpsCount > 1) {
+                    const firstOp = usedOps[0];
+                    const allSame = usedOps.every(op => op === firstOp);
+
+                    if (allSame) {
+                        // Reject and retry
+                        candidateTask = null;
+                    }
                 }
-            } else {
-                selectedDiff = difficulty;
-                task = createEquation(range, ops, difficulty);
             }
+
+            if (candidateTask) {
+                task = candidateTask;
+            }
+
         } catch (e) {
             // retry
         }
@@ -575,401 +603,6 @@ function generateTask(config: Config): Task {
     if (grouped.length > 0 && grouped[grouped.length - 1].type === 'separator') grouped.pop();
 
     task.elements = grouped;
-
-    task.currentDiff = selectedDiff;
     return task;
 }
 
-function createEquation(range: number, ops: OperatorState, diff: Difficulty): Task {
-    const useBrackets = ops.brackets && Math.random() < 0.5; // 50% chance to use brackets if enabled
-
-    switch (diff) {
-        case 'normal':
-            return useBrackets ? createBracketEquationNormal(range, ops) : createSimpleEquation(range, ops, 3);
-        case 'advanced':
-            return useBrackets ? createBracketEquationAdvanced(range, ops) : createSimpleEquation(range, ops, 4);
-        case 'profi':
-            return createBracketEquationProfi(range, ops);
-        default:
-            return createSimpleEquation(range, ops, 3);
-    }
-}
-
-function formatOp(op: string): string {
-    if (op === '*') return '×';
-    if (op === '/') return '÷';
-    return op;
-}
-
-// 1. Simple Linear Equation (e.g. A + B * C)
-function createSimpleEquation(range: number, ops: OperatorState, numElements: number): Task {
-    const lineOps = []; if (ops.plus) lineOps.push('+'); if (ops.minus) lineOps.push('-');
-    const pointOps = []; if (ops.mult) pointOps.push('*'); if (ops.div) pointOps.push('/');
-
-    if (lineOps.length === 0 && pointOps.length === 0) throw "No ops";
-
-    // Grouping strategy ensures intermediate division integers
-    let groups: { val: number, elements: GameElement[] }[] = [];
-    let remainingNums = numElements;
-
-    let elementCounter = 0; // ID counter
-
-    while (remainingNums > 0) {
-        let size = 1;
-        if (lineOps.length > 0) {
-            size = Math.floor(Math.random() * Math.min(3, remainingNums)) + 1;
-            if (remainingNums - size === 0) size = remainingNums;
-        } else {
-            size = remainingNums;
-        }
-        remainingNums -= size;
-
-        const minNum = range <= 20 ? 1 : (range <= 100 ? 4 : 10);
-        const maxNum = range <= 20 ? 10 : (range <= 100 ? 25 : 50);
-
-        let currentVal = Math.floor(Math.random() * (maxNum - minNum + 1)) + minNum;
-        let groupElems: GameElement[] = [{ type: 'number', val: currentVal, id: 'n' + (elementCounter++) }];
-
-        for (let k = 1; k < size; k++) {
-            const op = pointOps[Math.floor(Math.random() * pointOps.length)];
-            let nextNum = Math.floor(Math.random() * (maxNum - minNum + 1)) + minNum;
-
-            if (op === '/') {
-                const factors = [];
-                for (let f = 1; f <= currentVal; f++) if (currentVal % f === 0) factors.push(f);
-                nextNum = factors[Math.floor(Math.random() * factors.length)];
-            }
-
-            // eslint-disable-next-line no-eval
-            currentVal = eval(`${currentVal} ${op} ${nextNum}`);
-            groupElems.push({ type: 'op', val: formatOp(op), id: 'o' + (elementCounter++) });
-            groupElems.push({ type: 'number', val: nextNum, id: 'n' + (elementCounter++) });
-        }
-        groups.push({ val: currentVal, elements: groupElems });
-    }
-
-    let currentTotal = groups[0].val;
-    let allElements = [...groups[0].elements];
-
-    for (let i = 1; i < groups.length; i++) {
-        const op = lineOps[Math.floor(Math.random() * lineOps.length)];
-
-        if (op === '-' && currentTotal < groups[i].val) {
-            if (ops.plus) {
-                currentTotal += groups[i].val;
-                allElements.push({ type: 'op', val: '+', id: 'o' + (elementCounter++) });
-            } else {
-                throw "Negative result";
-            }
-        } else {
-            // eslint-disable-next-line no-eval
-            currentTotal = eval(`${currentTotal} ${op} ${groups[i].val}`);
-            allElements.push({ type: 'op', val: formatOp(op), id: 'o' + (elementCounter++) });
-        }
-        allElements.push(...groups[i].elements);
-    }
-
-    if (!Number.isInteger(currentTotal) || currentTotal < 0 || currentTotal > range) throw "Invalid";
-
-    if (!Number.isInteger(currentTotal) || currentTotal < 0 || currentTotal > range) throw "Invalid";
-
-    // Determine top level op
-    // If we had line ops loop (groups > 1), it's + or - (precedence 1).
-    // If not (groups == 1), it's * or / (precedence 2) IF there are multiple elements.
-    // If single number, no op.
-    let topOp = undefined;
-    if (groups.length > 1) {
-        topOp = '+'; // generic precedence 1 is enough for now, or track last one.
-        // Actually precedence is what matters.
-    } else if (allElements.some(e => e.type === 'op')) {
-        topOp = '*'; // generic precedence 2
-    }
-
-    return { target: currentTotal, elements: allElements, topLevelOp: topOp };
-}
-
-// 2. Normal Bracket Equation
-function createBracketEquationNormal(range: number, ops: OperatorState): Task {
-    const lineOps = []; if (ops.plus) lineOps.push('+'); if (ops.minus) lineOps.push('-');
-    const pointOps = []; if (ops.mult) pointOps.push('*'); if (ops.div) pointOps.push('/');
-
-    if (lineOps.length === 0 || pointOps.length === 0) return createSimpleEquation(range, ops, 3);
-
-    const opLine = lineOps[Math.floor(Math.random() * lineOps.length)];
-    const opPoint = pointOps[Math.floor(Math.random() * pointOps.length)];
-
-    const minNum = range <= 20 ? 1 : (range <= 100 ? 3 : 10);
-    const maxNum = range <= 20 ? 10 : (range <= 100 ? 25 : 40);
-
-    let a = Math.floor(Math.random() * (maxNum - minNum + 1)) + minNum;
-    let b = Math.floor(Math.random() * (maxNum - minNum + 1)) + minNum;
-
-    if (opLine === '-' && a <= b) a = b + Math.floor(Math.random() * 5) + 1;
-
-    const innerRes = (opLine === '+') ? a + b : a - b;
-    let c;
-
-    const isPost = Math.random() < 0.5;
-
-    if (opPoint === '*') {
-        c = Math.floor(Math.random() * (range <= 20 ? 4 : 8)) + 2;
-    } else {
-        // Division: ensure integer result AND integer intermediate step
-        if (isPost) {
-            // (a +/- b) / c -> c must be factor of innerRes
-            const factors = [];
-            for (let i = 2; i <= innerRes; i++) if (innerRes % i === 0) factors.push(i);
-            if (factors.length === 0) c = 1; else c = factors[Math.floor(Math.random() * factors.length)];
-        } else {
-            // c / (a +/- b) -> innerRes must be factor of c to ensure integer result
-            if (innerRes === 0) throw "Zero divisor";
-            const maxMult = Math.floor(range / innerRes);
-            if (maxMult < 1) throw "Range too small";
-            c = innerRes * (Math.floor(Math.random() * Math.min(5, maxMult)) + 1);
-        }
-    }
-
-    let evalStr;
-    if (isPost) evalStr = `(${a} ${opLine} ${b}) ${opPoint} ${c}`;
-    else evalStr = `${c} ${opPoint} (${a} ${opLine} ${b})`;
-
-    // eslint-disable-next-line no-eval
-    const target = eval(evalStr);
-    if (target > range || target < 0 || !Number.isInteger(target)) throw "Invalid";
-
-    // Build elements
-    const elements: GameElement[] = [
-        { type: 'number', val: a, id: 'n1' },
-        { type: 'number', val: b, id: 'n2' },
-        { type: 'number', val: c, id: 'n3' },
-        { type: 'op', val: formatOp(opLine), id: 'o1' },
-        { type: 'op', val: formatOp(opPoint), id: 'o2' }
-    ];
-
-    const parens = needsParens(opLine, opPoint, !isPost);
-    if (parens) {
-        elements.push({ type: 'op', val: '(', id: 'b1' });
-        elements.push({ type: 'op', val: ')', id: 'b2' });
-    }
-
-    return { target, elements, topLevelOp: opPoint };
-}
-
-// 3. Advanced Bracket
-function createBracketEquationAdvanced(range: number, ops: OperatorState): Task {
-    const baseTask = createBracketEquationNormal(range, ops);
-    const blockVal = baseTask.target;
-
-    const allOps = [];
-    if (ops.plus) allOps.push('+'); if (ops.minus) allOps.push('-');
-    if (ops.mult) allOps.push('*'); if (ops.div) allOps.push('/');
-    if (allOps.length === 0) throw "No ops";
-
-    const newOp = allOps[Math.floor(Math.random() * allOps.length)];
-    let d = Math.floor(Math.random() * (range <= 20 ? 5 : (range <= 100 ? 25 : 50))) + 5;
-
-    const isPost = Math.random() < 0.5;
-
-    // Handle Division Integrity - ensure integer intermediate steps
-    if (newOp === '/') {
-        if (isPost) {
-            // blockVal / d -> d must be factor of blockVal
-            const factors = [];
-            for (let i = 2; i <= blockVal; i++) if (blockVal % i === 0) factors.push(i);
-            if (factors.length === 0) d = 1; else d = factors[Math.floor(Math.random() * factors.length)];
-        } else {
-            // d / blockVal -> blockVal must be factor of d to ensure integer result
-            if (blockVal === 0) throw "Zero divisor";
-            const maxMult = Math.floor(range / blockVal);
-            if (maxMult < 1) throw "Range too small";
-            d = blockVal * (Math.floor(Math.random() * Math.min(5, maxMult)) + 1);
-        }
-    } else if (newOp === '-') {
-        if (isPost && blockVal < d) d = Math.floor(Math.random() * blockVal);
-        else if (!isPost && d < blockVal) d = blockVal + Math.floor(Math.random() * 10) + 1;
-    }
-
-    let evalStr;
-    if (isPost) evalStr = `${blockVal} ${newOp} ${d}`;
-    else evalStr = `${d} ${newOp} ${blockVal}`;
-
-    // eslint-disable-next-line no-eval
-    const total = eval(evalStr);
-    if (total > range || total < 0 || !Number.isInteger(total)) throw "Invalid";
-
-    const elements = [...baseTask.elements];
-    elements.push({ type: 'number', val: d, id: 'n4' });
-    elements.push({ type: 'op', val: formatOp(newOp), id: 'o3' });
-
-    // Check if we need extra parens around baseTask
-    const parens = needsParens(baseTask.topLevelOp, newOp, !isPost);
-    if (parens) {
-        elements.push({ type: 'op', val: '(', id: 'b3' });
-        elements.push({ type: 'op', val: ')', id: 'b4' });
-    }
-
-    return { target: total, elements, topLevelOp: newOp };
-}
-
-// 4. Profi Bracket
-function createBracketEquationProfi(range: number, ops: OperatorState): Task {
-    const pattern = Math.random() < 0.5 ? 'double' : 'nested';
-
-    const lineOps = []; if (ops.plus) lineOps.push('+'); if (ops.minus) lineOps.push('-');
-    const pointOps = []; if (ops.mult) pointOps.push('*'); if (ops.div) pointOps.push('/');
-    const availOps = [...lineOps, ...pointOps];
-    if (availOps.length < 2) throw "Not enough ops";
-
-    const randOp = () => availOps[Math.floor(Math.random() * availOps.length)];
-    const minNum = range <= 20 ? 1 : (range <= 100 ? 3 : 5);
-    const maxNum = range <= 20 ? 8 : (range <= 100 ? 15 : 30);
-    const randNum = () => Math.floor(Math.random() * (maxNum - minNum + 1)) + minNum;
-
-    // Helper returns value + elements list + op
-    const createSafeTerm = (prefix: string): { val: number, elements: GameElement[], op: string } => {
-        let op = randOp();
-        let a = randNum();
-        let b = randNum();
-
-        if (op === '/') {
-            a = b * (Math.floor(Math.random() * 5) + 1);
-        } else if (op === '-') {
-            if (a < b) [a, b] = [b, a];
-        }
-
-        // eslint-disable-next-line no-eval
-        const val = eval(`${a} ${op} ${b}`);
-        const elements: GameElement[] = [
-            { type: 'number', val: a, id: 'n' + prefix + '1' },
-            { type: 'number', val: b, id: 'n' + prefix + '2' },
-            { type: 'op', val: formatOp(op), id: 'o' + prefix }
-        ];
-        return { val, elements, op };
-    };
-
-    if (pattern === 'double') {
-        let left = createSafeTerm('L');
-        let right = createSafeTerm('R');
-        let op2 = randOp();
-
-        if (op2 === '/') {
-            if (left.val === 0) throw "Zero left";
-            const factors = [];
-            for (let i = 1; i <= left.val; i++) if (left.val % i === 0) factors.push(i);
-            const targetRight = factors[Math.floor(Math.random() * factors.length)];
-
-            // Reconstruct right to match target
-            let op3 = randOp();
-            let c, d;
-            if (op3 === '+') { c = Math.floor(Math.random() * targetRight); d = targetRight - c; }
-            else if (op3 === '-') { d = Math.floor(Math.random() * 10) + 1; c = targetRight + d; }
-            else if (op3 === '*') {
-                const fs = []; for (let i = 1; i <= targetRight; i++) if (targetRight % i === 0) fs.push(i);
-                c = fs[Math.floor(Math.random() * fs.length)]; d = targetRight / c;
-            } else { d = Math.floor(Math.random() * 5) + 1; c = targetRight * d; }
-
-            if (c <= 0 || d <= 0) throw "Inv";
-            // Overwrite right
-            right = {
-                val: targetRight, elements: [
-                    { type: 'number', val: c, id: 'nR3' }, { type: 'number', val: d, id: 'nR4' },
-                    { type: 'op', val: formatOp(op3), id: 'oR' }
-                ], op: op3
-            };
-        } else if (op2 === '-') {
-            if (left.val < right.val) [left, right] = [right, left];
-        }
-
-        // eslint-disable-next-line no-eval
-        const res = eval(`${left.val} ${op2} ${right.val}`);
-        if (!Number.isInteger(res) || res < 0 || res > range) throw "Invalid";
-
-        const elements = [...left.elements, ...right.elements];
-        elements.push({ type: 'op', val: formatOp(op2), id: 'oM' }); // middle op
-
-        if (needsParens(left.op, op2, false)) {
-            elements.push({ type: 'op', val: '(', id: 'bL1' });
-            elements.push({ type: 'op', val: ')', id: 'bL2' });
-        }
-        if (needsParens(right.op, op2, true)) {
-            elements.push({ type: 'op', val: '(', id: 'bR1' });
-            elements.push({ type: 'op', val: ')', id: 'bR2' });
-        }
-
-        return { target: res, elements, topLevelOp: op2 };
-
-    } else {
-        // Nested: ((A op1 B) op2 C) op3 D
-        let t1 = createSafeTerm('A');
-        let op2 = randOp();
-        let c = randNum();
-
-        if (op2 === '/') {
-            const fs = []; for (let i = 1; i <= t1.val; i++) if (t1.val % i === 0) fs.push(i);
-            c = fs[Math.floor(Math.random() * fs.length)];
-        } else if (op2 === '-') {
-            if (t1.val < c) c = Math.floor(Math.random() * t1.val);
-        }
-
-        // eslint-disable-next-line no-eval
-        let res2 = eval(`${t1.val} ${op2} ${c}`);
-
-        const elements = [...t1.elements];
-        elements.push({ type: 'number', val: c, id: 'nC' });
-        elements.push({ type: 'op', val: formatOp(op2), id: 'oB' });
-
-        if (needsParens(t1.op, op2, false)) {
-            elements.push({ type: 'op', val: '(', id: 'bA1' });
-            elements.push({ type: 'op', val: ')', id: 'bA2' });
-        }
-
-        let op3 = randOp();
-        let d = randNum();
-
-        if (op3 === '/') {
-            if (res2 === 0) throw "Zero";
-            const fs = []; for (let i = 1; i <= res2; i++) if (res2 % i === 0) fs.push(i);
-            if (fs.length === 0) throw "No fact";
-            d = fs[Math.floor(Math.random() * fs.length)];
-        } else if (op3 === '-') {
-            if (res2 < d) d = Math.floor(Math.random() * res2);
-        }
-
-        // eslint-disable-next-line no-eval
-        const finalRes = eval(`${res2} ${op3} ${d}`);
-        if (!Number.isInteger(finalRes) || finalRes < 0 || finalRes > range) throw "Invalid";
-
-        elements.push({ type: 'number', val: d, id: 'nD' });
-        elements.push({ type: 'op', val: formatOp(op3), id: 'oC' });
-
-        // t2 (res2) is left child of op3.
-        // t2 op is op2.
-        if (needsParens(op2, op3, false)) {
-            elements.push({ type: 'op', val: '(', id: 'bB1' });
-            elements.push({ type: 'op', val: ')', id: 'bB2' });
-        }
-
-        return { target: finalRes, elements, topLevelOp: op3 };
-    }
-}
-
-function getPrecedence(op: string | undefined): number {
-    if (op === '*' || op === '/' || op === '×' || op === '÷') return 2;
-    if (op === '+' || op === '-') return 1;
-    return 0;
-}
-
-function needsParens(innerOp: string | undefined, outerOp: string, isRight: boolean): boolean {
-    if (!innerOp) return false;
-    const pInner = getPrecedence(innerOp);
-    const pOuter = getPrecedence(outerOp);
-
-    if (pInner < pOuter) return true;
-    if (pInner > pOuter) return false;
-
-    if (isRight) {
-        if (outerOp === '-' || outerOp === '/' || outerOp === '÷') return true;
-        return false;
-    }
-    return false;
-}
