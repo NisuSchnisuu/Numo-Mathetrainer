@@ -1,6 +1,7 @@
 import type { ComponentType } from 'react';
 import { TermBaumeister } from '../exercises/numbers/terms/TermBaumeister';
 import { TermBerechnen } from '../exercises/numbers/terms/TermBerechnen';
+import { OperatorEinsetzen } from '../exercises/numbers/terms/OperatorEinsetzen';
 
 // Definition einer Übung
 export interface Exercise {
@@ -24,6 +25,12 @@ export const exercises: Record<string, Exercise[]> = {
             title: 'Terme berechnen',
             description: 'Berechne das Ergebnis der angezeigten Terme mit Punkt-vor-Strich und Klammern.',
             component: TermBerechnen
+        },
+        {
+            id: 'term_calc_3',
+            title: 'Rechenzeichen einsetzen',
+            description: 'Setze die richtigen Operatoren und Klammern ein, um das Ziel zu erreichen.',
+            component: OperatorEinsetzen
         },
         // Hier können später einfach weitere Übungen hinzugefügt werden:
         // {

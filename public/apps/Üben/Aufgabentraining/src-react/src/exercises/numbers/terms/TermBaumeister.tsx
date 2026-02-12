@@ -18,7 +18,7 @@ interface Config {
 }
 
 interface GameElement {
-    type: 'number' | 'op';
+    type: 'number' | 'op' | 'separator';
     val: string | number;
     id: string;
 }
@@ -291,6 +291,12 @@ function GameSession({ config, onExit }: { config: Config, onExit: () => void })
         setErrorMsg(null);
     };
 
+    const removeFromTerm = (index: number) => {
+        if (isFinished) return;
+        setUserTerm(prev => prev.filter((_, i) => i !== index));
+        setErrorMsg(null);
+    };
+
     const checkSolution = () => {
         if (!task) return;
         const termStr = userTerm.map(e => e.val.toString().replace('×', '*').replace('÷', '/')).join(' ');
@@ -373,70 +379,87 @@ function GameSession({ config, onExit }: { config: Config, onExit: () => void })
                 </button>
             </div>
 
-            {/* Target */}
-            <div className="text-center py-2 flex-shrink-0 mt-2">
-                <div className="text-xs text-muted-foreground uppercase tracking-widest">Zielzahl</div>
-                <div className="text-5xl font-bold text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.3)] leading-tight">
-                    {task.target}
-                </div>
-            </div>
+            {/* Main Content Area */}
+            <div className="flex-1 flex flex-col justify-center items-center w-full relative min-h-0 overflow-y-auto px-4">
 
-            {/* Equation Area */}
-            <div className="flex-1 flex flex-col justify-center items-center py-1 min-h-[100px] mb-4">
-                {/* Visual Field / Container */}
-                <div className="w-full max-w-2xl p-6 rounded-2xl bg-white/5 border-2 border-dashed border-white/20 flex items-center justify-center relative min-h-[120px] transition-colors hover:border-white/30">
-                    <div className="flex items-center flex-wrap justify-center gap-2 min-h-[50px]">
-                        {userTerm.length === 0 && <span className="text-white/20 italic text-lg select-none">Rechnung hier bauen...</span>}
-                        {userTerm.map((el, i) => (
-                            <span key={i} className="text-3xl font-bold mx-1 animate-scale-in">{el.val}</span>
-                        ))}
+                {/* Equation Container */}
+                <div className="bg-neutral-950 p-6 pr-32 rounded-2xl border border-white/10 shadow-inner flex flex-wrap items-center justify-center gap-3 min-h-[10rem] transition-colors relative w-full max-w-4xl mb-8">
+
+                    {userTerm.length === 0 && <span className="text-white/20 italic text-lg select-none">Rechnung hier bauen...</span>}
+
+                    {userTerm.map((el, i) => (
+                        <div
+                            key={`${el.id}-${i}`}
+                            onClick={() => removeFromTerm(i)}
+                            className={`px-4 py-2 rounded-xl text-xl sm:text-2xl font-mono border shadow-lg transition-all flex items-center justify-center cursor-pointer hover:bg-red-500/20 hover:border-red-500 group relative select-none
+                                ${el.type === 'number'
+                                    ? 'bg-blue-600/20 border-blue-500 text-blue-100'
+                                    : 'bg-neutral-800 border-white/10 text-white'}`}
+                        >
+                            {el.val}
+                            <div className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity shadow-sm">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+                            </div>
+                        </div>
+                    ))}
+
+                    {/* Target Display Pinned Right */}
+                    <div className="absolute right-6 top-1/2 -translate-y-1/2 px-4 py-2 bg-neutral-900/80 backdrop-blur rounded-xl border border-white/10 text-2xl sm:text-3xl font-mono text-purple-400 font-bold select-none shadow-lg">
+                        = {task.target}
                     </div>
-                    <span className="text-2xl font-bold text-white/50 ml-4 absolute right-6">= {task.target}</span>
 
-                    <button onClick={backspace} className="absolute left-4 top-1/2 -translate-y-1/2 p-3 rounded-full hover:bg-white/10 text-muted-foreground hover:text-white transition-colors" title="Rückgängig">
+                    <button onClick={backspace} className="absolute left-4 top-1/2 -translate-y-1/2 p-3 rounded-full hover:bg-white/10 text-muted-foreground hover:text-white transition-colors" title="Letztes löschen">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"></path><line x1="18" y1="9" x2="12" y2="15"></line><line x1="12" y1="9" x2="18" y2="15"></line></svg>
                     </button>
                 </div>
 
-                {/* Feedback Area */}
-                <div className="h-14 mt-6 w-full flex justify-center items-center relative mb-2">
+                {/* Check Button */}
+                <div className="h-14 mt-2 w-full flex justify-center items-center relative mb-6">
                     <button
                         onClick={checkSolution}
                         disabled={!allUsed}
-                        className={`text-base font-bold px-10 py-3 rounded-xl shadow-lg transition-all 
-                            ${errorMsg ? 'bg-red-500 animate-shake' : 'bg-primary'}
-                            ${!allUsed ? 'opacity-50 cursor-not-allowed bg-slate-700 text-slate-400' : 'text-primary-foreground hover:scale-105'}`}
+                        className={`text-base font-bold px-10 py-4 rounded-xl shadow-lg transition-all 
+                            ${errorMsg ? 'bg-red-500 animate-shake shadow-red-500/20 text-white' : 'bg-primary shadow-primary/20 text-primary-foreground'}
+                            ${!allUsed ? 'opacity-50 cursor-not-allowed bg-slate-700 text-slate-400' : 'hover:scale-105 active:scale-95'}`}
                     >
                         {errorMsg ? 'Falsch ❌' : 'Überprüfen'}
                     </button>
                     {errorMsg && (
-                        <div className="absolute top-14 w-full text-center pointer-events-none z-10">
-                            <span className="text-red-400 font-bold bg-[#0b1120] border border-red-500/30 px-4 py-2 rounded-lg shadow-xl">{errorMsg}</span>
+                        <div className="absolute top-16 w-full text-center pointer-events-none z-10">
+                            <span className="text-red-400 font-bold bg-[#0b1120] border border-red-500/30 px-4 py-2 rounded-lg shadow-xl animate-fade-in my-2 inline-block">{errorMsg}</span>
                         </div>
                     )}
                 </div>
             </div>
 
             {/* Pool */}
-            <div className="flex flex-wrap justify-center gap-3 pb-8 content-end flex-shrink-0">
-                {task.elements.map(el => {
-                    const isUsed = usedIds.has(el.id);
-                    const isBracket = el.val === '(' || el.val === ')';
-
-                    let colorClass = 'bg-white/10 text-white border-white/10 hover:bg-white/20'; // Default Op
-                    if (el.type === 'number') {
-                        colorClass = 'bg-blue-500/20 text-blue-100 border-blue-500/30 hover:bg-blue-500/30';
-                    } else if (isBracket) {
-                        colorClass = 'bg-purple-500/20 text-purple-100 border-purple-500/30 hover:bg-purple-500/30';
+            <div className="bg-neutral-900/50 p-6 rounded-2xl border border-white/5 flex flex-wrap justify-center gap-3 shadow-inner min-h-[100px] mb-4 flex-shrink-0 w-full max-w-4xl mx-auto">
+                {task.elements.map((el, idx) => {
+                    if (el.type === 'separator') {
+                        return <div key={`sep-${idx}`} className="w-px h-10 bg-white/10 mx-2 self-center" />;
                     }
 
-                    if (isUsed) return <div key={el.id} className="w-[70px] h-[60px] rounded-lg border border-dashed border-white/5 bg-transparent"></div>; // Placeholder
+                    const isUsed = usedIds.has(el.id);
+                    const isNum = el.type === 'number';
+
+                    let colorClass = 'bg-neutral-800 border-white/10 text-white hover:bg-neutral-700 hover:border-white/30';
+                    if (isNum) {
+                        colorClass = 'bg-blue-600/20 border-blue-500 text-blue-100 hover:bg-blue-600/30';
+                    }
+
+                    if (isUsed) {
+                        return (
+                            <div key={el.id} className="h-14 sm:h-16 min-w-[3.5rem] w-auto px-4 rounded-xl text-xl sm:text-2xl font-mono border flex items-center justify-center bg-neutral-900 text-neutral-700 border-neutral-800 cursor-not-allowed opacity-50 scale-95 select-none">
+                                {el.val}
+                            </div>
+                        );
+                    }
 
                     return (
                         <button
                             key={el.id}
                             onClick={() => addToTerm(el)}
-                            className={`${colorClass} border w-[70px] h-[60px] rounded-lg text-2xl font-bold transition-all shadow-lg backdrop-blur-sm flex items-center justify-center hover:scale-105 active:scale-95`}
+                            className={`h-14 sm:h-16 min-w-[3.5rem] w-auto px-4 rounded-xl text-xl sm:text-2xl font-mono border shadow-lg transition-all flex items-center justify-center whitespace-nowrap active:scale-95 hover:shadow-xl hover:-translate-y-0.5 ${colorClass}`}
                         >
                             {el.val}
                         </button>
@@ -538,14 +561,20 @@ function generateTask(config: Config): Task {
     // Fallback
     if (!task) return { target: 10, currentDiff: 'normal', elements: [{ type: 'number', val: 5, id: 'n1' }, { type: 'number', val: 2, id: 'n2' }, { type: 'op', val: '×', id: 'o1' }] };
 
-    // 1. Shuffle completely to randomize order within types
-    task.elements.sort(() => Math.random() - 0.5);
+    // Grouping and Sorting
+    const numbers = task.elements.filter(e => e.type === 'number').sort(() => Math.random() - 0.5);
+    const brackets = task.elements.filter(e => e.type === 'op' && ['(', ')'].includes(String(e.val))).sort((a, b) => String(a.val).localeCompare(String(b.val)));
+    const opElements = task.elements.filter(e => e.type === 'op' && !['(', ')'].includes(String(e.val))).sort(() => Math.random() - 0.5);
 
-    // 2. Sort by type to group them (Numbers first, then Ops)
-    task.elements.sort((a, b) => {
-        if (a.type === b.type) return 0;
-        return a.type === 'number' ? -1 : 1;
-    });
+    const grouped: GameElement[] = [];
+    if (numbers.length > 0) grouped.push(...numbers, { type: 'separator', val: '|', id: 'sep1' });
+    if (opElements.length > 0) grouped.push(...opElements, { type: 'separator', val: '|', id: 'sep2' });
+    if (brackets.length > 0) grouped.push(...brackets, { type: 'separator', val: '|', id: 'sep3' });
+
+    // Remove trailing separator
+    if (grouped.length > 0 && grouped[grouped.length - 1].type === 'separator') grouped.pop();
+
+    task.elements = grouped;
 
     task.currentDiff = selectedDiff;
     return task;
@@ -685,11 +714,15 @@ function createBracketEquationNormal(range: number, ops: OperatorState): Task {
     if (opPoint === '*') {
         c = Math.floor(Math.random() * (range <= 20 ? 4 : 8)) + 2;
     } else {
+        // Division: ensure integer result AND integer intermediate step
         if (isPost) {
+            // (a +/- b) / c -> c must be factor of innerRes
             const factors = [];
             for (let i = 2; i <= innerRes; i++) if (innerRes % i === 0) factors.push(i);
             if (factors.length === 0) c = 1; else c = factors[Math.floor(Math.random() * factors.length)];
         } else {
+            // c / (a +/- b) -> innerRes must be factor of c to ensure integer result
+            if (innerRes === 0) throw "Zero divisor";
             const maxMult = Math.floor(range / innerRes);
             if (maxMult < 1) throw "Range too small";
             c = innerRes * (Math.floor(Math.random() * Math.min(5, maxMult)) + 1);
@@ -737,13 +770,16 @@ function createBracketEquationAdvanced(range: number, ops: OperatorState): Task 
 
     const isPost = Math.random() < 0.5;
 
+    // Handle Division Integrity - ensure integer intermediate steps
     if (newOp === '/') {
         if (isPost) {
+            // blockVal / d -> d must be factor of blockVal
             const factors = [];
             for (let i = 2; i <= blockVal; i++) if (blockVal % i === 0) factors.push(i);
             if (factors.length === 0) d = 1; else d = factors[Math.floor(Math.random() * factors.length)];
         } else {
-            if (blockVal === 0) throw "Zero div";
+            // d / blockVal -> blockVal must be factor of d to ensure integer result
+            if (blockVal === 0) throw "Zero divisor";
             const maxMult = Math.floor(range / blockVal);
             if (maxMult < 1) throw "Range too small";
             d = blockVal * (Math.floor(Math.random() * Math.min(5, maxMult)) + 1);

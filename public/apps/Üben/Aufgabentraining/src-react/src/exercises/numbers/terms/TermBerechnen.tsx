@@ -749,7 +749,7 @@ function createBracketEquationNormal(range: number, ops: OperatorState): Task {
     if (opPoint === '*') {
         c = Math.floor(Math.random() * (range <= 20 ? 4 : 8)) + 2;
     } else {
-        // Division: ensure integer result
+        // Division: ensure integer result AND integer intermediate step
         if (isPost) {
             // (a +/- b) / c  -> c must be factor of innerRes
             const factors = [];
@@ -757,7 +757,9 @@ function createBracketEquationNormal(range: number, ops: OperatorState): Task {
             if (factors.length === 0) { c = 1; } // Fallback
             else c = factors[Math.floor(Math.random() * factors.length)];
         } else {
-            // c / (a +/- b) -> c must be multiple of innerRes
+            // c / (a +/- b) -> innerRes must be factor of c to ensure integer result
+            // We need c / innerRes to be an integer
+            if (innerRes === 0) throw "Zero divisor";
             const maxMult = Math.floor(range / innerRes);
             if (maxMult < 1) throw "Range too small for reverse div";
             const mult = Math.floor(Math.random() * Math.min(5, maxMult)) + 1;
@@ -825,7 +827,7 @@ function createBracketEquationAdvanced(range: number, ops: OperatorState): Task 
 
     const isPost = Math.random() < 0.5;
 
-    // Handle Division Integrity
+    // Handle Division Integrity - ensure integer intermediate steps
     if (newOp === '/') {
         if (isPost) {
             // blockVal / d -> d must be factor of blockVal
@@ -840,7 +842,7 @@ function createBracketEquationAdvanced(range: number, ops: OperatorState): Task 
                 d = factors[Math.floor(Math.random() * factors.length)];
             }
         } else {
-            // d / blockVal -> d must be multiple
+            // d / blockVal -> blockVal must be factor of d to ensure integer result
             if (blockVal === 0) throw "Div by zero";
             const maxMult = Math.floor(range / blockVal);
             if (maxMult < 1) throw "Range too small";

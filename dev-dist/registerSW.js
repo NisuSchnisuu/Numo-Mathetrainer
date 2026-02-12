@@ -1,0 +1,1 @@
+if('serviceWorker' in navigator) navigator.serviceWorker.register('/Numo-Mathetrainer/dev-sw.js?dev-sw', { scope: '/Numo-Mathetrainer/', type: 'classic' })
