@@ -271,6 +271,69 @@ function showInstallModal() {
     }
 }
 
+// --- Initialization ---
+function init() {
+    // PWA ENFORCEMENT CHECK
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+        (window.navigator.standalone === true);
+    const isInIframe = window.parent !== window;
+
+    // Check if on localhost (allow bypass for dev)
+    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+    if (!isStandalone || isInIframe) {
+        // Show the Trigger Button in Lobby
+        const installBtn = document.getElementById('btn-trigger-install');
+        if (installBtn) {
+            installBtn.style.display = 'block';
+
+            installBtn.addEventListener('click', () => {
+                // NEW LOGIC: If we are in an iframe (Numo Shell), open the direct link in a new tab
+                if (window.parent !== window) {
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('install', 'true');
+                    window.open(url.toString(), '_blank');
+                    return;
+                }
+
+                showInstallModal();
+            });
+        }
+
+        // Close Button Logic
+        const closeBtn = document.getElementById('btn-close-install');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', (e) => {
+                e.stopPropagation(); // prevent bubbling
+                document.getElementById('pwa-install-modal').classList.remove('active');
+            });
+        }
+
+        // Native Install Button Action
+        const nativeBtn = document.getElementById('btn-native-install');
+        if (nativeBtn) {
+            nativeBtn.addEventListener('click', async () => {
+                if (!deferredPrompt) return;
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                console.log(`User response to the install prompt: ${outcome}`);
+                deferredPrompt = null;
+                nativeBtn.style.display = 'none';
+                document.getElementById('pwa-install-modal').classList.remove('active');
+            });
+        }
+
+        // Auto-show if ?install=true is present
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('install') === 'true' && window.parent === window) {
+            showInstallModal();
+            // Clean URL
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+    }
+
+    setupEventListeners();
+
     // Auto-Cleanup Old Games (Lazy Trigger)
     checkAutoCleanup();
 

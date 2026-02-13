@@ -10,8 +10,10 @@
     function initInstallLogic() {
         const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
                             (window.navigator.standalone === true);
+        const isInIframe = window.parent !== window;
         
-        if (isStandalone) return;
+        // Only hide if REALLY standalone AND not in iframe
+        if (isStandalone && !isInIframe) return;
 
         // Try to find a place to insert the button if it doesn't exist
         let installBtn = document.getElementById('btn-trigger-install');
