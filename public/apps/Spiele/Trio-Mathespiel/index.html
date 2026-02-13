@@ -163,14 +163,76 @@
 </head>
 
 <body>
+    <!-- Back Button Styles -->
+    <style>
+        .numo-back-btn {
+            position: fixed;
+            top: 1rem;
+            left: 1rem;
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            gap: 0;
+            background: rgba(15, 23, 42, 0.6);
+            border: none;
+            padding: 8px;
+            border-radius: 24px;
+            backdrop-filter: blur(8px);
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            text-decoration: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            overflow: hidden;
+            width: 48px; /* Initial width (circle-ish) */
+            height: 48px;
+        }
+        
+        .numo-back-btn:hover {
+            background: rgba(15, 23, 42, 0.9);
+            width: 90px; /* Expanded width */
+            gap: 8px;
+            padding-left: 12px;
+        }
+
+        .numo-back-icon {
+            width: 0;
+            opacity: 0;
+            transform: translateX(-10px);
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+
+        .numo-back-btn:hover .numo-back-icon {
+            width: 20px;
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .numo-logo-img {
+            width: 32px;
+            height: 32px;
+            object-fit: contain;
+            flex-shrink: 0;
+        }
+    </style>
+
     <a href="../../../" 
        id="numo-back-link"
+       class="numo-back-btn"
        onclick="if(window.parent !== window) { window.parent.postMessage('numo-back-to-home', '*'); return false; }"
-       title="Zurück zum Hauptmenü"
-       style="position: fixed; top: 1rem; left: 1rem; z-index: 9999; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.2); padding: 4px; cursor: pointer; transition: all 0.2s; border-radius: 12px; backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; width: 48px; height: 48px; box-shadow: 0 4px 12px rgba(0,0,0,0.4); text-decoration: none;">
+       title="Zurück zum Hauptmenü">
+        <div class="numo-back-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 12H5"/>
+                <path d="M12 19l-7-7 7-7"/>
+            </svg>
+        </div>
         <img src="assets/numo-logo.png" 
              alt="Numo" 
-             style="width: 32px; height: 32px; object-fit: contain;">
+             class="numo-logo-img">
     </a>
 
     <!-- VIEW 1: LOBBY -->
