@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { apps, App as AppType } from './data/apps';
+import { apps, type App as AppType } from './data/apps';
 import { DashboardLayout } from './components/DashboardLayout';
 import { AppCard } from './components/AppCard';
 import { CategoryCard } from './components/CategoryCard';
