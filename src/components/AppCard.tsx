@@ -9,8 +9,6 @@ export function AppCard({ app }: { app: App }) {
     return (
         <a
             href={fullPath}
-            target="_blank"
-            rel="noopener noreferrer"
             className="block group decoration-0"
             onClick={() => addRecentAppId(app.id)}
         >
