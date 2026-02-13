@@ -34,6 +34,17 @@ function App() {
     setActiveApp(null);
   }, []);
 
+  // Listen for messages from sub-apps (e.g., to close the app)
+  useEffect(() => {
+    const handleMessage = (e: MessageEvent) => {
+      if (e.data === 'numo-back-to-home') {
+        handleCloseApp();
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [handleCloseApp]);
+
   // Listen for escape key to close app
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -281,17 +292,28 @@ function App() {
               className="w-full h-full border-none"
               title={activeApp.name}
               onLoad={(e) => {
-                // Check if iframe navigated back to the root (Home)
                 try {
                   const iframe = e.currentTarget;
                   const currentPath = iframe.contentWindow?.location.pathname;
-                  const rootPath = import.meta.env.BASE_URL;
-
-                  if (currentPath === rootPath || currentPath === rootPath + 'index.html') {
-                    handleCloseApp();
+                  
+                  // Normalize paths for comparison
+                  const normalize = (p: string | undefined) => p?.replace(/\/+$/, '') || '';
+                  const normalizedCurrent = normalize(currentPath);
+                  const normalizedRoot = normalize(import.meta.env.BASE_URL);
+                  
+                  // Only close if we are EXACTLY at root or root/index.html
+                  if (normalizedCurrent === normalizedRoot || normalizedCurrent === normalizedRoot + '/index.html') {
+                    // Check if it's the INITIAL load of the iframe (first time onLoad triggers)
+                    // If we just launched it, normalizedCurrent might match normalizedRoot if path is empty
+                    // But activeApp.path is usually "apps/..."
+                    if (!activeApp.path.includes('index.html') && normalizedCurrent === normalizedRoot) {
+                       // This might be a false positive on some servers. 
+                       // Let's rely more on the postMessage for explicit "Back" clicks.
+                    } else if (normalizedCurrent === normalizedRoot) {
+                        handleCloseApp();
+                    }
                   }
                 } catch (err) {
-                  // Ignore cross-origin errors if any
                   console.debug('Iframe path check failed:', err);
                 }
               }}

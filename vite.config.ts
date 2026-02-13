@@ -17,6 +17,7 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
         globIgnores: ['apps/**', '**/node_modules/**'],
         navigateFallbackDenylist: [/^\/Numo-Mathetrainer\/apps/, /apps\//],
+        navigateFallbackAllowlist: [/^\/Numo-Mathetrainer\/$/],
       },
       manifest: {
         name: "Numo Mathetrainer",
