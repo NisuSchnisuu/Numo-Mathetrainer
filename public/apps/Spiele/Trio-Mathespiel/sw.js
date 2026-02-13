@@ -1,4 +1,4 @@
-const CACHE_NAME = 'trio-v8'; // WICHTIG: Bei jeder Änderung am Code hier hochzählen (v8, v9...)!
+const CACHE_NAME = 'trio-v9'; // WICHTIG: Bei jeder Änderung am Code hier hochzählen (v8, v9...)!
 const ASSETS = [
     './',
     './index.html',
@@ -6,7 +6,8 @@ const ASSETS = [
     './script.js',
     './firebase-config.js',
     './assets/Trio-logo-192x192.png',
-    './assets/Trio-logo-512x512.png'
+    './assets/Trio-logo-512x512.png',
+    './assets/numo-logo.png'
 ];
 
 // Install Event
