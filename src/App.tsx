@@ -276,17 +276,6 @@ function App() {
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[100] bg-slate-950 flex flex-col"
           >
-            {/* Minimal Header with Close Button */}
-            <div className="absolute top-4 right-4 z-[101]">
-              <button
-                onClick={handleCloseApp}
-                className="p-2 bg-slate-900/80 hover:bg-slate-800 text-white rounded-full backdrop-blur-md border border-white/10 shadow-xl transition-all"
-                title="App Schließen"
-              >
-                <X size={24} />
-              </button>
-            </div>
-
             <iframe
               src={activeApp.path.startsWith('http') ? activeApp.path : `${import.meta.env.BASE_URL}${activeApp.path}`}
               className="w-full h-full border-none"

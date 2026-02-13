@@ -92,7 +92,16 @@ function switchView(viewName) {
     if (views[viewName]) {
         views[viewName].classList.add('active');
     }
-    // Note: Back buttons are now embedded in views, no global toggle needed
+
+    // Toggle Numo Back Link (Only visible in lobby)
+    const backLink = document.getElementById('numo-back-link');
+    if (backLink) {
+        if (viewName === 'lobby') {
+            backLink.style.display = 'flex';
+        } else {
+            backLink.style.display = 'none';
+        }
+    }
 
     // Auto-Save Session on view change if game is active
     if (appState.gameId && appState.playerId) {
