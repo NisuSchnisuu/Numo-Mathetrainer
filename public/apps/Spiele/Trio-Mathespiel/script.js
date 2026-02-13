@@ -1053,6 +1053,9 @@ function subscribeToGame(gameId) {
             }
         }
 
+        // --- HOST LOGIC FIX ---
+        // Ensure host logic (attempt listener) is always attached if I am the host.
+        // This fixes the issue where solutions are pushed to DB but never validated until a reload.
         if (appState.isHost) {
             attachHostLogic(gameId);
         }
@@ -2949,11 +2952,8 @@ function renderPlayersList(players) {
     const list = players ? Object.values(players) : [];
     list.sort((a, b) => (b.score || 0) - (a.score || 0));
 
-    // Limit to top 4 if Teacher Mode
+    // No longer limiting to top 4. Show everyone in scrollable list.
     let displayList = list;
-    if (appState.settings && appState.settings.teacherMode && appState.currentView === 'game') {
-        displayList = list.slice(0, 4);
-    }
 
     // Calculate Ranks from FULL list or display list? 
     // Usually ranks are global. So calculate ranks on 'list', then filter 'displayList' logic 
