@@ -9,5 +9,12 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <button onclick="const p = window.location.pathname; const target = p.includes('/Numo-Mathetrainer/') ? '/Numo-Mathetrainer/' : '/'; window.location.assign(target);" 
+            style="position: fixed; top: 1rem; left: 1rem; z-index: 9999; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.2); width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; border-radius: 12px; backdrop-filter: blur(8px); box-shadow: 0 4px 12px rgba(0,0,0,0.4);"
+            title="Zurück zum Hauptmenü">
+      <img src="./numo-logo-home.png" 
+           alt="Numo" 
+           style="width: 32px; height: 32px; object-fit: contain;">
+    </button>
   </body>
 </html>
