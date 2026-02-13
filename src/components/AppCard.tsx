@@ -3,7 +3,9 @@ import { motion } from 'framer-motion';
 import { addRecentAppId } from '../utils/storage';
 
 export function AppCard({ app, onLaunch }: { app: App; onLaunch?: (app: App) => void }) {
-    const fullPath = app.path.startsWith('http') ? app.path : `${import.meta.env.BASE_URL}${app.path}`;
+    // Use relative path '..' to go up from 'dashboard/' to root, then into 'apps/'
+    // This works for both Dev (served from root) and Prod (structure: /dashboard and /apps)
+    const fullPath = app.path.startsWith('http') ? app.path : `${import.meta.env.BASE_URL}../${app.path}`;
     const imagePath = `${import.meta.env.BASE_URL}${app.icon}`;
 
     const handleClick = (e: React.MouseEvent) => {
