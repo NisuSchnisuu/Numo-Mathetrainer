@@ -4,7 +4,7 @@ import { DashboardLayout } from './components/DashboardLayout';
 import { AppCard } from './components/AppCard';
 import { CategoryCard } from './components/CategoryCard';
 import { getRecentAppIds } from './utils/storage';
-import { Search, Command, ArrowLeft, Clock, X } from 'lucide-react';
+import { Search, Command, ArrowLeft, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const categories = ['Alle', 'Spiele', 'Üben', 'Theorie'] as const;
