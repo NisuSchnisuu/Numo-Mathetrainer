@@ -3347,10 +3347,33 @@ function setupLobbyNewEvents() {
 function setupTeacherShortcut() {
     document.addEventListener('keydown', (e) => {
         // Shift + Alt + L
-        if (e.shiftKey && e.altKey && (e.key === 'L' || e.key === 'l')) {
+        // We use e.code === 'KeyL' for better reliability on Mac/iPad keyboards where Alt+L produces special characters
+        const isL = e.key === 'L' || e.key === 'l' || e.code === 'KeyL';
+        if (e.shiftKey && e.altKey && isL) {
             toggleTeacherMode();
         }
     });
+
+    // Secret Touch/Click Hack for iPad users without keyboards (5 taps on TRIO title)
+    const title = document.querySelector('.game-title');
+    if (title) {
+        let clickCount = 0;
+        let lastClick = 0;
+        title.addEventListener('click', () => {
+            const now = Date.now();
+            if (now - lastClick > 500) clickCount = 0; // Reset if too slow
+            clickCount++;
+            lastClick = now;
+            if (clickCount === 5) {
+                toggleTeacherMode();
+                clickCount = 0;
+                // Optional: visual feedback?
+                if (typeof showMessage === 'function' && appState.teacherMode) {
+                    // showMessage('Info', 'Klassenmodus aktiviert 🎓');
+                }
+            }
+        });
+    }
 
     // Class Game Button Listener
     const btnClass = document.getElementById('btn-class-game');
