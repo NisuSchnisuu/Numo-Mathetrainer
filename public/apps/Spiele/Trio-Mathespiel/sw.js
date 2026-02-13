@@ -35,8 +35,8 @@ self.addEventListener('activate', (event) => {
             caches.keys().then((cacheNames) => {
                 return Promise.all(
                     cacheNames.map((cache) => {
-                        if (cache !== CACHE_NAME) {
-                            console.log('Clearing old cache:', cache);
+                        if (cache.startsWith('trio-') && cache !== CACHE_NAME) {
+                            console.log('Clearing old Trio cache:', cache);
                             return caches.delete(cache);
                         }
                     })

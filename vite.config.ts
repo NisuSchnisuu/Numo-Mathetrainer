@@ -14,7 +14,9 @@ export default defineConfig({
         enabled: true
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg}']
+        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+        globIgnores: ['apps/**', '**/node_modules/**'],
+        navigateFallbackDenylist: [/^\/apps/],
       },
       manifest: {
         name: "Numo Mathetrainer",
