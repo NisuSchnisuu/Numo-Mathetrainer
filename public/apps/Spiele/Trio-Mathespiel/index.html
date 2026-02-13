@@ -163,10 +163,13 @@
 </head>
 
 <body>
-    <button onclick="window.location.href='../../../index.html'" 
+    <button onclick="const root = window.location.pathname.split('/apps/')[0] || '/'; window.location.href = root;" 
             title="Zurück zum Hauptmenü"
-            style="position: fixed; top: 1rem; left: 1rem; z-index: 9999; background: none; border: none; padding: 0; cursor: pointer; transition: transform 0.2s; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));">
-        <img src="../../../numo-logo/Numo-logo-192x192.png" alt="Numo Logo" style="width: 48px; height: 48px; object-fit: contain;">
+            style="position: fixed; top: 1rem; left: 1rem; z-index: 9999; background: rgba(15, 23, 42, 0.4); border: 1px solid rgba(255, 255, 255, 0.1); padding: 4px; cursor: pointer; transition: all 0.2s; border-radius: 12px; backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; width: 48px; height: 48px;">
+        <img src="../../../numo-logo/Numo-logo-192x192.png" 
+             alt="Numo" 
+             style="width: 32px; height: 32px; object-fit: contain;"
+             onerror="this.src='../../../vite.svg'">
     </button>
 
     <!-- VIEW 1: LOBBY -->
