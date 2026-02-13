@@ -174,7 +174,16 @@ function checkSession() {
     return false;
 }
 
-// --- Initialization ---
+// PWA Install Logic
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    // Show the native install button if it exists
+    const nativeBtn = document.getElementById('btn-native-install');
+    if (nativeBtn) nativeBtn.style.display = 'block';
+});
+
 function init() {
     // PWA ENFORCEMENT CHECK
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
@@ -183,19 +192,6 @@ function init() {
     // Check if on localhost (allow bypass for dev)
     const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
-    // REMOVE THIS LINE TO ENFORCE EVERYWHERE:
-    // if (!isStandalone && !isLocalhost) {
-
-    // User requested "im Internet" -> Enforce strict?
-    // "Also im Browser gibt es das Modal... und in der Installierten App funktioniert es."
-    // Let's enforce it strictly unless it is specifically prevented. 
-    // BUT: I am running on localhost now. If I enforce strict, the user (and I) might get blocked if not "installed".
-    // Installing localhost PWA is possible but annoying.
-    // I will add a developer bypass check: ?dev=true logic OR just allow localhost.
-    // The prompt says "wenn man die App im Internet öffnet". This implies remote access.
-    // So excluding localhost is likely what they want implicitly to pass "App im Internet".
-    // I'll stick to blocking non-standalone.
-
     if (!isStandalone) {
         // Show the Trigger Button in Lobby
         const installBtn = document.getElementById('btn-trigger-install');
@@ -203,21 +199,15 @@ function init() {
             installBtn.style.display = 'block';
 
             installBtn.addEventListener('click', () => {
-                document.getElementById('pwa-install-modal').classList.add('active');
+                // NEW LOGIC: If we are in an iframe (Numo Shell), open the direct link in a new tab
+                if (window.parent !== window) {
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('install', 'true');
+                    window.open(url.toString(), '_blank');
+                    return;
+                }
 
-                // Detect OS logic (moved here so it runs when opened)
-                const ua = navigator.userAgent || navigator.vendor || window.opera;
-                const isTouch = (navigator.maxTouchPoints && navigator.maxTouchPoints > 1);
-                const isIOS = (/iPad|iPhone|iPod/.test(ua) && !window.MSStream) || (ua.includes("Mac") && isTouch);
-                const isAndroid = /android/i.test(ua);
-
-                let targetId = 'install-desktop';
-                if (isIOS) targetId = 'install-ios';
-                else if (isAndroid) targetId = 'install-android';
-
-                document.querySelectorAll('.platform-guide').forEach(el => el.style.display = 'none');
-                const guide = document.getElementById(targetId);
-                if (guide) guide.style.display = 'block';
+                showInstallModal();
             });
         }
 
@@ -230,11 +220,56 @@ function init() {
             });
         }
 
-        // Auto-show removed per user request:
-        // document.getElementById('pwa-install-modal').classList.add('active');
+        // Native Install Button Action
+        const nativeBtn = document.getElementById('btn-native-install');
+        if (nativeBtn) {
+            nativeBtn.addEventListener('click', async () => {
+                if (!deferredPrompt) return;
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                console.log(`User response to the install prompt: ${outcome}`);
+                deferredPrompt = null;
+                nativeBtn.style.display = 'none';
+                document.getElementById('pwa-install-modal').classList.remove('active');
+            });
+        }
+
+        // Auto-show if ?install=true is present
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('install') === 'true' && window.parent === window) {
+            showInstallModal();
+            // Clean URL
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
     }
 
     setupEventListeners();
+    // ... rest of init
+}
+
+function showInstallModal() {
+    document.getElementById('pwa-install-modal').classList.add('active');
+
+    // Detect OS logic
+    const ua = navigator.userAgent || navigator.vendor || window.opera;
+    const isTouch = (navigator.maxTouchPoints && navigator.maxTouchPoints > 1);
+    const isIOS = (/iPad|iPhone|iPod/.test(ua) && !window.MSStream) || (ua.includes("Mac") && isTouch);
+    const isAndroid = /android/i.test(ua);
+
+    let targetId = 'install-desktop';
+    if (isIOS) targetId = 'install-ios';
+    else if (isAndroid) targetId = 'install-android';
+
+    document.querySelectorAll('.platform-guide').forEach(el => el.style.display = 'none');
+    const guide = document.getElementById(targetId);
+    if (guide) guide.style.display = 'block';
+
+    // Show native button only for non-iOS (Android or Desktop) if prompt is available
+    const nativeBtn = document.getElementById('btn-native-install');
+    if (nativeBtn && deferredPrompt && !isIOS) {
+        nativeBtn.style.display = 'block';
+    }
+}
 
     // Auto-Cleanup Old Games (Lazy Trigger)
     checkAutoCleanup();

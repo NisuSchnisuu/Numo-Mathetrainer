@@ -7,9 +7,76 @@
     <title>Aufgabentraining</title>
     <script type="module" crossorigin src="./assets/index-BxP-2y9c.js"></script>
     <link rel="stylesheet" crossorigin href="./assets/index-clkga7zU.css">
-  <link rel="manifest" href="./manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="./registerSW.js"></script></head>
+  <link rel="manifest" href="./manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="./registerSW.js"></script>
+    <link rel="stylesheet" href="install-modal.css">
+  </head>
   <body>
     <div id="root"></div>
+
+    <!-- PWA INSTALL MODAL -->
+    <div id="pwa-install-modal" class="modal-overlay">
+        <div class="install-content">
+            <button id="btn-close-install" class="btn-icon-close">&times;</button>
+
+            <div class="install-header">
+                <span class="app-icon-large">✨</span>
+                <h1 class="install-title">App installieren</h1>
+                <p class="install-subtitle">Installiere <strong>Aufgabentraining</strong> für das beste Erlebnis.</p>
+                <button id="btn-native-install" class="btn-native-install" style="display: none;">Jetzt direkt installieren</button>
+            </div>
+
+            <!-- iOS -->
+            <div id="install-ios" class="platform-guide" style="display: none;">
+                <h3>iPhone / iPad</h3>
+                <div class="steps-grid">
+                    <div class="step-card">
+                        <span class="step-num">1</span>
+                        <div class="step-text">Tippe auf den <strong>Teilen-Button</strong>.</div>
+                    </div>
+                    <div class="step-card">
+                        <span class="step-num">2</span>
+                        <div class="step-text">Wähle <strong>"Zum Home-Bildschirm"</strong>.</div>
+                    </div>
+                    <div class="step-card">
+                        <span class="step-num">3</span>
+                        <div class="step-text">Tippe auf <strong>"Hinzufügen"</strong>.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Android -->
+            <div id="install-android" class="platform-guide" style="display: none;">
+                <h3>Android</h3>
+                <div class="steps-grid">
+                    <div class="step-card">
+                        <span class="step-num">1</span>
+                        <div class="step-text">Tippe auf das <strong>Dreipunkt-Menü</strong>.</div>
+                    </div>
+                    <div class="step-card">
+                        <span class="step-num">2</span>
+                        <div class="step-text">Wähle <strong>"App installieren"</strong>.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Desktop -->
+            <div id="install-desktop" class="platform-guide" style="display: none;">
+                <h3>PC / Mac</h3>
+                <div class="steps-grid">
+                    <div class="step-card">
+                        <span class="step-num">1</span>
+                        <div class="step-text">Klicke auf das <strong>Installieren-Icon</strong> in der Adressleiste.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="refresh-hint-box">
+                <p>App bereits installiert? Schließe diesen Tab und öffne die App!</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="install-logic.js"></script>
     <a href="../../../" 
             onclick="if(window.parent !== window) { window.parent.postMessage('numo-back-to-home', '*'); return false; }"
             style="position: fixed; top: 1rem; left: 1rem; z-index: 9999; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.2); width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; border-radius: 12px; backdrop-filter: blur(8px); box-shadow: 0 4px 12px rgba(0,0,0,0.4); text-decoration: none;"
