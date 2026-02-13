@@ -1,4 +1,4 @@
-const CACHE_NAME = 'trio-v5';
+const CACHE_NAME = 'trio-v7'; // WICHTIG: Bei jeder Änderung am Code hier hochzählen (v8, v9...)!
 const ASSETS = [
     './',
     './index.html',
@@ -10,19 +10,27 @@ const ASSETS = [
 ];
 
 // Install Event
+// Lädt die Dateien in den Cache, sobald der SW installiert wird
 self.addEventListener('install', (event) => {
-    self.skipWaiting(); // Force activation
+    // Zwingt den wartenden SW sofort aktiv zu werden
+    self.skipWaiting();
+
     event.waitUntil(
         caches.open(CACHE_NAME)
-            .then((cache) => cache.addAll(ASSETS))
+            .then((cache) => {
+                console.log('Caching assets');
+                return cache.addAll(ASSETS);
+            })
     );
 });
 
-// Activate Event - Clean up old caches
+// Activate Event
+// Löscht alte Caches, damit die Festplatte nicht volläuft und User nicht alte Daten behalten
 self.addEventListener('activate', (event) => {
     event.waitUntil(
         Promise.all([
-            clients.claim(), // Take control of all clients immediately
+            // Übernimmt sofort die Kontrolle über alle offenen Tabs
+            clients.claim(),
             caches.keys().then((cacheNames) => {
                 return Promise.all(
                     cacheNames.map((cache) => {
@@ -37,10 +45,18 @@ self.addEventListener('activate', (event) => {
     );
 });
 
-// Fetch Event
+// Fetch Event - NETWORK FIRST STRATEGY
+// Versucht immer erst, das Netzwerk zu fragen. Nur wenn das fehlschlägt (offline), geht es an den Cache.
 self.addEventListener('fetch', (event) => {
     event.respondWith(
-        caches.match(event.request)
-            .then((response) => response || fetch(event.request))
+        fetch(event.request)
+            .then((response) => {
+                // Netzwerk war erfolgreich -> Antwort zurückgeben
+                return response;
+            })
+            .catch(() => {
+                // Netzwerk fehlgeschlagen (Offline) -> Im Cache nachsehen
+                return caches.match(event.request);
+            })
     );
 });

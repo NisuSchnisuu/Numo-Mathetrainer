@@ -354,9 +354,11 @@ function setupEventListeners() {
             // Open Modal
             document.getElementById('create-game-modal').classList.add('active');
 
-            // Hide Observe setting for normal game
-            const obs = document.getElementById('setting-observe-container');
-            if (obs) obs.style.display = 'none';
+            // Set Title for Normal Mode
+            const modalTitle = document.querySelector('#create-game-modal h2');
+            if (modalTitle) modalTitle.innerText = "Spiel konfigurieren";
+
+            // Hide Observe setting for normal game (Element removed from DOM, check removed)
         });
     }
 
@@ -407,11 +409,18 @@ function setupEventListeners() {
     const refreshBtn = document.getElementById('btn-vote-refresh');
     if (refreshBtn) {
         refreshBtn.onclick = () => {
-            showConfirm("Zielzahl ändern?", "Möchtest du eine Abstimmung starten?", () => {
-                initiateVote();
-            });
+            if (appState.settings && appState.settings.classMode) {
+                handleClassReroll();
+            } else {
+                showConfirm("Zielzahl ändern?", "Möchtest du eine Abstimmung starten?", () => {
+                    initiateVote();
+                });
+            }
         };
+        // Initial check for cooldown visuals
+        if (appState.settings && appState.settings.classMode) updateRerollTimer();
     }
+
 
     buttons.buzzer.addEventListener('click', handleBuzzerClick);
 
@@ -560,7 +569,9 @@ function createGame(playerName, isTeacherGame = false) {
         appState.winningScore = wScore;
 
         // Teacher Settings
-        const observeMode = document.getElementById('observe-mode').checked;
+        // Teacher Settings
+        // const observeMode = document.getElementById('observe-mode').checked; // REMOVED
+
 
         // Use teacher mode from arg or existing appState? 
         // Logic: specific button passes isTeacherGame=true.
@@ -580,13 +591,10 @@ function createGame(playerName, isTeacherGame = false) {
             settings: {
                 difficulty: appState.difficulty,
                 gridSize: appState.gridSize,
-                difficulty: appState.difficulty,
-                gridSize: appState.gridSize,
-                gridSize: appState.gridSize,
                 winningScore: appState.winningScore,
                 numberRange: appState.numberRange || 'base',
                 teacherMode: isTeacherGame,
-                observeMode: isTeacherGame ? observeMode : true // Default true for normal games
+                classMode: isTeacherGame
             },
             hostId: appState.playerId,
             createdAt: firebase.database.ServerValue.TIMESTAMP,
@@ -609,6 +617,8 @@ function createGame(playerName, isTeacherGame = false) {
         });
     });
 }
+
+
 
 function joinGame(gameId, playerName) {
     appState.playerName = playerName;
@@ -637,10 +647,6 @@ function joinGame(gameId, playerName) {
             enterWaitingRoom();
 
             saveSession(); // Save session
-
-            // Auto-remove player if client disconnects
-            // Disabling to allow reloads. 
-            // playerRef.onDisconnect().remove();
         });
     });
 }
@@ -655,59 +661,25 @@ function enterWaitingRoom() {
 
 
     // QR Code with Direct Link
-    // Construct URL: Current Base + ?join=GAMEID
     const protocol = window.location.protocol;
     const host = window.location.host;
     let path = window.location.pathname;
 
-    // Remove 'index.html' for cleaner URL if present
     if (path.endsWith('index.html')) {
         path = path.substring(0, path.length - 'index.html'.length);
     }
-    // Ensure trailing slash
     if (!path.endsWith('/')) {
         path += '/';
     }
 
     const joinUrl = `${protocol}//${host}${path}?join=${appState.gameId}`;
-
-    console.log("Generating QR for:", joinUrl); // Debug log
-
     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(joinUrl)}`;
 
-    // Target the NEW Large QR Container in Modal
     const qrContainer = document.getElementById('lobby-qr-large-container');
     if (qrContainer) {
-        qrContainer.innerHTML = `
-            <img src="${qrUrl}" alt="Game QR Code" style="width:100%; height:auto; border-radius:8px;" />
-        `;
-
-        // Warn if on localhost
-        const hostname = window.location.hostname;
-        if (hostname === 'localhost' || hostname === '127.0.0.1') {
-            const warnDiv = document.createElement('div');
-            warnDiv.style.backgroundColor = '#451a03';
-            warnDiv.style.color = '#fbbf24';
-            warnDiv.style.padding = '10px';
-            warnDiv.style.borderRadius = '8px';
-            warnDiv.style.marginTop = '15px';
-            warnDiv.style.fontSize = '0.9rem';
-            warnDiv.style.lineHeight = '1.4';
-            warnDiv.innerHTML = `
-                <strong>⚠️ ACHTUNG:</strong><br>
-                Du bist auf <code>${hostname}</code>.<br>
-                Andere Geräte können diesen QR-Code nicht scannen.<br>
-                Bitte öffne die Seite über deine <strong>Netzwerk-IP</strong> (z.B. 192.168.X.X).
-            `;
-            qrContainer.appendChild(warnDiv);
-        }
+        qrContainer.innerHTML = `<img src="${qrUrl}" alt="Game QR Code" style="width:100%; height:auto; border-radius:8px;" />`;
     }
 
-    // Host Controls Visibility
-    // Note: buttons.startGame might point to old ID? 
-    // script.js:36: startGame: document.getElementById('btn-start-game'),
-    // index.html:221: <button id="btn-start-game" ...>
-    // ID matches.
     const statusText = document.getElementById('lobby-status-text');
 
     if (appState.isHost) {
@@ -720,38 +692,44 @@ function enterWaitingRoom() {
             statusText.innerText = "Warte auf Host...";
         }
     }
+
+    updateClassModeIndicator();
+}
+
+function updateClassModeIndicator() {
+    const badge = document.getElementById('class-mode-badge');
+    if (!badge) return;
+
+    if (appState.settings && appState.settings.classMode) {
+        badge.style.display = 'flex';
+    } else {
+        badge.style.display = 'none';
+    }
 }
 
 function leaveGame() {
-    // Crucial: Prevent Auto-Save and Firebase listener reactions
     appState.isLeaving = true;
 
     const gid = appState.gameId;
     const pid = appState.playerId;
     const isHost = appState.isHost;
 
-    // Unsubscribe from Firebase listeners BEFORE removing data
     if (gid) {
         const gameRef = db.ref(`games/${gid}`);
-        gameRef.off(); // Remove all listeners for this game
+        gameRef.off();
     }
 
-    // Remove from Firebase
     if (gid && pid) {
         const gameRef = db.ref(`games/${gid}`);
         if (isHost) {
-            // Host leaves -> Delete Game
             gameRef.remove();
         } else {
-            // Client leaves
             gameRef.child(`players/${pid}`).remove();
         }
     }
 
-    // Clear session from localStorage
     clearSession();
 
-    // Reset app state to defaults (without page reload)
     appState.gameId = null;
     appState.playerId = null;
     appState.isHost = false;
@@ -765,37 +743,23 @@ function leaveGame() {
     appState.lockedUntil = null;
     appState.settings = null;
     appState.hostId = null;
-    appState.isLeaving = false; // Reset flag for next game
+    appState.isLeaving = false;
 
-    // Clear any running timers
-    if (appState.buzzerTimer) {
-        clearInterval(appState.buzzerTimer);
-        appState.buzzerTimer = null;
-    }
-    if (appState.penaltyInterval) {
-        clearInterval(appState.penaltyInterval);
-        appState.penaltyInterval = null;
-    }
+    if (appState.buzzerTimer) clearInterval(appState.buzzerTimer);
+    if (appState.penaltyInterval) clearInterval(appState.penaltyInterval);
 
-    // Reset UI elements
     const grid = document.getElementById('game-grid');
     if (grid) grid.innerHTML = '';
 
     const targetNumber = document.getElementById('target-number');
     if (targetNumber) targetNumber.innerText = '?';
 
-    // Switch to lobby view
     switchView('lobby');
-
-    console.log("Left game successfully, returned to lobby.");
 }
-
-// ... existing code ...
 
 function startGameAction() {
     if (!appState.isHost) return;
 
-    // Generate Grid
     // Generate Grid
     const { grid, solutions } = generateGridData(appState.gridSize);
 
@@ -805,21 +769,54 @@ function startGameAction() {
         return;
     }
 
-    const randomSol = solutions[Math.floor(Math.random() * solutions.length)];
-    appState.target = randomSol.result;
-    appState.currSolutions = solutions;
+    if (appState.settings && appState.settings.classMode) {
+        // --- CLASS MODE START ---
+        // 1. Shuffle Solutions to create a random path
+        const shuffled = solutions.sort(() => 0.5 - Math.random());
 
-    const gameId = `games/${appState.gameId}`;
-    db.ref(gameId).update({
-        grid: grid,
-        target: appState.target,
-        state: 'playing',
-        solutions: null,
-        currentAttempt: null,
-        buzzerOwner: null,
-        buzzerTimestamp: null
-    }).then(() => console.log("HOST: DB Update Success"))
-        .catch(e => console.error("HOST: DB Update Failed", e));
+        // 2. Update DB
+        const updates = {
+            grid: grid,
+            state: 'playing',
+            solutions: shuffled, // Store ALL solutions for the class path
+            // No global target in class mode
+            target: null,
+            vote: null,
+            winner: null
+        };
+
+        // 3. Reset all players to Index 0
+        Object.keys(appState.players).forEach(pid => {
+            updates[`players/${pid}/currentSolutionIndex`] = 0;
+            updates[`players/${pid}/score`] = 0;
+            updates[`players/${pid}/lockedUntil`] = null;
+        });
+
+        db.ref(`games/${appState.gameId}`).update(updates)
+            .then(() => console.log("HOST: Class Game Started"))
+            .catch(e => console.error("HOST: Start Failed", e));
+
+    } else {
+        // --- CLASSIC MODE START ---
+        const randomSol = solutions[Math.floor(Math.random() * solutions.length)];
+        appState.target = randomSol.result;
+        appState.currSolutions = solutions;
+
+        const gameId = `games/${appState.gameId}`;
+        db.ref(gameId).update({
+            grid: grid,
+            target: appState.target,
+            state: 'playing',
+            solutions: null, // Don't store full list in classic to save bandwidth? Or maybe we should?
+            // Classic mode doesn't need the full list on client usually, but standardizing wouldn't hurt.
+            // For now, keep as is to minimize regression risk.
+            currentAttempt: null,
+            buzzerOwner: null,
+            buzzerTimestamp: null,
+            winner: null
+        }).then(() => console.log("HOST: DB Update Success"))
+            .catch(e => console.error("HOST: DB Update Failed", e));
+    }
 }
 
 // --- Listeners ---
@@ -910,6 +907,8 @@ function subscribeToGame(gameId) {
             if (modal && modal.classList.contains('active')) {
                 populateModalButtons(true);
             }
+
+            updateClassModeIndicator();
         }
 
         let forceRender = false;
@@ -936,7 +935,51 @@ function subscribeToGame(gameId) {
                 }
             }
         }
-        if (data.target) {
+        // Sync Solutions (Class Mode)
+        if (data.solutions) appState.allSolutions = data.solutions;
+
+        if (appState.settings && appState.settings.classMode) {
+            const myP = data.players ? data.players[appState.playerId] : null;
+            if (myP && appState.allSolutions && myP.currentSolutionIndex !== undefined) {
+                const newTarget = appState.allSolutions[myP.currentSolutionIndex]?.result;
+                // If target changed or first fetch
+                if (newTarget !== undefined && appState.target !== newTarget) {
+                    appState.target = newTarget;
+                    elements.targetNumber.innerText = newTarget;
+                    appState.selectedCells = [];
+                    updateGridSelection();
+                    closeCalculationModal(false);
+                } else if (newTarget === undefined && appState.allSolutions.length > 0) {
+                    // End of game
+                    elements.targetNumber.innerText = "🏆";
+                }
+            }
+
+            // Adjust UI
+            if (buttons.buzzer) buttons.buzzer.style.display = 'none';
+
+            // Setup Skip Button
+            const voteBox = document.getElementById('vote-box');
+            if (voteBox) {
+                voteBox.style.display = 'flex';
+                const voteBtn = document.getElementById('btn-vote-veto');
+                if (voteBtn) {
+                    voteBtn.innerText = "Überspringen (20s)";
+                    voteBtn.onclick = handleSkipClick;
+
+                    // Check Cooldown
+                    const cooldown = parseInt(localStorage.getItem('skipCooldown') || '0');
+                    if (cooldown > Date.now()) {
+                        voteBtn.disabled = true;
+                        voteBtn.innerText = `Warten (${Math.ceil((cooldown - Date.now()) / 1000)}s)`;
+                        // We rely on render loop to update text
+                    } else {
+                        voteBtn.disabled = false;
+                    }
+                }
+            }
+
+        } else if (data.target) {
             console.log("SYNC: Target update received:", data.target);
             if (appState.target !== data.target || forceRender) {
                 // Target changed = someone solved correctly
@@ -1343,7 +1386,7 @@ function handleResultSync(res) {
     } else {
         title = "FALSCH! ❌";
         if (isMe) {
-            msg = res.reason || "Das war leider falsch! Du bist für 20s gesperrt.";
+            msg = res.reason || "Das war leider falsch! Du bist für 15s gesperrt.";
         } else {
             // Generic message for others, no specific formula
             msg = `${res.playerName}: Das war nicht ganz korrekt.`;
@@ -1352,6 +1395,12 @@ function handleResultSync(res) {
 
         // ...
     } // Auto-close after 3s
+    // Class Mode: Suppress global feedback
+    if (appState.settings && appState.settings.classMode && !isMe) {
+        // Do nothing for others in Class Mode
+        return;
+    }
+
     showModal(title, msg, null, true, "OK");
     setTimeout(() => {
         const m = document.getElementById('app-modal');
@@ -1579,6 +1628,13 @@ function resetBuzzerState() {
     buttons.buzzer.classList.remove('active-buzzer');
     buttons.buzzer.disabled = false;
 
+    // Class Mode Safeguard
+    if (appState.settings && appState.settings.classMode) {
+        buttons.buzzer.style.display = 'none';
+    } else {
+        buttons.buzzer.style.display = ''; // Restore default
+    }
+
     // Check local lock
     if (appState.lockedUntil && appState.lockedUntil > Date.now()) {
         const wait = Math.ceil((appState.lockedUntil - Date.now()) / 1000);
@@ -1588,7 +1644,9 @@ function resetBuzzerState() {
 }
 
 function handleCellClick(e) {
-    if (appState.buzzerOwner !== appState.playerId) return;
+    if (appState.lockedUntil && appState.lockedUntil > Date.now()) return; // Block input if locked
+    // Class Mode: No buzzer needed. Classic Mode: Must own buzzer.
+    if (!appState.settings?.classMode && appState.buzzerOwner !== appState.playerId) return;
 
     const cell = e.target;
     // Handle clicking a dimmed cell -> Reset selection to just this cell if valid (removed per new logic)
@@ -1666,11 +1724,17 @@ function flashInvalidCell(cell) {
 
 
 function updateSelection(newSel) {
-    db.ref(`games/${appState.gameId}/status/selection`).set(newSel);
+    if (appState.settings && appState.settings.classMode) {
+        appState.selectedCells = newSel;
+        updateGridSelection();
+        if (newSel.length === 3) openCalculationModal();
+    } else {
+        db.ref(`games/${appState.gameId}/status/selection`).set(newSel);
 
-    if (newSel.length === 3) {
-        // Auto-open modal if we are the owner
-        openCalculationModal();
+        if (newSel.length === 3) {
+            // Auto-open modal if we are the owner
+            openCalculationModal();
+        }
     }
 }
 
@@ -1678,8 +1742,10 @@ function updateSelection(newSel) {
 
 function updateGridSelection() {
     const cells = document.querySelectorAll('.grid-cell');
-    const hasOwner = appState.buzzerOwner !== null;
-    const isOwner = (appState.buzzerOwner === appState.playerId);
+    // Class Mode always "owns" the board locally
+    const isClassMode = appState.settings && appState.settings.classMode;
+    const hasOwner = appState.buzzerOwner !== null || isClassMode;
+    const isOwner = (appState.buzzerOwner === appState.playerId) || isClassMode;
 
     cells.forEach(c => {
         const idx = parseInt(c.dataset.index);
@@ -1712,36 +1778,6 @@ function handleModalSync(remoteState) {
         const headerOwner = appState.buzzerOwner;
         const isOwner = (headerOwner === appState.playerId);
 
-        // MOVED CHECK TO BOTTOM TO ALLOW DATA SYNC
-
-
-        const observeMode = (appState.settings && appState.settings.observeMode !== undefined) ? appState.settings.observeMode : true;
-
-        // Teacher Broadcast Logic
-        // If the buzzer owner is the HOST, and teacherBroadcast is enabled -> Allow
-        // We need to know who is host. appState.isHost is local.
-        // We can check if 'headerOwner' is the hostId from settings? No, settings doesn't have hostId.
-        // But we have 'gameData.hostId'.
-        // Or simpler: If "I" am a student, I see 'headerOwner'. Is 'headerOwner' the Host?
-        // We probably need to store hostId in appState synced from Firebase.
-        // createGame stores it in root 'hostId'. subscribeToGame gets root data?
-        // Let's assume appState.hostId is available or we add it to subscribeToGame.
-
-        // ADD hostId sync in subscribeToGame first (via separate chunk or implicit knowledge).
-        // Assuming appState.hostId exists.
-        const isHostOwner = (appState.hostId && headerOwner === appState.hostId);
-        const teacherBroadcast = (appState.settings && appState.settings.teacherBroadcast);
-
-        // Allow Host (me) to always see.
-        // Allow Student to see if observeMode OR (isHostOwner AND teacherBroadcast)
-
-        const canObserve = isOwner || appState.isHost || observeMode || (isHostOwner && teacherBroadcast);
-
-        if (!canObserve) {
-            // Do not open modal for observers / students if observation disabled
-            modal.classList.remove('active'); // Force close/hide
-            return;
-        }
 
         // --- VISIBILITY CHECK ---
         // If I am NOT the owner, check if I wanted to close this
@@ -1805,22 +1841,32 @@ function handleModalSync(remoteState) {
 }
 
 function openCalculationModal() {
-    // Only owner calls this via updateSelection(3)
-    if (appState.buzzerOwner !== appState.playerId) return;
+    if (appState.settings && appState.settings.classMode) {
+        // Local Open for Class Mode
+        const modal = document.getElementById('calc-modal');
+        modal.classList.add('active');
+        modal.classList.remove('read-only');
+        const targetEl = document.getElementById('modal-target-display');
+        if (targetEl) targetEl.innerText = `Ziel: ${appState.target}`;
+        populateModalButtons();
+    } else {
+        // Only owner calls this via updateSelection(3)
+        if (appState.buzzerOwner !== appState.playerId) return;
 
-    // Clear Selection Timer
-    if (appState.selectionTimer) {
-        clearInterval(appState.selectionTimer);
-        appState.selectionTimer = null;
+        // Clear Selection Timer
+        if (appState.selectionTimer) {
+            clearInterval(appState.selectionTimer);
+            appState.selectionTimer = null;
+        }
+
+        db.ref(`games/${appState.gameId}/status/modal`).set({
+            isOpen: true,
+            formula: '',
+            usedIndices: []
+        });
+
+        populateModalButtons(); // Owner resets formula initially
     }
-
-    db.ref(`games/${appState.gameId}/status/modal`).set({
-        isOpen: true,
-        formula: '',
-        usedIndices: []
-    });
-
-    populateModalButtons(); // Owner resets formula initially
 }
 
 function populateModalButtons(preserveFormula = false) {
@@ -1927,8 +1973,8 @@ function populateModalButtons(preserveFormula = false) {
     const btnGiveUp = document.getElementById('btn-give-up');
     if (btnGiveUp) {
         btnGiveUp.onclick = handleGiveUp;
-        // Only show if I am the active player (Buzzer Owner)
-        if (appState.buzzerOwner === appState.playerId) {
+        // Only show if I am the active player (Buzzer Owner) or Class Mode
+        if ((appState.settings && appState.settings.classMode) || appState.buzzerOwner === appState.playerId) {
             btnGiveUp.style.display = 'block';
             btnGiveUp.innerText = "AUFGEBEN (15s)";
         } else {
@@ -1939,7 +1985,7 @@ function populateModalButtons(preserveFormula = false) {
 
 // Handle Give Up - Player voluntarily forfeits their turn with 15s penalty
 function handleGiveUp() {
-    if (appState.buzzerOwner !== appState.playerId) return;
+    if (!appState.settings?.classMode && appState.buzzerOwner !== appState.playerId) return;
 
     showConfirm(
         "Aufgeben?",
@@ -1972,7 +2018,9 @@ function closeCalculationModal(push = true) {
     document.getElementById('calc-modal').classList.remove('active');
     document.getElementById('calc-modal').style.display = '';
 
-    if (push && appState.gameId && appState.buzzerOwner === appState.playerId) {
+    if (appState.settings && appState.settings.classMode) {
+        updateSelection([]);
+    } else if (push && appState.gameId && appState.buzzerOwner === appState.playerId) {
         db.ref(`games/${appState.gameId}/status/modal`).set({ isOpen: false });
         // Reset selection too
         updateSelection([]);
@@ -1983,6 +2031,7 @@ function closeCalculationModal(push = true) {
 }
 
 function updateRemoteFormula() {
+    if (appState.settings && appState.settings.classMode) return;
     if (appState.buzzerOwner === appState.playerId) {
         db.ref(`games/${appState.gameId}/status/modal`).update({
             formula: modalState.formula,
@@ -1997,7 +2046,7 @@ function updateRemoteFormula() {
 
 
 function handleNumClick(num, idx, btn) {
-    if (appState.buzzerOwner !== appState.playerId) return;
+    if (!appState.settings?.classMode && appState.buzzerOwner !== appState.playerId) return;
     if (modalState.usedIndices.includes(idx)) return;
 
     const prev = modalState.formula;
@@ -2034,7 +2083,7 @@ function handleNumClick(num, idx, btn) {
 }
 
 function handleOpClick(op, btn) {
-    if (appState.buzzerOwner !== appState.playerId) return;
+    if (!appState.settings?.classMode && appState.buzzerOwner !== appState.playerId) return;
 
     const prev = modalState.formula;
 
@@ -2153,9 +2202,7 @@ function handleBackspace() {
 
     // Also update operators used state?
     // handleOpClick logic re-checks operators in `updateLobby`? No, `renderCalculationModal`.
-    // We should trigger operator update manually or just let it update on next render?
-    // Wait, `handleOpClick` adds/removes `.used` for operators based on formula.
-    // We need to trigger that update.
+    // We should trigger that update.
     // Simplest: Call `updateOperatorButtonsState()` if we extract it, or copy logic.
     // Let's iterate operators and update classes.
     document.querySelectorAll('.btn-calc.op').forEach(b => {
@@ -2168,7 +2215,7 @@ function handleBackspace() {
 }
 
 function handleClear() {
-    if (appState.buzzerOwner !== appState.playerId) return;
+    if (!appState.settings?.classMode && appState.buzzerOwner !== appState.playerId) return;
     modalState.formula = '';
     modalState.usedIndices = [];
     modalState.history = [];
@@ -2271,7 +2318,8 @@ function submitSolution() {
         playerName: appState.selfName || 'Spieler',
         indices: appState.selectedCells,
         formula: modalState.formula,
-        target: appState.target
+        target: appState.target,
+        currentIndex: (appState.settings?.classMode && appState.players[appState.playerId]) ? appState.players[appState.playerId].currentSolutionIndex : null
     };
 
     db.ref(`games/${appState.gameId}/attempts`).push(attempt);
@@ -2356,8 +2404,15 @@ function validateAttempt(attempt, attemptKey) {
         result = calculateFormula(attempt.formula);
 
         // Math Check First
-        if (Math.abs(result - attempt.target) > 0.001) {
-            failReason = `Ergebnis ${result} stimmt nicht mit Ziel ${attempt.target} überein.`;
+        let target = attempt.target;
+        if (appState.settings && appState.settings.classMode && appState.allSolutions && attempt.currentIndex !== undefined) {
+            // Validate against the server-side target for this index
+            const sol = appState.allSolutions[attempt.currentIndex];
+            if (sol) target = sol.result;
+        }
+
+        if (Math.abs(result - target) > 0.001) {
+            failReason = `Ergebnis ${result} stimmt nicht mit Ziel ${target} überein.`;
         } else {
             // Structure Check
             console.log("Validating Difficulty:", appState.difficulty);
@@ -2434,8 +2489,15 @@ function validateAttempt(attempt, attemptKey) {
             gameRef.update(penaltyResets);
         }
 
-        gameRef.child('status').set(null);
-        generateNewTarget();
+        // CLASS MODE: Individual Progress
+        if (appState.settings && appState.settings.classMode) {
+            gameRef.child(`players/${attempt.playerId}/currentSolutionIndex`).transaction(curr => (curr || 0) + 1);
+            // No global reset
+        } else {
+            // CLASSIC MODE: Global Reset
+            gameRef.child('status').set(null);
+            generateNewTarget();
+        }
     } else {
         // Hardcore Mode: Point Deduction
         if (appState.settings && appState.settings.hardcoreMode) {
@@ -2469,31 +2531,40 @@ function startPenaltyCountdown() {
     appState.penaltyInterval = setInterval(() => {
         const remaining = Math.ceil((appState.lockedUntil - Date.now()) / 1000);
 
-        // CHECK: Is someone else calculating? If so, enable "Anschauen" despite penalty!
-        if (appState.buzzerOwner && appState.buzzerOwner !== appState.playerId) {
+        // Class Mode: Show countdown in Rank Display
+        if (appState.settings && appState.settings.classMode) {
+            updateRankDisplay();
+        }
+
+        // CHECK: Is someone else calculating? If so, enable "Anschauen" despite penalty! (Classic Mode Only)
+        if (!appState.settings?.classMode && appState.buzzerOwner && appState.buzzerOwner !== appState.playerId) {
             buttons.buzzer.innerText = "Anschauen";
             buttons.buzzer.disabled = false;
-            // Note: We don't clear interval, because we want to resume countdown text 
-            // if the other player cancels/submits and our penalty is still active.
         } else if (remaining <= 0) {
             clearInterval(appState.penaltyInterval);
             appState.lockedUntil = null;
-            if (appState.buzzerOwner === null) {
+            if (appState.settings && appState.settings.classMode) {
+                // Restore Rank Display
+                updateRankDisplay();
+            } else if (appState.buzzerOwner === null) {
                 buttons.buzzer.innerText = "TRIO!";
                 buttons.buzzer.disabled = false;
-            } else {
-                // Someone else is owner (handled above usually, but race condition?)
-                // Just leave it, the listener for 'buzzerOwner' will update text.
             }
         } else {
-            buttons.buzzer.innerText = `GESPERRT (${remaining}s)`;
-            buttons.buzzer.disabled = true;
+            if (!appState.settings?.classMode) {
+                buttons.buzzer.innerText = `GESPERRT (${remaining}s)`;
+                buttons.buzzer.disabled = true;
+            }
         }
     }, 1000);
 
     // Initial immediate update
     const remaining = Math.ceil((appState.lockedUntil - Date.now()) / 1000);
-    if (appState.buzzerOwner && appState.buzzerOwner !== appState.playerId) {
+    if (appState.settings && appState.settings.classMode) {
+        // This is now handled by updateRankDisplay, which checks appState.lockedUntil
+        // and updates the rankFooter.
+        updateRankDisplay();
+    } else if (appState.buzzerOwner && appState.buzzerOwner !== appState.playerId) {
         buttons.buzzer.innerText = "Anschauen";
         buttons.buzzer.disabled = false;
     } else {
@@ -2519,6 +2590,101 @@ function generateNewTarget() {
 }
 
 // --- Helpers + Renderers (Unified) ---
+
+function handleSkipClick() {
+    if (!appState.gameId || !appState.playerId) return;
+
+    // Check Cooldown
+    const cooldown = parseInt(localStorage.getItem('skipCooldown') || '0');
+    if (cooldown > Date.now()) return;
+
+    // Set Cooldown (20 seconds)
+    const newCooldown = Date.now() + 20000;
+    localStorage.setItem('skipCooldown', newCooldown);
+
+    // Disable Button Locally
+    const voteBtn = document.getElementById('btn-vote-veto');
+    if (voteBtn) {
+        voteBtn.disabled = true;
+        voteBtn.innerText = "Warten (20s)";
+    }
+
+    // Increment Index directly
+    const playerRef = db.ref(`games/${appState.gameId}/players/${appState.playerId}`);
+    playerRef.child('currentSolutionIndex').transaction(current => (current || 0) + 1);
+
+    // Clear selection
+    appState.selectedCells = [];
+    updateGridSelection();
+    closeCalculationModal(false);
+}
+
+function handleClassReroll() {
+    if (!appState.gameId || !appState.playerId) return;
+
+    const cooldownKey = 'rerollCooldown';
+    const cooldown = parseInt(localStorage.getItem(cooldownKey) || '0');
+    const remaining = Math.ceil((cooldown - Date.now()) / 1000);
+
+    if (remaining > 0) {
+        showMessage("Wartezeit", `Bitte warte noch ${remaining}s bis zum nächsten Wechsel.`);
+        return;
+    }
+
+    showConfirm("Zielzahl wechseln?", "Möchtest du die Zielzahl wirklich überspringen? (30s Cooldown)", () => {
+        // Set Cooldown (30 seconds)
+        localStorage.setItem(cooldownKey, Date.now() + 30000);
+
+        // Execute Skip (Same logic as Skip button really, just different trigger/cooldown)
+        // Increment Index directly
+        const playerRef = db.ref(`games/${appState.gameId}/players/${appState.playerId}`);
+        playerRef.child('currentSolutionIndex').transaction(current => (current || 0) + 1);
+
+        // Clear selection
+        appState.selectedCells = [];
+        updateGridSelection();
+        closeCalculationModal(false);
+
+        showMessage("Erledigt", "Zielzahl wurde gewechselt.");
+        updateRerollTimer();
+    });
+}
+
+function updateRerollTimer() {
+    const btn = document.getElementById('btn-vote-refresh');
+    const timer = document.getElementById('reroll-timer');
+    if (!btn || !timer) return;
+
+    if (!appState.settings?.classMode) {
+        timer.style.display = 'none';
+        return;
+    }
+
+    const cooldownKey = 'rerollCooldown';
+    const cooldown = parseInt(localStorage.getItem(cooldownKey) || '0');
+    const remaining = Math.ceil((cooldown - Date.now()) / 1000);
+
+    if (remaining > 0) {
+        btn.style.opacity = '0.5';
+        btn.style.cursor = 'not-allowed';
+        timer.style.display = 'block';
+        timer.innerText = `${remaining}s`;
+
+        // Schedule next update if not already running
+        if (!appState.rerollTimerInterval) {
+            appState.rerollTimerInterval = setInterval(updateRerollTimer, 1000);
+        }
+    } else {
+        btn.style.opacity = '1';
+        btn.style.cursor = 'pointer';
+        timer.style.display = 'none';
+
+        if (appState.rerollTimerInterval) {
+            clearInterval(appState.rerollTimerInterval);
+            appState.rerollTimerInterval = null;
+        }
+    }
+}
 
 function updateVetoUI(vetoMap, totalPlayers) {
     let vetoEl = document.getElementById('veto-counter');
@@ -2641,7 +2807,8 @@ function tryAdd(triplet, diff, addSol) {
     if (diff === 'normal') {
         // Normal: (A * B) +/- C (Target structure, but we try permutations because user picks 3 numbers)
         // User selects 3 numbers. We need to see if ANY combination of them fits (A*B)+/-C
-        // Permutations: [a,b,c], [a,c,b], [b,a,c], ...
+        // Permutations: [a,b,c], [a,c,b], [b,a,c], [b,c,a], [c,a,b], [c,b,a]
+
         const perms = [[a, b, c], [a, c, b], [b, a, c], [b, c, a], [c, a, b], [c, b, a]];
 
         perms.forEach(p => {
@@ -2835,6 +3002,73 @@ function renderPlayersList(players) {
         `;
         container.appendChild(item);
     });
+
+    // Update Rank Display in Class Mode
+    if (appState.settings && appState.settings.classMode) {
+        updateRankDisplay();
+    }
+}
+
+function updateRankDisplay() {
+    if (!appState.players || !appState.playerId) return;
+
+    // Use players list for ranking context
+    const sortedEntries = Object.entries(appState.players).sort(([, a], [, b]) => (b.score || 0) - (a.score || 0));
+
+    let myRank = -1;
+    let currentRank = 1;
+    for (let i = 0; i < sortedEntries.length; i++) {
+        const [id, p] = sortedEntries[i];
+        if (i > 0) {
+            const prevScore = sortedEntries[i - 1][1].score || 0;
+            const currScore = p.score || 0;
+            if (currScore < prevScore) {
+                currentRank = i + 1;
+            }
+        }
+
+        if (id === appState.playerId) {
+            myRank = currentRank;
+            break;
+        }
+    }
+
+    // New logic: Append to .player-list
+    const playerList = document.querySelector('.player-list');
+    if (!playerList) return;
+
+    let rankFooter = document.getElementById('rank-footer');
+
+    // Clean up old rank display if it exists in buzzer container
+    const oldRankEl = document.getElementById('class-rank-display');
+    if (oldRankEl) oldRankEl.remove();
+
+    if (!rankFooter) {
+        rankFooter = document.createElement('div');
+        rankFooter.id = 'rank-footer';
+        rankFooter.style.cssText = `
+            margin-top: auto;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+            color: #94a3b8;
+            font-size: 0.9rem;
+            border-radius: 0 0 12px 12px;
+        `;
+        // Ensure parent is flex column to push footer to bottom
+        playerList.style.display = 'flex';
+        playerList.style.flexDirection = 'column';
+        playerList.appendChild(rankFooter);
+    }
+
+    // Check penalty lock display override
+    if (appState.lockedUntil && appState.lockedUntil > Date.now()) {
+        const remaining = Math.ceil((appState.lockedUntil - Date.now()) / 1000);
+        rankFooter.innerHTML = `Rang: ${myRank} <span style="color: var(--danger); margin-left: 10px;">🔒 ${remaining}s</span>`;
+    } else {
+        rankFooter.innerHTML = `Rang: ${myRank}`;
+    }
 }
 
 function renderGrid() {
@@ -3083,13 +3317,23 @@ function setupTeacherShortcut() {
             // Save name
             localStorage.setItem('trio_player_name', name);
 
-            // Open Modal BUT set context to teacher (for confirm button)
+            // Set Teacher Context Flag
             appState.tempIsTeacherCreate = true;
+
+            // Open Modal with Teacher Context
             document.getElementById('create-game-modal').classList.add('active');
+
+            // Set Title for Class Mode
+            const modalTitle = document.querySelector('#create-game-modal h2');
+            if (modalTitle) modalTitle.innerText = "Klassenspiel konfigurieren 🎓";
 
             // Show Observe Setting
             const obs = document.getElementById('setting-observe-container');
             if (obs) obs.style.display = 'flex';
+
+            // Show class mode badge
+            const classModeBadge = document.getElementById('class-mode-badge');
+            if (classModeBadge) classModeBadge.style.display = 'inline-block';
         });
     }
 
@@ -3120,7 +3364,6 @@ function setupTeacherShortcut() {
 function toggleTeacherMode() {
     appState.teacherMode = !appState.teacherMode;
     const btn = document.getElementById('btn-class-game');
-    const obs = document.getElementById('setting-observe-container');
 
     if (appState.teacherMode) {
         if (btn) {
@@ -3128,14 +3371,8 @@ function toggleTeacherMode() {
             // Animation?
             btn.animate([{ opacity: 0, transform: 'translateY(-10px)' }, { opacity: 1, transform: 'translateY(0)' }], { duration: 300 });
         }
-        if (obs) obs.style.display = 'flex'; // Show setting in modal always if teacher mode active? 
-        // User said: "Wenn man auf diesen Klickt... Dort soll es jetzt aber noch eine Zusätzlice Checkbox sein"
-        // So ONLY show checkbox if we clicked class game? 
-        // If I click normal game, hidden?
-        // Okay, let's bind checkbox visibility to the `appState.tempIsTeacherCreate` flag update.
     } else {
         if (btn) btn.style.display = 'none';
-        if (obs) obs.style.display = 'none';
     }
 }
 

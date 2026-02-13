@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:trio": "vite public/apps/Spiele/Trio-Mathespiel",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
