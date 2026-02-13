@@ -1,11 +1,14 @@
-const CACHE_NAME = 'aufgabentraining-v4';
+const CACHE_NAME = 'aufgabentraining-v10';
 const ASSETS = [
     './',
     './index.html',
     './registerSW.js',
-    './numo-logo-home.png'
+    './numo-logo-home.png',
+    './install-modal.css',
+    './install-logic.js'
 ];
 
+// Kill switch for any old workbox or conflicting SW
 self.addEventListener('install', (event) => {
     self.skipWaiting();
     event.waitUntil(
@@ -21,7 +24,9 @@ self.addEventListener('activate', (event) => {
             caches.keys().then((cacheNames) => {
                 return Promise.all(
                     cacheNames.map((cache) => {
-                        if (cache.startsWith('aufgabentraining-') && cache !== CACHE_NAME) {
+                        // Delete everything that is not the current version
+                        if (cache !== CACHE_NAME) {
+                            console.log('Cleaning up old cache:', cache);
                             return caches.delete(cache);
                         }
                     })
@@ -33,7 +38,6 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
     // Basic network-first for navigation, else cache-first or similar
-    // For simplicity and to fix the error, we use a simple network-first
     event.respondWith(
         fetch(event.request)
             .catch(() => caches.match(event.request))

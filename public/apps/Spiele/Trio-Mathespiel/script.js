@@ -298,6 +298,33 @@ function init() {
     }
 }
 
+function showInstallModal() {
+    const modal = document.getElementById('pwa-install-modal');
+    if (!modal) return;
+    
+    modal.classList.add('active');
+
+    // Detect OS logic
+    const ua = navigator.userAgent || navigator.vendor || window.opera;
+    const isTouch = (navigator.maxTouchPoints && navigator.maxTouchPoints > 1);
+    const isIOS = (/iPad|iPhone|iPod/.test(ua) && !window.MSStream) || (ua.includes("Mac") && isTouch);
+    const isAndroid = /android/i.test(ua);
+
+    let targetId = 'install-desktop';
+    if (isIOS) targetId = 'install-ios';
+    else if (isAndroid) targetId = 'install-android';
+
+    document.querySelectorAll('.platform-guide').forEach(el => el.style.display = 'none');
+    const guide = document.getElementById(targetId);
+    if (guide) guide.style.display = 'block';
+
+    // Show native button only for non-iOS (Android or Desktop) if prompt is available
+    const nativeBtn = document.getElementById('btn-native-install');
+    if (nativeBtn && deferredPrompt && !isIOS) {
+        nativeBtn.style.display = 'block';
+    }
+}
+
 function enableQuickJoinMode() {
     // Quick Join UI Mode
     // 1. Hide "Create Game" related buttons
