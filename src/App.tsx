@@ -1,10 +1,10 @@
-import { useState, useMemo, useEffect } from 'react';
-import { apps } from './data/apps';
+import { useState, useMemo, useEffect, useCallback } from 'react';
+import { apps, App as AppType } from './data/apps';
 import { DashboardLayout } from './components/DashboardLayout';
 import { AppCard } from './components/AppCard';
 import { CategoryCard } from './components/CategoryCard';
 import { getRecentAppIds } from './utils/storage';
-import { Search, Command, ArrowLeft, Clock } from 'lucide-react';
+import { Search, Command, ArrowLeft, Clock, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const categories = ['Alle', 'Spiele', 'Üben', 'Theorie'] as const;
@@ -17,6 +17,7 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [recentApps, setRecentApps] = useState<string[]>([]);
+  const [activeApp, setActiveApp] = useState<AppType | null>(null);
 
   // Load recent apps on mount and when view changes to HOME
   useEffect(() => {
@@ -24,6 +25,25 @@ function App() {
       setRecentApps(getRecentAppIds());
     }
   }, [viewMode]);
+
+  const handleLaunchApp = useCallback((app: AppType) => {
+    setActiveApp(app);
+  }, []);
+
+  const handleCloseApp = useCallback(() => {
+    setActiveApp(null);
+  }, []);
+
+  // Listen for escape key to close app
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && activeApp) {
+        handleCloseApp();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeApp, handleCloseApp]);
 
   // Extract all unique tags
   const allTags = useMemo(() => Array.from(new Set(apps.flatMap(app => app.tags))), []);
@@ -134,7 +154,7 @@ function App() {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
                     {recentAppObjects.map(app => (
-                      <AppCard key={`recent-${app.id}`} app={app} />
+                      <AppCard key={`recent-${app.id}`} app={app} onLaunch={handleLaunchApp} />
                     ))}
                   </div>
                 </div>
@@ -216,7 +236,7 @@ function App() {
                       exit={{ opacity: 0, scale: 0.9 }}
                       transition={{ duration: 0.2 }}
                     >
-                      <AppCard app={app} />
+                      <AppCard app={app} onLaunch={handleLaunchApp} />
                     </motion.div>
                   ))}
                 </AnimatePresence>
@@ -235,6 +255,50 @@ function App() {
           )}
         </AnimatePresence>
       </div>
+
+      {/* App Viewer Overlay */}
+      <AnimatePresence>
+        {activeApp && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-slate-950 flex flex-col"
+          >
+            {/* Minimal Header with Close Button */}
+            <div className="absolute top-4 right-4 z-[101]">
+              <button
+                onClick={handleCloseApp}
+                className="p-2 bg-slate-900/80 hover:bg-slate-800 text-white rounded-full backdrop-blur-md border border-white/10 shadow-xl transition-all"
+                title="App Schließen"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <iframe
+              src={activeApp.path.startsWith('http') ? activeApp.path : `${import.meta.env.BASE_URL}${activeApp.path}`}
+              className="w-full h-full border-none"
+              title={activeApp.name}
+              onLoad={(e) => {
+                // Check if iframe navigated back to the root (Home)
+                try {
+                  const iframe = e.currentTarget;
+                  const currentPath = iframe.contentWindow?.location.pathname;
+                  const rootPath = import.meta.env.BASE_URL;
+
+                  if (currentPath === rootPath || currentPath === rootPath + 'index.html') {
+                    handleCloseApp();
+                  }
+                } catch (err) {
+                  // Ignore cross-origin errors if any
+                  console.debug('Iframe path check failed:', err);
+                }
+              }}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </DashboardLayout>
   )
 }

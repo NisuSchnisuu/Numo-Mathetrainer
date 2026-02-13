@@ -2,15 +2,23 @@ import type { App } from '../data/apps';
 import { motion } from 'framer-motion';
 import { addRecentAppId } from '../utils/storage';
 
-export function AppCard({ app }: { app: App }) {
+export function AppCard({ app, onLaunch }: { app: App; onLaunch?: (app: App) => void }) {
     const fullPath = app.path.startsWith('http') ? app.path : `${import.meta.env.BASE_URL}${app.path}`;
     const imagePath = `${import.meta.env.BASE_URL}${app.icon}`;
+
+    const handleClick = (e: React.MouseEvent) => {
+        addRecentAppId(app.id);
+        if (onLaunch) {
+            e.preventDefault();
+            onLaunch(app);
+        }
+    };
 
     return (
         <a
             href={fullPath}
             className="block group decoration-0"
-            onClick={() => addRecentAppId(app.id)}
+            onClick={handleClick}
         >
             <motion.div
                 whileHover={{ y: -4, scale: 1.01 }}
