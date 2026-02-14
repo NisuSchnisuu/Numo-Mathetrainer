@@ -277,7 +277,9 @@ function App() {
             className="fixed inset-0 z-[100] bg-slate-950 flex flex-col"
           >
             <iframe
-              src={activeApp.path.startsWith('http') ? activeApp.path : `${import.meta.env.BASE_URL}${activeApp.path}`}
+              src={activeApp.path.startsWith('http') 
+                ? activeApp.path 
+                : `${import.meta.env.DEV ? import.meta.env.BASE_URL : import.meta.env.BASE_URL.replace(/dashboard\/$/, '')}${activeApp.path}`}
               className="w-full h-full border-none"
               title={activeApp.name}
               onLoad={(e) => {

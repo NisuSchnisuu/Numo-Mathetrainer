@@ -3,8 +3,11 @@ import { motion } from 'framer-motion';
 import { addRecentAppId } from '../utils/storage';
 
 export function AppCard({ app, onLaunch }: { app: App; onLaunch?: (app: App) => void }) {
-    // Get the root path (e.g., /Numo-Mathetrainer/) by removing 'dashboard/' from the end of BASE_URL
-    const rootPath = import.meta.env.BASE_URL.replace(/dashboard\/$/, '');
+    // In development, Vite serves public files relative to the base URL.
+    // In production, our post-build script moves them up to the repo root.
+    const rootPath = import.meta.env.DEV 
+        ? import.meta.env.BASE_URL 
+        : import.meta.env.BASE_URL.replace(/dashboard\/$/, '');
     
     const fullPath = app.path.startsWith('http') ? app.path : `${rootPath}${app.path}`;
     const imagePath = app.icon.startsWith('http') ? app.icon : `${rootPath}${app.icon}`;
