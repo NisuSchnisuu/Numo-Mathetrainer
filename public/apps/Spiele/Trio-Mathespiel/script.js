@@ -89,20 +89,6 @@ function switchView(viewName) {
         views[viewName].classList.add('active');
     }
 
-    // Toggle Numo Back Link (Only visible in lobby)
-    const backLink = document.getElementById('numo-back-link');
-    if (backLink) {
-        const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
-                            (window.navigator.standalone === true);
-        const isInIframe = window.parent !== window;
-
-        if (viewName === 'lobby' && !(isStandalone && !isInIframe)) {
-            backLink.style.display = 'flex';
-        } else {
-            backLink.style.display = 'none';
-        }
-    }
-
     // Auto-Save Session on view change if game is active
     if (appState.gameId && appState.playerId) {
         saveSession();
@@ -184,118 +170,57 @@ window.addEventListener('beforeinstallprompt', (e) => {
     if (nativeBtn) nativeBtn.style.display = 'block';
 });
 
+// IMPROVED Standalone Check
+function isStandaloneMode() {
+    return window.matchMedia('(display-mode: standalone)').matches ||
+           window.matchMedia('(display-mode: minimal-ui)').matches ||
+           window.matchMedia('(display-mode: fullscreen)').matches ||
+           (window.navigator.standalone === true);
+}
+
 function init() {
-    // PWA ENFORCEMENT CHECK
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
-        (window.navigator.standalone === true);
+    const isStandalone = isStandaloneMode();
+    const isInIframe = window.parent !== window;
 
-    // Check if on localhost (allow bypass for dev)
-    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    // Detect if parent shell is standalone
+    let isParentStandalone = false;
+    if (isInIframe) {
+        try {
+            isParentStandalone = window.parent.matchMedia('(display-mode: standalone)').matches ||
+                                 window.parent.matchMedia('(display-mode: minimal-ui)').matches ||
+                                 window.parent.navigator.standalone === true;
+        } catch (e) {}
+    }
 
-    if (!isStandalone) {
+    if (!isStandalone && !isParentStandalone) {
         // Show the Trigger Button in Lobby
         const installBtn = document.getElementById('btn-trigger-install');
         if (installBtn) {
             installBtn.style.display = 'block';
-
-            installBtn.addEventListener('click', () => {
-                // NEW LOGIC: If we are in an iframe (Numo Shell), open the direct link in a new tab
-                if (window.parent !== window) {
-                    const url = new URL(window.location.href);
-                    url.searchParams.set('install', 'true');
-                    window.open(url.toString(), '_blank');
-                    return;
-                }
-
-                showInstallModal();
-            });
+            // ...
         }
-
-        // Close Button Logic
-        const closeBtn = document.getElementById('btn-close-install');
-        if (closeBtn) {
-            closeBtn.addEventListener('click', (e) => {
-                e.stopPropagation(); // prevent bubbling
-                document.getElementById('pwa-install-modal').classList.remove('active');
-            });
-        }
-
-        // Native Install Button Action
-        const nativeBtn = document.getElementById('btn-native-install');
-        if (nativeBtn) {
-            nativeBtn.addEventListener('click', async () => {
-                if (!deferredPrompt) return;
-                deferredPrompt.prompt();
-                const { outcome } = await deferredPrompt.userChoice;
-                console.log(`User response to the install prompt: ${outcome}`);
-                deferredPrompt = null;
-                nativeBtn.style.display = 'none';
-                document.getElementById('pwa-install-modal').classList.remove('active');
-            });
-        }
-
-        // Auto-show if ?install=true is present
-        const params = new URLSearchParams(window.location.search);
-        if (params.get('install') === 'true' && window.parent === window) {
-            showInstallModal();
-            // Clean URL
-            window.history.replaceState({}, document.title, window.location.pathname);
-        }
-    }
-
-    setupEventListeners();
-
-    // Auto-Cleanup Old Games (Lazy Trigger)
-    checkAutoCleanup();
-
-    // Check for Join Code in URL
-    const params = new URLSearchParams(window.location.search);
-    const joinCode = params.get('join');
-
-    // 1. Restore Player Attributes (Name)
-    const storedName = localStorage.getItem('trio_player_name');
-    if (storedName) {
-        inputs.playerName.value = storedName;
-    }
-
-    // 2. Restore Game Settings (if available)
-    const storedSettings = localStorage.getItem('trio_game_settings');
-    if (storedSettings) {
-        try {
-            const settings = JSON.parse(storedSettings);
-            if (settings.difficulty) inputs.difficulty.value = settings.difficulty;
-            if (settings.winningScore) inputs.winningScore.value = settings.winningScore;
-            if (settings.customScore) inputs.customScore.value = settings.customScore;
-            if (settings.numberRange) inputs.numberRange.value = settings.numberRange;
-
-            // Trigger change event to update UI (e.g. custom score field visibility)
-            if (settings.winningScore === 'custom') {
-                inputs.customScore.style.display = 'block';
-            }
-        } catch (e) {
-            console.error("Error restoring settings", e);
-        }
-    }
-
-    // Priority: 1. Join Code, 2. Restoration, 3. Default Lobby
-    if (joinCode) {
-        // Pre-fill
-        inputs.joinCode.value = joinCode;
-
-        // Enable Quick Join Mode
-        enableQuickJoinMode();
-
-        // Optional: Focus name if empty, else ready
-        if (!inputs.playerName.value) {
-            inputs.playerName.focus();
-        }
-
-        // CLEANUP: Remove query param so reload/back goes to Home
-        window.history.replaceState({}, document.title, window.location.pathname);
     } else {
-        // Try Restore
-        checkSession();
+        // Explicitly hide install button if standalone
+        const installBtn = document.getElementById('btn-trigger-install');
+        if (installBtn) installBtn.style.display = 'none';
     }
+
+    // Interval to ensure back button visibility is correct based on view and mode
+    setInterval(() => {
+        const backBtn = document.getElementById('numo-back-link');
+        if (backBtn) {
+            const currentStandalone = isStandaloneMode();
+            if (appState.currentView === 'lobby' && !(currentStandalone && !isInIframe)) {
+                backBtn.style.display = 'flex';
+            } else {
+                backBtn.style.display = 'none';
+            }
+        }
+    }, 500);
+
+    // Close Button Logic
+    const closeBtn = document.getElementById('btn-close-install');
+    // ...
 }
 
 function showInstallModal() {

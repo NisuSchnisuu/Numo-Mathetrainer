@@ -8,56 +8,62 @@
     });
 
     function initInstallLogic() {
-        const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
-                            (window.navigator.standalone === true);
+        const checkStandalone = () => {
+            const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+                                window.matchMedia('(display-mode: minimal-ui)').matches ||
+                                window.matchMedia('(display-mode: fullscreen)').matches ||
+                                (window.navigator.standalone === true);
+            return isStandalone;
+        };
+
+        const isStandalone = checkStandalone();
         const isInIframe = window.parent !== window;
         
-        // Only hide if REALLY standalone AND not in iframe
-        if (isStandalone && !isInIframe) return;
-
-        // Try to find a place to insert the button if it doesn't exist
-        let installBtn = document.getElementById('btn-trigger-install');
-        if (!installBtn) {
-            installBtn = document.createElement('button');
-            installBtn.id = 'btn-trigger-install';
-            installBtn.className = 'btn-trigger-install';
-            installBtn.innerText = '📲 App installieren';
-            document.body.appendChild(installBtn);
+        // Try to detect if the parent (Numo Shell) is standalone
+        let isParentStandalone = false;
+        if (isInIframe) {
+            try {
+                isParentStandalone = window.parent.matchMedia('(display-mode: standalone)').matches ||
+                                     window.parent.matchMedia('(display-mode: minimal-ui)').matches ||
+                                     window.parent.navigator.standalone === true;
+            } catch (e) {
+                // cross-origin or other error, fallback to false
+            }
         }
 
         // Visibility Check: Only on Homescreen or Topic list (where <main> element exists)
-        // AND only if NOT running as a standalone installed app
         function checkVisibility() {
-            const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
-                                (window.navigator.standalone === true);
-            const isInIframe = window.parent !== window;
-            
-            // Handle Back Button (Numo Logo)
+            const currentStandalone = checkStandalone();
             const backBtn = document.getElementById('numo-back-link');
+            const installBtn = document.getElementById('btn-trigger-install');
+
+            // 1. Handle Back Button (Numo Logo)
+            // Hide if we are running standalone (no matter if iframe or not, 
+            // but usually standalone apps are not in iframes unless it's the shell)
+            // Actually, the user says: "nur, wenn die Unterapps im Standalone sind, der Numo zurück Button nicht angezeigt wird"
             if (backBtn) {
-                if (isStandalone && !isInIframe) {
+                if (currentStandalone && !isInIframe) {
                     backBtn.style.display = 'none';
                 } else {
-                    // Default logic for showing/hiding back button based on context (if needed)
-                    // For now, just ensure it's visible if not standalone
-                    if (backBtn.style.display === 'none' && !(isStandalone && !isInIframe)) {
-                        backBtn.style.display = 'flex';
-                    }
+                    // Show in browser or when in shell
+                    backBtn.style.display = 'flex';
                 }
             }
 
-            // If we are already running as an installed app (and not inside the Numo shell iframe), hide the install button
-            if (isStandalone && !isInIframe) {
-                installBtn.style.display = 'none';
-                return;
-            }
+            // 2. Handle Install Button
+            if (installBtn) {
+                // Hide if:
+                // - Already standalone
+                // - OR Parent is standalone (Numo App is already installed)
+                // - OR Not on dashboard/main view
+                const mainElement = document.querySelector('main');
+                const shouldHide = currentStandalone || isParentStandalone || !mainElement;
 
-            const mainElement = document.querySelector('main');
-            
-            if (mainElement) {
-                installBtn.style.display = 'block';
-            } else {
-                installBtn.style.display = 'none';
+                if (shouldHide) {
+                    installBtn.style.display = 'none';
+                } else {
+                    installBtn.style.display = 'block';
+                }
             }
         }
 
