@@ -26,7 +26,18 @@
         }
 
         // Visibility Check: Only on Homescreen or Topic list (where <main> element exists)
+        // AND only if NOT running as a standalone installed app
         function checkVisibility() {
+            const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+                                (window.navigator.standalone === true);
+            const isInIframe = window.parent !== window;
+            
+            // If we are already running as an installed app (and not inside the Numo shell iframe), hide the button
+            if (isStandalone && !isInIframe) {
+                installBtn.style.display = 'none';
+                return;
+            }
+
             const mainElement = document.querySelector('main');
             
             if (mainElement) {
