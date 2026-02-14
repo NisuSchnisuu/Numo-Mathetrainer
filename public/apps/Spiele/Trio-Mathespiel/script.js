@@ -51,9 +51,7 @@ let appState = {
     isHost: false,
     gridData: [],
     gridSize: 7,
-    difficulty: 'medium',
-    gridSize: 7,
-    difficulty: 'medium',
+    difficulty: 'normal',
     winningScore: 10,
     target: 0,
     players: {},
@@ -63,8 +61,6 @@ let appState = {
     buzzerTimer: null,
     selectedCells: [], // Array of indices (Synced)
     vetoVotes: {},
-    isLocked: false,
-    lockedUntil: null,
     isLocked: false,
     lockedUntil: null,
     penaltyInterval: null,
@@ -790,6 +786,10 @@ function leaveGame() {
     appState.hostId = null;
     appState.isLeaving = false;
 
+    // Reset tracking variables for listeners
+    currentSubscribedGameId = null;
+    currentAttachedGameId = null;
+
     if (appState.buzzerTimer) clearInterval(appState.buzzerTimer);
     if (appState.penaltyInterval) clearInterval(appState.penaltyInterval);
 
@@ -866,11 +866,17 @@ function startGameAction() {
 
 // --- Listeners ---
 
+let currentSubscribedGameId = null;
 function subscribeToGame(gameId) {
+    if (currentSubscribedGameId === gameId) {
+        console.log("Already subscribed to game:", gameId);
+        return;
+    }
+    currentSubscribedGameId = gameId;
+
     console.log("Subscribing to game:", gameId);
     const gameRef = db.ref(`games/${gameId}`);
 
-    // 1. Status Check (Waiting -> Playing)
     // 1. Status Check (Waiting -> Playing)
     gameRef.on('value', (snapshot) => {
         const data = snapshot.val();
@@ -1160,22 +1166,6 @@ function subscribeToGame(gameId) {
         } else {
             if (appState.buzzerOwner !== null) {
                 resetBuzzerState();
-            }
-        }
-    });
-
-    // Real-Time Selection Sync
-    gameRef.child('status/selection').on('value', snap => {
-        const sel = snap.val() || [];
-        // Only update if DIFFERENT to avoid jitter if loopback
-        if (JSON.stringify(sel) !== JSON.stringify(appState.selectedCells)) {
-            appState.selectedCells = sel;
-            updateGridSelection();
-
-            // If modal is open but buttons missing (Reload case), repopulate
-            const modal = document.getElementById('calc-modal');
-            if (modal.classList.contains('active') && sel.length > 0) {
-                populateModalButtons(true); // Preserve formula
             }
         }
     });
@@ -2302,8 +2292,7 @@ function updateFormulaDisplay() {
         span.dataset.index = index;
 
         // Styling classes
-        if (['+', '-', '*', '/'].includes(char)) span.className = 'char-op';
-        else if (['(', ')'].includes(char)) span.className = 'char-paren';
+        if (['+', '-', '*', '/', '(', ')'].includes(char)) span.className = 'char-op';
         else if (/[0-9]/.test(char)) span.className = 'char-num';
         else span.className = 'char-other';
 
@@ -2363,7 +2352,7 @@ function submitSolution() {
 
     const attempt = {
         playerId: appState.playerId,
-        playerName: appState.selfName || 'Spieler',
+        playerName: appState.playerName || 'Spieler',
         indices: appState.selectedCells,
         formula: modalState.formula,
         target: appState.target,
@@ -2385,10 +2374,10 @@ function handleAttemptsHost(attemptsDict) {
     // We attach it once.
 }
 
-let attemptsListenerAttached = false;
+let currentAttachedGameId = null;
 function attachHostLogic(gameId) {
-    if (attemptsListenerAttached) return;
-    attemptsListenerAttached = true;
+    if (currentAttachedGameId === gameId) return;
+    currentAttachedGameId = gameId;
     db.ref(`games/${gameId}/attempts`).on('child_added', snapshot => {
         validateAttempt(snapshot.val(), snapshot.key);
     });

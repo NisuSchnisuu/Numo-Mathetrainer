@@ -259,10 +259,17 @@ select option {
 
 .header-left,
 .header-right {
-    width: 60px;
-    /* Balance */
+    min-width: 60px;
     display: flex;
-    justify-content: center;
+    align-items: center;
+}
+
+.header-left {
+    justify-content: flex-start;
+}
+
+.header-right {
+    justify-content: flex-end;
 }
 
 .header-center {
@@ -1345,6 +1352,72 @@ select option {
 
 /* ... existing code ... */
 
+.btn-calc.op.op-line {
+    background: rgba(56, 189, 248, 0.2); /* Light Blue / Sky */
+    color: #7dd3fc;
+    border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+.btn-calc.op.op-point {
+    background: rgba(251, 146, 60, 0.2); /* Orange */
+    color: #fdba74;
+    border: 1px solid rgba(251, 146, 60, 0.3);
+}
+
+.btn-calc.op.op-paren {
+    background: rgba(167, 139, 250, 0.2); /* Violet */
+    color: #c4b5fd;
+    border: 1px solid rgba(167, 139, 250, 0.3);
+}
+
+/* Character display colors in formula bar */
+.char-op[data-char="+"], .char-op[data-char="-"] { color: #7dd3fc; font-weight: 700; }
+.char-op[data-char="*"], .char-op[data-char="/"] { color: #fdba74; font-weight: 700; }
+.char-op[data-char="("], .char-op[data-char=")"] { color: #c4b5fd; font-weight: 700; }
+
+/* Mobile Optimizations for Calculation Modal */
+@media (max-width: 600px) {
+    #calc-modal .modal-content {
+        width: 95%;
+        padding: 15px;
+        max-width: 500px;
+    }
+
+    .formula-display {
+        font-size: 2rem;
+        height: 70px;
+        margin: 10px 0;
+    }
+
+    .numpad-section {
+        gap: 20px;
+        margin-bottom: 15px;
+    }
+
+    .btn-calc.num-btn {
+        width: 70px;
+        height: 70px;
+        font-size: 2rem;
+    }
+
+    .operator-pad {
+        gap: 8px;
+    }
+
+    .btn-calc {
+        padding: 18px 0;
+        font-size: 1.4rem;
+    }
+
+    /* Make Solve and Give Up bigger on mobile */
+    #btn-solve, #btn-give-up {
+        padding: 18px !important;
+        font-size: 1.2rem !important;
+    }
+}
+
+/* ... existing code ... */
+
 .btn-calc.action {
     background: #ef4444;
 }
@@ -1665,12 +1738,12 @@ select option {
     backdrop-filter: blur(15px);
     display: none;
     /* JS toggles active */
-    align-items: center;
+    align-items: center; /* Center vertically if space permits */
     justify-content: center;
     opacity: 0;
     transition: opacity 0.5s ease;
-    padding: 20px;
-    /* Add padding so content doesn't touch edges */
+    padding: 20px 10px; 
+    overflow-y: auto;
 }
 
 .full-screen-overlay.active {
@@ -1680,31 +1753,34 @@ select option {
 
 .install-content {
     max-width: 600px !important;
-    width: 90%;
-    max-height: 85vh;
-    overflow-y: auto;
+    width: 95%;
+    margin: auto; /* Vertically center if possible */
+    max-height: none;
 
     /* Card Styling */
     background: var(--background-panel) !important;
     box-shadow: var(--shadow-lg) !important;
     border: 1px solid rgba(255, 255, 255, 0.1) !important;
     border-radius: 20px !important;
-    padding: 30px !important;
+    padding: 30px 20px !important;
 
     text-align: center;
     position: relative;
-    /* For close button absolute pos */
+    overflow: visible; /* Allow icon to pop out top if bouncing */
 }
 
 .install-header {
-    margin-bottom: 40px;
+    margin-bottom: 25px;
 }
 
 .app-icon-large {
-    font-size: 3rem;
+    font-size: 2.5rem;
     display: block;
-    margin-bottom: 20px;
+    margin-bottom: 15px;
+    margin-top: 5px; 
     animation: bounce 2s infinite;
+    position: relative;
+    z-index: 2;
 }
 
 @keyframes bounce {
@@ -1718,18 +1794,18 @@ select option {
     }
 
     40% {
-        transform: translateY(-10px);
+        transform: translateY(-12px);
     }
 
     60% {
-        transform: translateY(-5px);
+        transform: translateY(-6px);
     }
 }
 
 .install-title {
-    font-size: 2.5rem;
+    font-size: 2rem;
     font-weight: 800;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
     background: linear-gradient(135deg, #fff, #94a3b8);
     background-clip: text;
     -webkit-background-clip: text;
@@ -1737,7 +1813,7 @@ select option {
 }
 
 .install-subtitle {
-    font-size: 1.2rem;
+    font-size: 1.1rem;
     color: var(--text-muted);
 }
 
@@ -1745,7 +1821,7 @@ select option {
 .platform-guide {
     background: var(--background-panel);
     border-radius: 20px;
-    padding: 30px;
+    padding: 25px 15px;
     border: 1px solid rgba(255, 255, 255, 0.1);
     box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.5);
     animation: slideUp 0.5s ease-out;
@@ -1798,7 +1874,7 @@ select option {
 .step-card {
     background: rgba(255, 255, 255, 0.03);
     border-radius: 12px;
-    padding: 20px 15px;
+    padding: 12px 8px;
     position: relative;
     display: flex;
     flex-direction: column;
@@ -1810,15 +1886,15 @@ select option {
 
 .step-num {
     position: absolute;
-    top: -10px;
+    top: -8px;
     left: 50%;
     transform: translateX(-50%);
     background: var(--primary-color);
     color: white;
-    width: 24px;
-    height: 24px;
+    width: 22px;
+    height: 22px;
     border-radius: 50%;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     font-weight: bold;
     display: flex;
     align-items: center;
@@ -1827,11 +1903,11 @@ select option {
 }
 
 .step-text {
-    font-size: 0.95rem;
+    font-size: 0.85rem;
     color: #e2e8f0;
-    line-height: 1.4;
-    margin-bottom: 15px;
-    margin-top: 10px;
+    line-height: 1.3;
+    margin-bottom: 8px;
+    margin-top: 8px;
 }
 
 .step-text strong {
@@ -1839,14 +1915,14 @@ select option {
 }
 
 .step-icon {
-    font-size: 1.8rem;
+    font-size: 1.5rem;
     color: var(--text-muted);
 }
 
 /* Refresh Hint */
 .refresh-hint-box {
-    margin-top: 40px;
-    padding: 15px;
+    margin-top: 25px;
+    padding: 12px;
     background: rgba(16, 185, 129, 0.1);
     border-radius: 10px;
     display: inline-block;
@@ -2075,25 +2151,26 @@ body {
 }
 
 /* 4. MOBILE LANDSCAPE OPTIMIZATION */
-@media (orientation: landscape) and (max-height: 600px) {
+@media (orientation: landscape) and (max-height: 550px) {
 
     /* Scale down UI for short screens */
     :root {
         --mobile-scale: 0.7;
-        /* Smaller scale */
     }
 
     body {
         font-size: 12px;
         padding: 0;
-        /* Minimize padding */
+    }
+
+    .view {
+        padding: 10px;
     }
 
     #game-view {
         flex-direction: row !important;
-        /* Force side-by-side */
-        padding: 4px !important;
-        gap: 8px !important;
+        padding: 5px !important;
+        gap: 10px !important;
         height: 100dvh;
         overflow: hidden;
     }
@@ -2101,31 +2178,33 @@ body {
     /* Grid Container */
     .game-grid-container {
         flex: 1;
-        /* Take available space */
         height: 100%;
-        /* Max height */
-        padding: 4px;
+        padding: 5px;
+        min-width: 0;
     }
 
     .game-grid {
         height: 100%;
         width: auto;
-        /* Allow width to shrink */
         aspect-ratio: 1/1;
         margin: 0 auto;
+        gap: 4px;
     }
 
     .grid-cell {
         font-size: 1rem;
+        border-radius: 4px;
     }
 
     /* Dashboard */
     .game-dashboard {
-        flex: 0 0 160px;
-        /* Fixed TINY width */
-        width: 160px;
+        flex: 0 0 180px;
+        width: 180px;
         gap: 5px;
-        padding-right: 4px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        height: 100%;
     }
 
     .target-number {
@@ -2133,28 +2212,187 @@ body {
     }
 
     .target-display {
-        padding: 6px;
+        padding: 5px;
+    }
+
+    .player-list {
+        padding: 10px;
+        gap: 5px;
+        min-height: 0;
+        flex: 1;
     }
 
     .player-list h3 {
-        font-size: 0.9rem;
+        font-size: 0.85rem;
         margin-bottom: 4px;
     }
 
     .player-item {
-        padding: 4px;
+        padding: 6px;
         font-size: 0.8rem;
+        margin-bottom: 4px;
     }
 
     .buzzer-container button {
         padding: 8px;
+        font-size: 1.1rem;
+        border-radius: 10px;
+        box-shadow: 0 4px 0 #3730a3;
+    }
+
+    /* New Lobby (Waiting Room) Compact */
+    .lobby-header-new {
+        height: 44px;
+        padding: 0 10px;
+    }
+
+    .header-left, .header-right {
+        min-width: 40px;
+    }
+
+    .code-pill {
+        padding: 3px 10px;
+        gap: 6px;
+    }
+
+    .code-value {
+        font-size: 1.1rem;
+    }
+
+    .btn-icon-leave {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+    }
+
+    .lobby-content-area {
+        padding: 8px;
+    }
+
+    .status-message {
+        margin-bottom: 8px;
+        font-size: 0.85rem;
+    }
+
+    .player-card-dynamic {
+        padding: 8px;
+        border-radius: 10px;
+    }
+
+    .player-card-dynamic .avatar {
+        width: 32px;
+        height: 32px;
+        font-size: 0.9rem;
+        margin-bottom: 4px;
+    }
+
+    .player-card-dynamic .name {
+        font-size: 0.8rem;
+    }
+
+    .lobby-footer-new {
+        height: 50px;
+        padding: 8px;
+    }
+
+    .btn-start-large {
+        font-size: 1rem;
+        padding: 8px 24px;
+    }
+
+    /* Modals Compact */
+    .modal-content {
+        padding: 15px;
+        max-width: 95%;
+        max-height: 90vh;
+        overflow-y: auto;
+        /* Ensure we can scroll inside modal if content is still too big */
+    }
+
+    .modal-content > *:last-child {
+        margin-bottom: 20px;
+        /* Bottom spacing for scroll */
+    }
+
+    .formula-display {
+        height: 40px;
+        font-size: 1.1rem;
+        margin: 8px 0;
+    }
+
+    .btn-calc {
+        padding: 8px 0;
+        font-size: 0.9rem;
+    }
+
+    .btn-calc.num-btn {
+        width: 40px;
+        height: 40px;
+        font-size: 1.1rem;
+    }
+
+    /* PWA Install Modal Compact */
+    .install-content {
+        padding: 15px !important;
+        padding-bottom: 40px !important; /* Extra bottom space */
+    }
+
+    .install-header {
+        margin-bottom: 5px;
+    }
+
+    .app-icon-large {
+        font-size: 1.5rem;
+        margin-bottom: 5px;
+    }
+
+    .install-title {
+        font-size: 1.4rem;
+    }
+
+    .install-subtitle {
+        font-size: 0.8rem;
+    }
+
+    #btn-native-install {
+        margin: 10px auto !important;
+        padding: 8px 16px !important;
+        font-size: 0.9rem !important;
+    }
+
+    .platform-guide {
+        padding: 12px;
+    }
+
+    .platform-header {
+        margin-bottom: 8px;
+        padding-bottom: 8px;
+    }
+
+    .platform-header h3 {
         font-size: 1rem;
     }
 
-    /* Hide non-essential top bar in game if exists */
-    .difficulty-display {
-        font-size: 0.7rem;
-        padding: 2px 4px;
+    .steps-grid {
+        gap: 8px;
+    }
+
+    .step-card {
+        padding: 8px;
+    }
+
+    .step-text {
+        font-size: 0.75rem;
+        margin-bottom: 4px;
+    }
+
+    .step-icon {
+        font-size: 1.1rem;
+    }
+
+    .refresh-hint-box {
+        margin-top: 20px;
+        padding: 10px;
     }
 }
 

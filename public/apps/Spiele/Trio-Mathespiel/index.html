@@ -42,9 +42,9 @@
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 
     <style>
+    <style>
         /* New Lobby Layout Styles */
         #lobby-view .lobby-container {
-            /* Override grid/flex from old css if needed */
             display: flex;
             flex-direction: row;
             justify-content: center;
@@ -53,6 +53,17 @@
             max-width: 1000px;
             padding: 60px;
             text-align: left;
+            width: 100%;
+            margin: auto; /* Vertically center in flex parent, allows scroll if too tall */
+            box-sizing: border-box;
+        }
+
+        #lobby-view.view.active {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            overflow-y: auto;
         }
 
         .lobby-left {
@@ -82,17 +93,102 @@
         }
 
         /* Responsive Fix for Lobby */
+        @media (max-width: 900px) {
+            #lobby-view .lobby-container {
+                gap: 30px;
+                padding: 30px;
+            }
+        }
+
         @media (max-width: 768px) {
             #lobby-view .lobby-container {
                 flex-direction: column;
-                gap: 40px;
-                padding: 30px;
+                gap: 20px;
+                padding: 20px;
+                text-align: center;
             }
 
             .lobby-left,
             .lobby-right {
                 align-items: center;
                 text-align: center;
+                flex: none;
+                width: 100%;
+            }
+            
+            .game-title {
+                font-size: 2.5rem !important;
+            }
+        }
+
+        /* Landscape Mobile Fix for Lobby */
+        @media (orientation: landscape) and (max-height: 600px) {
+            #lobby-view.view.active {
+                padding: 5px; /* Extremely minimal padding */
+                justify-content: center;
+            }
+
+            #lobby-view .lobby-container {
+                flex-direction: row;
+                gap: 10px; /* Minimal gap */
+                padding: 10px;
+                max-width: 100%;
+                width: 100%;
+                margin: auto;
+                border: none;
+                background: transparent; /* Save space/visual weight */
+                box-shadow: none;
+            }
+            
+            .game-title {
+                font-size: 1.6rem !important;
+            }
+            
+            .lobby-left {
+                flex: 1.3;
+                min-width: 0;
+            }
+
+            .lobby-left p {
+                margin-bottom: 8px !important;
+                font-size: 0.85rem !important;
+            }
+            
+            .lobby-right {
+                flex: 1;
+                gap: 5px;
+                max-width: 260px;
+                min-width: 0;
+            }
+            
+            .lobby-right .btn-primary {
+                padding: 8px !important;
+                font-size: 0.9rem !important;
+            }
+
+            .lobby-separator {
+                margin: 2px 0;
+            }
+
+            #join-container label {
+                margin-bottom: 2px !important;
+                font-size: 0.7rem !important;
+            }
+
+            #join-code {
+                padding: 5px !important;
+                font-size: 0.85rem !important;
+                margin-bottom: 5px !important;
+            }
+
+            #btn-enter {
+                padding: 6px !important;
+            }
+
+            .btn-icon-help {
+                width: 32px !important;
+                height: 32px !important;
+                font-size: 1.1rem !important;
             }
         }
 
@@ -100,28 +196,22 @@
         .settings-grid-modal {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            /* Reduced gap */
-            margin-bottom: 20px;
-            /* Reduced margin */
-            /* Removed overflow-y: auto to encourage fit */
-            padding: 0;
+            gap: 10px;
+            margin-bottom: 15px;
+            padding: 5px;
             align-content: center;
-            height: 100%;
+            overflow-y: auto;
         }
 
         .setting-card {
             background: rgba(255, 255, 255, 0.05);
-            padding: 15px;
-            /* Reduced padding */
+            padding: 10px;
             border-radius: 12px;
             border: 1px solid rgba(255, 255, 255, 0.1);
             display: flex;
             flex-direction: column;
             justify-content: center;
-            /* Center content vertically */
-            gap: 5px;
-            /* Reduced gap */
+            gap: 2px;
             transition: background 0.2s;
         }
 
@@ -132,31 +222,26 @@
         .setting-card label {
             font-weight: 700;
             color: var(--primary-color);
-            font-size: 1rem;
-            /* Slightly smaller */
+            font-size: 0.9rem;
             margin-bottom: 0;
         }
 
         .setting-desc {
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             color: var(--text-muted);
-            line-height: 1.3;
-            margin-bottom: 5px;
-            /* Removed min-height to save space */
+            line-height: 1.2;
+            margin-bottom: 2px;
         }
 
         select,
         input[type="number"] {
-            padding: 8px 12px !important;
-            /* Compact inputs */
-            font-size: 0.95rem !important;
+            padding: 6px 10px !important;
+            font-size: 0.9rem !important;
         }
 
-        @media (max-width: 600px) {
+        @media (max-width: 600px), (max-height: 600px) {
             .settings-grid-modal {
                 grid-template-columns: 1fr;
-                /* overflow-y: auto;  Allow scroll on mobile - removed to try to fit if possible, but kept safe height */
-                overflow-y: auto;
             }
         }
     </style>
@@ -192,6 +277,20 @@
             width: 90px; /* Expanded width */
             gap: 8px;
             padding-left: 12px;
+        }
+
+        @media (max-height: 600px) {
+            .numo-back-btn {
+                top: 0.5rem;
+                left: 0.5rem;
+                width: 40px;
+                height: 40px;
+                padding: 4px;
+            }
+            .numo-logo-img {
+                width: 24px !important;
+                height: 24px !important;
+            }
         }
 
         .numo-back-icon {
@@ -580,12 +679,12 @@
             </div>
 
             <div class="operator-pad">
-                <button class="btn-calc op" data-op="+">+</button>
-                <button class="btn-calc op" data-op="-">-</button>
-                <button class="btn-calc op" data-op="*">·</button>
-                <button class="btn-calc op" data-op="/">:</button>
-                <button class="btn-calc op" data-op="(">(</button>
-                <button class="btn-calc op" data-op=")">)</button>
+                <button class="btn-calc op op-line" data-op="+">+</button>
+                <button class="btn-calc op op-line" data-op="-">-</button>
+                <button class="btn-calc op op-point" data-op="*">·</button>
+                <button class="btn-calc op op-point" data-op="/">:</button>
+                <button class="btn-calc op op-paren" data-op="(">(</button>
+                <button class="btn-calc op op-paren" data-op=")">)</button>
                 <button class="btn-calc" id="btn-backspace"
                     style="background: #94a3b8; color: #1e293b; grid-column: 3; grid-row: 2; font-size: 1.5rem; font-weight: bold;">&#9003;</button>
                 <button class="btn-calc action" id="btn-clear" style="grid-column: 4; grid-row: 2;">C</button>
