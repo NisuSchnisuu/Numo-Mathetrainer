@@ -1,19 +1,15 @@
 <!doctype html>
 <html lang="de">
-
-<head>
+  <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="./assets/Aufabentraining-logo-192x192.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Aufgabentraining</title>
-    <script type="module" crossorigin src="./assets/index-BxP-2y9c.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-clkga7zU.css">
-    <link rel="manifest" href="./manifest.webmanifest">
-    <script id="vite-plugin-pwa:register-sw" src="./registerSW.js"></script>
     <link rel="stylesheet" href="install-modal.css">
-</head>
-
-<body>
+    <script type="module" crossorigin src="./assets/index-DGRQgRz8.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-EXnvPDPM.css">
+  <link rel="manifest" href="./manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="./registerSW.js"></script></head>
+  <body>
     <div id="root"></div>
 
     <!-- PWA INSTALL MODAL -->
@@ -81,7 +77,7 @@
         </div>
     </div>
 
-    <script src="install-logic.js"></script>
+    <script src="install-logic.js"></script>
     <!-- Back Button Styles -->
     <style>
         .numo-back-btn {
@@ -102,8 +98,7 @@
             text-decoration: none;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
             overflow: hidden;
-            width: 48px;
-            /* Initial width */
+            width: 48px; /* Initial width */
             height: 48px;
         }
 
@@ -113,6 +108,20 @@
             /* Expanded width */
             gap: 8px;
             padding-left: 12px;
+        }
+
+        @media (max-height: 600px) {
+            .numo-back-btn {
+                top: 0.5rem;
+                left: 0.5rem;
+                width: 40px;
+                height: 40px;
+                padding: 4px;
+            }
+            .numo-logo-img {
+                width: 24px !important;
+                height: 24px !important;
+            }
         }
 
         .numo-back-icon {
@@ -135,23 +144,25 @@
         .numo-logo-img {
             width: 32px;
             height: 32px;
-            object-fit: contain;
+            -o-object-fit: contain;
+               object-fit: contain;
             flex-shrink: 0;
         }
     </style>
 
-    <a href="../../../" class="numo-back-btn"
-        onclick="if(window.parent !== window) { window.parent.postMessage('numo-back-to-home', '*'); return false; }"
-        title="Zurück zum Hauptmenü">
+    <a href="../../../" 
+       class="numo-back-btn"
+       onclick="if(window.parent !== window) { window.parent.postMessage('numo-back-to-home', '*'); return false; }"
+       title="Zurück zum Hauptmenü">
         <div class="numo-back-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M19 12H5" />
-                <path d="M12 19l-7-7 7-7" />
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 12H5"/>
+                <path d="M12 19l-7-7 7-7"/>
             </svg>
         </div>
-        <img src="./numo-logo-home.png" alt="Numo" class="numo-logo-img">
+        <img src="assets/numo-logo.png" 
+             alt="Numo" 
+             class="numo-logo-img">
     </a>
 </body>
-
 </html>
