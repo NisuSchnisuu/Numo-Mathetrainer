@@ -197,7 +197,6 @@ function init() {
         const installBtn = document.getElementById('btn-trigger-install');
         if (installBtn) {
             installBtn.style.display = 'block';
-            // ...
         }
     } else {
         // Explicitly hide install button if standalone
@@ -220,7 +219,14 @@ function init() {
 
     // Close Button Logic
     const closeBtn = document.getElementById('btn-close-install');
-    // ...
+    if (closeBtn) {
+        closeBtn.onclick = () => {
+            const modal = document.getElementById('pwa-install-modal');
+            if (modal) modal.classList.remove('active');
+        };
+    }
+
+    setupEventListeners();
 }
 
 function showInstallModal() {
@@ -1359,8 +1365,6 @@ function handleResultSync(res) {
             msg = `${res.playerName}: Das war nicht ganz korrekt.`;
         }
         playSound('fail');
-
-        // ...
     } // Auto-close after 3s
     // Class Mode: Suppress global feedback
     if (appState.settings && appState.settings.classMode && !isMe) {
