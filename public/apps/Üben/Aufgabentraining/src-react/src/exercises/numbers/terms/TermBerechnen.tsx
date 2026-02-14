@@ -497,8 +497,8 @@ function generateTask(config: Config): Task {
         try {
             const { task: termTask, activeDiff } = generateTerm(range, ops, difficulty);
 
-            // Construct string from elements
-            const termString = termTask.elements.map((e: GameElement) => e.val.toString()).join(' ');
+            // Construct string from ordered elements
+            const termString = termTask.orderedElements.map((e: GameElement) => e.val.toString()).join(' ');
 
             return {
                 target: termTask.target,

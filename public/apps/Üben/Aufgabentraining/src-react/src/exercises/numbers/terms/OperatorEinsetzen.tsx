@@ -697,8 +697,8 @@ function generateTask(config: Config): Task {
             // Use shared generator
             const { task: generatedTerm, activeDiff } = generateTerm(range, ops, difficulty);
 
-            // Convert TermTask elements to numberSequence and availableOperators
-            const numbers = generatedTerm.elements
+            // Convert TermTask elements to numberSequence (from orderedElements) and availableOperators
+            const numbers = generatedTerm.orderedElements
                 .filter(e => e.type === 'number')
                 .map(e => String(e.val));
 

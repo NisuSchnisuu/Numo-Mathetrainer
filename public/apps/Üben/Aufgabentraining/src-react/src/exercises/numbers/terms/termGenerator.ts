@@ -18,6 +18,7 @@ export interface GameElement {
 export interface TermTask {
     target: number;
     elements: GameElement[];
+    orderedElements: GameElement[];
     topLevelOp?: string;
 }
 
@@ -160,7 +161,7 @@ function createSimpleEquation(range: number, ops: OperatorState, numElements: nu
         topOp = '*';
     }
 
-    return { target: currentTotal, elements: allElements, topLevelOp: topOp };
+    return { target: currentTotal, elements: allElements, orderedElements: [...allElements], topLevelOp: topOp };
 }
 
 // 2. Normal Bracket Equation
@@ -213,21 +214,29 @@ function createBracketEquationNormal(range: number, ops: OperatorState, formatOp
     if (target > range || target < 0 || !Number.isInteger(target)) throw "Invalid";
 
     // Build elements
-    const elements: GameElement[] = [
-        { type: 'number', val: a, id: 'n1' },
-        { type: 'number', val: b, id: 'n2' },
-        { type: 'number', val: c, id: 'n3' },
-        { type: 'op', val: formatOp(opLine), id: 'o1' },
-        { type: 'op', val: formatOp(opPoint), id: 'o2' }
-    ];
+    const e_a: GameElement = { type: 'number', val: a, id: 'n1' };
+    const e_b: GameElement = { type: 'number', val: b, id: 'n2' };
+    const e_c: GameElement = { type: 'number', val: c, id: 'n3' };
+    const e_oL: GameElement = { type: 'op', val: formatOp(opLine), id: 'o1' };
+    const e_oP: GameElement = { type: 'op', val: formatOp(opPoint), id: 'o2' };
+    const e_b1: GameElement = { type: 'op', val: '(', id: 'b1' };
+    const e_b2: GameElement = { type: 'op', val: ')', id: 'b2' };
+
+    const elements: GameElement[] = [e_a, e_b, e_c, e_oL, e_oP];
 
     const parens = needsParens(opLine, opPoint, !isPost);
     if (parens) {
-        elements.push({ type: 'op', val: '(', id: 'b1' });
-        elements.push({ type: 'op', val: ')', id: 'b2' });
+        elements.push(e_b1, e_b2);
     }
 
-    return { target, elements, topLevelOp: opPoint };
+    let orderedElements: GameElement[];
+    if (isPost) {
+        orderedElements = parens ? [e_b1, e_a, e_oL, e_b, e_b2, e_oP, e_c] : [e_a, e_oL, e_b, e_oP, e_c];
+    } else {
+        orderedElements = parens ? [e_c, e_oP, e_b1, e_a, e_oL, e_b, e_b2] : [e_c, e_oP, e_a, e_oL, e_b];
+    }
+
+    return { target, elements, orderedElements, topLevelOp: opPoint };
 }
 
 // 3. Advanced Bracket
@@ -270,17 +279,25 @@ function createBracketEquationAdvanced(range: number, ops: OperatorState, format
     const total = eval(evalStr);
     if (total > range || total < 0 || !Number.isInteger(total)) throw "Invalid";
 
-    const elements = [...baseTask.elements];
-    elements.push({ type: 'number', val: d, id: 'n4' });
-    elements.push({ type: 'op', val: formatOp(newOp), id: 'o3' });
+    const e_d: GameElement = { type: 'number', val: d, id: 'n4' };
+    const e_o3: GameElement = { type: 'op', val: formatOp(newOp), id: 'o3' };
+    const e_b3: GameElement = { type: 'op', val: '(', id: 'b3' };
+    const e_b4: GameElement = { type: 'op', val: ')', id: 'b4' };
 
+    const elements = [...baseTask.elements, e_d, e_o3];
     const parens = needsParens(baseTask.topLevelOp, newOp, !isPost);
     if (parens) {
-        elements.push({ type: 'op', val: '(', id: 'b3' });
-        elements.push({ type: 'op', val: ')', id: 'b4' });
+        elements.push(e_b3, e_b4);
     }
 
-    return { target: total, elements, topLevelOp: newOp };
+    let orderedElements: GameElement[];
+    if (isPost) {
+        orderedElements = parens ? [e_b3, ...baseTask.orderedElements, e_b4, e_o3, e_d] : [...baseTask.orderedElements, e_o3, e_d];
+    } else {
+        orderedElements = parens ? [e_d, e_o3, e_b3, ...baseTask.orderedElements, e_b4] : [e_d, e_o3, ...baseTask.orderedElements];
+    }
+
+    return { target: total, elements, orderedElements, topLevelOp: newOp };
 }
 
 // 4. Profi Bracket
@@ -298,7 +315,7 @@ function createBracketEquationProfi(range: number, ops: OperatorState, formatOp:
     const randNum = () => Math.floor(Math.random() * (maxNum - minNum + 1)) + minNum;
 
     // Helper returns value + elements list + op
-    const createSafeTerm = (prefix: string): { val: number, elements: GameElement[], op: string } => {
+    const createSafeTerm = (prefix: string): { val: number, elements: GameElement[], orderedElements: GameElement[], op: string } => {
         let op = randOp();
         let a = randNum();
         let b = randNum();
@@ -311,12 +328,10 @@ function createBracketEquationProfi(range: number, ops: OperatorState, formatOp:
 
         // eslint-disable-next-line no-eval
         const val = eval(`${a} ${op} ${b}`);
-        const elements: GameElement[] = [
-            { type: 'number', val: a, id: 'n' + prefix + '1' },
-            { type: 'number', val: b, id: 'n' + prefix + '2' },
-            { type: 'op', val: formatOp(op), id: 'o' + prefix }
-        ];
-        return { val, elements, op };
+        const e1: GameElement = { type: 'number', val: a, id: 'n' + prefix + '1' };
+        const e2: GameElement = { type: 'number', val: b, id: 'n' + prefix + '2' };
+        const eo: GameElement = { type: 'op', val: formatOp(op), id: 'o' + prefix };
+        return { val, elements: [e1, e2, eo], orderedElements: [e1, eo, e2], op };
     };
 
     if (pattern === 'double') {
@@ -342,11 +357,12 @@ function createBracketEquationProfi(range: number, ops: OperatorState, formatOp:
 
             if (c <= 0 || d <= 0) throw "Inv";
 
+            const e3: GameElement = { type: 'number', val: c, id: 'nR3' };
+            const e4: GameElement = { type: 'number', val: d, id: 'nR4' };
+            const eoR: GameElement = { type: 'op', val: formatOp(op3), id: 'oR' };
+
             right = {
-                val: targetRight, elements: [
-                    { type: 'number', val: c, id: 'nR3' }, { type: 'number', val: d, id: 'nR4' },
-                    { type: 'op', val: formatOp(op3), id: 'oR' }
-                ], op: op3
+                val: targetRight, elements: [e3, e4, eoR], orderedElements: [e3, eoR, e4], op: op3
             };
         } else if (op2 === '-') {
             if (left.val < right.val) [left, right] = [right, left];
@@ -356,19 +372,35 @@ function createBracketEquationProfi(range: number, ops: OperatorState, formatOp:
         const res = eval(`${left.val} ${op2} ${right.val}`);
         if (!Number.isInteger(res) || res < 0 || res > range) throw "Invalid";
 
-        const elements = [...left.elements, ...right.elements];
-        elements.push({ type: 'op', val: formatOp(op2), id: 'oM' }); // middle op
+        const eOM: GameElement = { type: 'op', val: formatOp(op2), id: 'oM' };
+        const elements = [...left.elements, ...right.elements, eOM];
 
-        if (needsParens(left.op, op2, false)) {
-            elements.push({ type: 'op', val: '(', id: 'bL1' });
-            elements.push({ type: 'op', val: ')', id: 'bL2' });
-        }
-        if (needsParens(right.op, op2, true)) {
-            elements.push({ type: 'op', val: '(', id: 'bR1' });
-            elements.push({ type: 'op', val: ')', id: 'bR2' });
+        const eBL1: GameElement = { type: 'op', val: '(', id: 'bL1' };
+        const eBL2: GameElement = { type: 'op', val: ')', id: 'bL2' };
+        const eBR1: GameElement = { type: 'op', val: '(', id: 'bR1' };
+        const eBR2: GameElement = { type: 'op', val: ')', id: 'bR2' };
+
+        let orderedElements: GameElement[] = [];
+
+        const leftParens = needsParens(left.op, op2, false);
+        if (leftParens) {
+            elements.push(eBL1, eBL2);
+            orderedElements.push(eBL1, ...left.orderedElements, eBL2);
+        } else {
+            orderedElements.push(...left.orderedElements);
         }
 
-        return { target: res, elements, topLevelOp: op2 };
+        orderedElements.push(eOM);
+
+        const rightParens = needsParens(right.op, op2, true);
+        if (rightParens) {
+            elements.push(eBR1, eBR2);
+            orderedElements.push(eBR1, ...right.orderedElements, eBR2);
+        } else {
+            orderedElements.push(...right.orderedElements);
+        }
+
+        return { target: res, elements, orderedElements, topLevelOp: op2 };
 
     } else {
         // Nested
@@ -386,14 +418,23 @@ function createBracketEquationProfi(range: number, ops: OperatorState, formatOp:
         // eslint-disable-next-line no-eval
         let res2 = eval(`${t1.val} ${op2} ${c}`);
 
-        const elements = [...t1.elements];
-        elements.push({ type: 'number', val: c, id: 'nC' });
-        elements.push({ type: 'op', val: formatOp(op2), id: 'oB' });
+        const eNC: GameElement = { type: 'number', val: c, id: 'nC' };
+        const eOB: GameElement = { type: 'op', val: formatOp(op2), id: 'oB' };
+        const elements = [...t1.elements, eNC, eOB];
 
-        if (needsParens(t1.op, op2, false)) {
-            elements.push({ type: 'op', val: '(', id: 'bA1' });
-            elements.push({ type: 'op', val: ')', id: 'bA2' });
+        const eBA1: GameElement = { type: 'op', val: '(', id: 'bA1' };
+        const eBA2: GameElement = { type: 'op', val: ')', id: 'bA2' };
+
+        let t1Ordered: GameElement[] = [];
+        const t1Parens = needsParens(t1.op, op2, false);
+        if (t1Parens) {
+            elements.push(eBA1, eBA2);
+            t1Ordered = [eBA1, ...t1.orderedElements, eBA2];
+        } else {
+            t1Ordered = [...t1.orderedElements];
         }
+
+        let orderedElements2: GameElement[] = [...t1Ordered, eOB, eNC];
 
         let op3 = randOp();
         let d = randNum();
@@ -411,14 +452,23 @@ function createBracketEquationProfi(range: number, ops: OperatorState, formatOp:
         const finalRes = eval(`${res2} ${op3} ${d}`);
         if (!Number.isInteger(finalRes) || finalRes < 0 || finalRes > range) throw "Invalid";
 
-        elements.push({ type: 'number', val: d, id: 'nD' });
-        elements.push({ type: 'op', val: formatOp(op3), id: 'oC' });
+        const eND: GameElement = { type: 'number', val: d, id: 'nD' };
+        const eOC: GameElement = { type: 'op', val: formatOp(op3), id: 'oC' };
+        elements.push(eND, eOC);
 
-        if (needsParens(op2, op3, false)) {
-            elements.push({ type: 'op', val: '(', id: 'bB1' });
-            elements.push({ type: 'op', val: ')', id: 'bB2' });
+        const eBB1: GameElement = { type: 'op', val: '(', id: 'bB1' };
+        const eBB2: GameElement = { type: 'op', val: ')', id: 'bB2' };
+
+        let finalOrdered: GameElement[] = [];
+        const res2Parens = needsParens(op2, op3, false);
+        if (res2Parens) {
+            elements.push(eBB1, eBB2);
+            finalOrdered = [eBB1, ...orderedElements2, eBB2, eOC, eND];
+        } else {
+            finalOrdered = [...orderedElements2, eOC, eND];
         }
 
-        return { target: finalRes, elements, topLevelOp: op3 };
+        return { target: finalRes, elements, orderedElements: finalOrdered, topLevelOp: op3 };
     }
 }
+
