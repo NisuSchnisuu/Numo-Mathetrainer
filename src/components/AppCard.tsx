@@ -3,10 +3,11 @@ import { motion } from 'framer-motion';
 import { addRecentAppId } from '../utils/storage';
 
 export function AppCard({ app, onLaunch }: { app: App; onLaunch?: (app: App) => void }) {
-    // Use relative path '..' to go up from 'dashboard/' to root, then into 'apps/'
-    // This works for both Dev (served from root) and Prod (structure: /dashboard and /apps)
-    const fullPath = app.path.startsWith('http') ? app.path : `${import.meta.env.BASE_URL}../${app.path}`;
-    const imagePath = app.icon.startsWith('http') ? app.icon : `${import.meta.env.BASE_URL}../${app.icon}`;
+    // Get the root path (e.g., /Numo-Mathetrainer/) by removing 'dashboard/' from the end of BASE_URL
+    const rootPath = import.meta.env.BASE_URL.replace(/dashboard\/$/, '');
+    
+    const fullPath = app.path.startsWith('http') ? app.path : `${rootPath}${app.path}`;
+    const imagePath = app.icon.startsWith('http') ? app.icon : `${rootPath}${app.icon}`;
 
     const handleClick = (e: React.MouseEvent) => {
         addRecentAppId(app.id);

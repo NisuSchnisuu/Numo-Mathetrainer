@@ -16,7 +16,7 @@ export default defineConfig({
       scope: '/Numo-Mathetrainer/dashboard/',
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
-        globIgnores: ['apps/**', '**/node_modules/**'],
+        globIgnores: ['apps/**', 'app-thumbnails/**', '**/node_modules/**'],
         // Deny list: Prevent SW from handling apps (redundant with scope but good for safety)
         navigateFallbackDenylist: [/^\/Numo-Mathetrainer\/apps/, /apps\//],
         // Allow list: Only handle dashboard routes
