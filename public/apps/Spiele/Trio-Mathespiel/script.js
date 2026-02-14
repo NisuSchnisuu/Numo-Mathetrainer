@@ -828,6 +828,13 @@ function subscribeToGame(gameId) {
             }
 
             if (!appState.isHost) {
+                // If Game Over Modal is already active, don't show "Host left" message
+                const gameOverModal = document.getElementById('game-over-modal');
+                if (gameOverModal && gameOverModal.classList.contains('active')) {
+                    console.log("Game over active, host left. User can finish viewing ranking.");
+                    return;
+                }
+
                 // Non-host: Host has left the game
                 showModal("Spiel beendet", "Der Host hat das Spiel verlassen.", () => {
                     leaveGame(); // Clean up and return to lobby
@@ -1047,7 +1054,10 @@ function subscribeToGame(gameId) {
         }
 
         if (data.winner) {
-            handleGameWin(data.winner, data.players);
+            const gom = document.getElementById('game-over-modal');
+            if (gom && !gom.classList.contains('active')) {
+                handleGameWin(data.winner, data.players);
+            }
         }
     });
 
@@ -1381,9 +1391,9 @@ function handleResultSync(res) {
 
 function handleGameWin(winnerId, players) {
     const winnerName = players[winnerId]?.name || "Unbekannt";
-    const isMe = winnerId === appState.playerId;
+    const isMe = (winnerId === appState.playerId);
 
-    // Clear local penalty state immediately for all players
+    // Clear local penalty state
     if (appState.penaltyInterval) {
         clearInterval(appState.penaltyInterval);
         appState.penaltyInterval = null;
@@ -1391,50 +1401,86 @@ function handleGameWin(winnerId, players) {
     appState.lockedUntil = null;
     appState.isLocked = false;
 
-    // Reset buzzer button text if it was showing penalty countdown
+    // Reset buzzer if exists
     if (buttons.buzzer) {
         buttons.buzzer.innerText = "TRIO!";
         buttons.buzzer.disabled = false;
     }
 
-    showModal(
-        "SPIEL VORBEI! 🏆",
-        isMe ? "Glückwunsch! Du hast gewonnen!" : `${winnerName} hat gewonnen!`,
-        () => {
-            // "OK" action -> Return to lobby? or just close?
-            // If Host, maybe reset game?
-            if (appState.isHost) {
-                // Reset Game
-                db.ref(`games/${appState.gameId}`).update({
-                    state: 'waiting',
-                    winner: null,
-                    grid: null, // clear grid
-                    target: 0,
-                    vote: null
-                });
-                // Reset scores and clear penalty timers for all players
-                const updates = {};
-                Object.keys(players).forEach(pid => {
-                    updates[`players/${pid}/score`] = 0;
-                    updates[`players/${pid}/status`] = 'waiting';
-                    updates[`players/${pid}/lockedUntil`] = null; // Clear penalty timer
-                });
-                db.ref(`games/${appState.gameId}`).update(updates);
-            }
-            switchView('lobby'); // Everyone goes back to lobby/waiting room?
-            // Actually 'waiting' view is the room.
-            enterWaitingRoom();
-        },
-        false,
-        "Zurück zur Lobby",
-        "Schließen", // Cancel text
-        () => {
-            // Just close modal, stay in game view (maybe to chat/see board)
+    // --- POPULATE GAME OVER MODAL ---
+    const modal = document.getElementById('game-over-modal');
+    const winnerText = document.getElementById('game-over-winner-text');
+    const rankingBody = document.getElementById('game-over-ranking-body');
+    const personalRankDisplay = document.getElementById('personal-rank-display');
+
+    if (!modal || !winnerText || !rankingBody) return;
+
+    winnerText.innerText = isMe ? "Herzlichen Glückwunsch! Du hast gewonnen!" : `${winnerName} hat das Spiel gewonnen!`;
+
+    // Sort players by score
+    const sortedPlayers = Object.entries(players)
+        .map(([id, p]) => ({ id, ...p }))
+        .sort((a, b) => (b.score || 0) - (a.score || 0));
+
+    // Podium
+    const p1 = document.getElementById('podium-1-name');
+    const p2 = document.getElementById('podium-2-name');
+    const p3 = document.getElementById('podium-3-name');
+    
+    if (p1) p1.innerText = sortedPlayers[0] ? sortedPlayers[0].name : '-';
+    if (p2) p2.innerText = sortedPlayers[1] ? sortedPlayers[1].name : '-';
+    if (p3) p3.innerText = sortedPlayers[2] ? sortedPlayers[2].name : '-';
+
+    // Ranking Table
+    rankingBody.innerHTML = '';
+    let myRank = 0;
+    let lastScore = -1;
+    let currentRank = 0;
+
+    sortedPlayers.forEach((p, index) => {
+        const pScore = p.score || 0;
+        if (pScore !== lastScore) {
+            currentRank = index + 1;
+            lastScore = pScore;
         }
-    );
 
+        if (p.id === appState.playerId) {
+            myRank = currentRank;
+        }
 
+        const row = document.createElement('tr');
+        if (p.id === appState.playerId) row.style.backgroundColor = 'rgba(99, 102, 241, 0.1)';
+        
+        row.innerHTML = `
+            <td class="rank-num">#${currentRank}</td>
+            <td class="rank-name">${p.name} ${p.id === appState.playerId ? '(Du)' : ''}</td>
+            <td class="rank-score">${pScore} Pkt.</td>
+        `;
+        rankingBody.appendChild(row);
+    });
 
+    if (personalRankDisplay) personalRankDisplay.innerText = `Dein Rang: #${myRank}`;
+
+    // Close any other modals
+    document.querySelectorAll('.modal-overlay').forEach(m => {
+        if (m.id !== 'game-over-modal') m.classList.remove('active');
+    });
+    
+    // Show Game Over Modal
+    modal.classList.add('active');
+
+    // Winner effects
+    if (isMe && typeof startConfetti === 'function') {
+        startConfetti();
+        if (typeof playSound === 'function') playSound('success');
+    }
+    const homeBtn = document.getElementById('btn-game-over-home');
+    if (homeBtn) {
+        homeBtn.onclick = () => {
+            modal.classList.remove('active');
+            leaveGame();
+        };
+    }
 }
 
 // --- Gameplay Logic ---

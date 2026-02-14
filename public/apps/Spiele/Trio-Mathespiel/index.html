@@ -858,8 +858,49 @@
         </div>
     </div>
 
+    <!-- GAME OVER MODAL -->
+    <div id="game-over-modal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 600px; width: 90%; padding: 40px; text-align: center;">
+            <h1 style="font-size: 2.5rem; margin-bottom: 10px; color: var(--success);">SPIEL BEENDET! 🏆</h1>
+            <p id="game-over-winner-text" style="font-size: 1.2rem; color: var(--text-muted); margin-bottom: 30px;">--</p>
+
+            <!-- PODIUM -->
+            <div class="podium-container">
+                <div class="podium-place second">
+                    <div class="podium-name" id="podium-2-name">-</div>
+                    <div class="podium-block">2</div>
+                </div>
+                <div class="podium-place first">
+                    <div class="podium-name" id="podium-1-name">-</div>
+                    <div class="podium-block">1</div>
+                </div>
+                <div class="podium-place third">
+                    <div class="podium-name" id="podium-3-name">-</div>
+                    <div class="podium-block">3</div>
+                </div>
+            </div>
+
+            <!-- RANKING LIST -->
+            <div class="ranking-list-container" style="margin-top: 30px; text-align: left; max-height: 200px; overflow-y: auto;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tbody id="game-over-ranking-body">
+                        <!-- Rankings injected here -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- PERSONAL RANK -->
+            <div id="personal-rank-display" style="margin-top: 20px; font-weight: bold; font-size: 1.1rem; color: var(--primary-color);">
+                Dein Rang: --
+            </div>
+
+            <div style="margin-top: 40px;">
+                <button id="btn-game-over-home" class="btn-primary" style="width: 100%; padding: 15px; font-size: 1.1rem;">ZURÜCK ZUM HAUPTMENÜ</button>
+            </div>
+        </div>
+    </div>
+
     <!-- App Logic -->
     <script src="script.js?v=2.4"></script>
 </body>
-
 </html>
