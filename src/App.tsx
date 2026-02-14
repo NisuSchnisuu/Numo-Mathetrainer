@@ -279,7 +279,7 @@ function App() {
             <iframe
               src={activeApp.path.startsWith('http') 
                 ? activeApp.path 
-                : `${import.meta.env.DEV ? import.meta.env.BASE_URL : import.meta.env.BASE_URL.replace(/dashboard\/$/, '')}${activeApp.path}`}
+                : `${import.meta.env.DEV ? import.meta.env.BASE_URL : import.meta.env.BASE_URL.replace(/dashboard\/$/i, '')}${activeApp.path}`}
               className="w-full h-full border-none"
               title={activeApp.name}
               onLoad={(e) => {

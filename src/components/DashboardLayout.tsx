@@ -1,6 +1,10 @@
 import type { ReactNode } from 'react';
 
 export function DashboardLayout({ children }: { children: ReactNode }) {
+    const rootPath = import.meta.env.DEV 
+        ? import.meta.env.BASE_URL 
+        : import.meta.env.BASE_URL.replace(/dashboard\/$/i, '');
+
     return (
         <div className="min-h-screen bg-slate-950 text-slate-100 selection:bg-cyan-500/30 font-sans">
             <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-slate-950 to-slate-950 -z-10" />
@@ -8,7 +12,7 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
             <header className="sticky top-0 z-50 border-b border-white/5 bg-slate-950/80 backdrop-blur-xl">
                 <div className="container mx-auto px-6 h-16 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <img src={`${import.meta.env.BASE_URL}numo-logo/Numo-logo-192x192.png`} alt="Numo Logo" className="w-8 h-8 object-contain" />
+                        <img src={`${rootPath}numo-logo/Numo-logo-192x192.png`} alt="Numo Logo" className="w-8 h-8 object-contain" />
                         <span className="font-bold text-lg tracking-tight text-white">Numo</span>
                     </div>
                     {/* 

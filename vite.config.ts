@@ -13,14 +13,14 @@ export default defineConfig({
       devOptions: {
         enabled: false
       },
-      scope: '/Numo-MatheTrainer/dashboard/',
+      scope: '/Numo-Mathetrainer/dashboard/',
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
         globIgnores: ['apps/**', 'app-thumbnails/**', '**/node_modules/**'],
         // Deny list: Prevent SW from handling apps (redundant with scope but good for safety)
-        navigateFallbackDenylist: [/^\/Numo-MatheTrainer\/apps/, /apps\//],
+        navigateFallbackDenylist: [/^\/Numo-Mathetrainer\/apps/, /apps\//],
         // Allow list: Only handle dashboard routes
-        navigateFallbackAllowlist: [/^\/Numo-MatheTrainer\/dashboard/],
+        navigateFallbackAllowlist: [/^\/Numo-Mathetrainer\/dashboard/],
       },
       manifest: {
         name: "Numo Mathetrainer",
@@ -30,7 +30,7 @@ export default defineConfig({
         background_color: "#0f172a",
         display: "standalone",
         start_url: "./index.html",
-        scope: "/Numo-MatheTrainer/dashboard/",
+        scope: "/Numo-Mathetrainer/dashboard/",
         icons: [
           {
             src: "numo-logo/Numo-logo-192x192.png",
@@ -46,7 +46,7 @@ export default defineConfig({
       }
     })
   ],
-  base: '/Numo-MatheTrainer/dashboard/',
+  base: '/Numo-Mathetrainer/dashboard/',
   build: {
     outDir: 'dist/dashboard',
     emptyOutDir: true,

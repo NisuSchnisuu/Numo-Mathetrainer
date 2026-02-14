@@ -7,7 +7,7 @@ export function AppCard({ app, onLaunch }: { app: App; onLaunch?: (app: App) => 
     // In production, our post-build script moves them up to the repo root.
     const rootPath = import.meta.env.DEV 
         ? import.meta.env.BASE_URL 
-        : import.meta.env.BASE_URL.replace(/dashboard\/$/, '');
+        : import.meta.env.BASE_URL.replace(/dashboard\/$/i, '');
     
     const fullPath = app.path.startsWith('http') ? app.path : `${rootPath}${app.path}`;
     const imagePath = app.icon.startsWith('http') ? app.icon : `${rootPath}${app.icon}`;
