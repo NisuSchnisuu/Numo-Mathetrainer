@@ -92,7 +92,11 @@ function switchView(viewName) {
     // Toggle Numo Back Link (Only visible in lobby)
     const backLink = document.getElementById('numo-back-link');
     if (backLink) {
-        if (viewName === 'lobby') {
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+                            (window.navigator.standalone === true);
+        const isInIframe = window.parent !== window;
+
+        if (viewName === 'lobby' && !(isStandalone && !isInIframe)) {
             backLink.style.display = 'flex';
         } else {
             backLink.style.display = 'none';

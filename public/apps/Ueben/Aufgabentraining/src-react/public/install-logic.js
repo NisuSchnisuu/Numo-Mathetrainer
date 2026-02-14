@@ -32,7 +32,21 @@
                                 (window.navigator.standalone === true);
             const isInIframe = window.parent !== window;
             
-            // If we are already running as an installed app (and not inside the Numo shell iframe), hide the button
+            // Handle Back Button (Numo Logo)
+            const backBtn = document.getElementById('numo-back-link');
+            if (backBtn) {
+                if (isStandalone && !isInIframe) {
+                    backBtn.style.display = 'none';
+                } else {
+                    // Default logic for showing/hiding back button based on context (if needed)
+                    // For now, just ensure it's visible if not standalone
+                    if (backBtn.style.display === 'none' && !(isStandalone && !isInIframe)) {
+                        backBtn.style.display = 'flex';
+                    }
+                }
+            }
+
+            // If we are already running as an installed app (and not inside the Numo shell iframe), hide the install button
             if (isStandalone && !isInIframe) {
                 installBtn.style.display = 'none';
                 return;
