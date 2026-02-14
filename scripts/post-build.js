@@ -60,12 +60,16 @@ const redirectHtml = `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
-<meta http-equiv="refresh" content="0; url=./dashboard/">
 <title>Redirecting...</title>
 <script>
-  // Instant client-side redirect
-  window.location.replace("./dashboard/" + window.location.search + window.location.hash);
+  // More robust redirect for Safari/iPad
+  var path = window.location.pathname;
+  if (!path.endsWith('/')) path += '/';
+  window.location.replace(path + "dashboard/" + window.location.search + window.location.hash);
 </script>
+<noscript>
+  <meta http-equiv="refresh" content="0; url=./dashboard/">
+</noscript>
 </head>
 <body>
 <p>Redirecting to <a href="./dashboard/">dashboard</a>...</p>
