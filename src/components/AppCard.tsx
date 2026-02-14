@@ -6,7 +6,7 @@ export function AppCard({ app, onLaunch }: { app: App; onLaunch?: (app: App) => 
     // Use relative path '..' to go up from 'dashboard/' to root, then into 'apps/'
     // This works for both Dev (served from root) and Prod (structure: /dashboard and /apps)
     const fullPath = app.path.startsWith('http') ? app.path : `${import.meta.env.BASE_URL}../${app.path}`;
-    const imagePath = `${import.meta.env.BASE_URL}${app.icon}`;
+    const imagePath = app.icon.startsWith('http') ? app.icon : `${import.meta.env.BASE_URL}../${app.icon}`;
 
     const handleClick = (e: React.MouseEvent) => {
         addRecentAppId(app.id);

@@ -22,7 +22,7 @@ export const apps: App[] = [
     id: 'aufgabentraining',
     name: 'Aufgabentraining',
     description: 'Unbegrenzt Übungsaufgaben lösen.',
-    path: 'apps/Üben/Aufgabentraining/index.html',
+    path: 'apps/Ueben/Aufgabentraining/index.html',
     icon: 'app-thumbnails/Aufgabentraining-Thumbnail.webp',
     category: 'Üben',
     tags: ['Training', 'Mathe', 'Üben'],

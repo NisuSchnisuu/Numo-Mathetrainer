@@ -31,7 +31,7 @@ jobs:
         run: npm ci
 
       - name: Build Aufgabentraining
-        working-directory: ./public/apps/Üben/Aufgabentraining/src-react
+        working-directory: ./public/apps/Ueben/Aufgabentraining/src-react
         run: |
           npm ci
           npm run build

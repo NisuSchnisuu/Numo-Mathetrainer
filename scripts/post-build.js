@@ -9,6 +9,8 @@ const distDir = path.join(projectRoot, 'dist');
 const dashboardDir = path.join(distDir, 'dashboard');
 const appsSrcDir = path.join(dashboardDir, 'apps');
 const appsDestDir = path.join(distDir, 'apps');
+const thumbsSrcDir = path.join(dashboardDir, 'app-thumbnails');
+const thumbsDestDir = path.join(distDir, 'app-thumbnails');
 
 console.log('Starting post-build script...');
 
@@ -39,6 +41,18 @@ if (fs.existsSync(appsSrcDir)) {
   fs.renameSync(appsSrcDir, appsDestDir);
 } else {
   console.log('Warning: apps directory not found in dashboard dist. (Did you put apps in public?)');
+}
+
+// Move thumbnails from dist/dashboard/app-thumbnails to dist/app-thumbnails
+if (fs.existsSync(thumbsSrcDir)) {
+  console.log(`Moving thumbnails from ${thumbsSrcDir} to ${thumbsDestDir}...`);
+  if (fs.existsSync(thumbsDestDir)) {
+      console.log('Cleaning existing dist/app-thumbnails...');
+      fs.rmSync(thumbsDestDir, { recursive: true, force: true });
+  }
+  fs.renameSync(thumbsSrcDir, thumbsDestDir);
+} else {
+  console.log('Warning: app-thumbnails directory not found in dashboard dist.');
 }
 
 // Create redirect index.html at root dist
