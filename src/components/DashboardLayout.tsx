@@ -1,10 +1,6 @@
 import type { ReactNode } from 'react';
 
 export function DashboardLayout({ children }: { children: ReactNode }) {
-    const rootPath = import.meta.env.DEV 
-        ? import.meta.env.BASE_URL 
-        : import.meta.env.BASE_URL.replace(/dashboard\/$/i, '');
-
     return (
         <div className="min-h-screen bg-slate-950 text-slate-100 selection:bg-cyan-500/30 font-sans">
             <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-slate-950 to-slate-950 -z-10" />
