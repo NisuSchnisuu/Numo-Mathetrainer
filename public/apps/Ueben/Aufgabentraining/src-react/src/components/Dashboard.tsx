@@ -12,19 +12,19 @@ export function Dashboard({ onSelectTopic }: DashboardProps) {
     // Sync Numo Back Button visibility with internal dashboard state
     useEffect(() => {
         const backLink = document.getElementById('numo-back-link');
+        const installBtn = document.getElementById('btn-trigger-install');
+
+        const isHomescreen = !selectedCategory && (!searchQuery || searchQuery.length <= 1);
+
         if (backLink) {
-            // Hide if we are in a sub-view (category selected or searching)
-            if (selectedCategory || (searchQuery && searchQuery.length > 1)) {
-                backLink.style.display = 'none';
-            } else {
-                backLink.style.display = 'flex';
-            }
+            // Only show on actual homescreen (categories)
+            backLink.style.display = isHomescreen ? 'flex' : 'none';
         }
-        
-        // Cleanup when component unmounts (managed by App.tsx, but safe here)
-        return () => {
-            // App.tsx effect will take over if we unmount because of topic selection
-        };
+
+        if (installBtn) {
+            // Only show on actual homescreen
+            installBtn.style.display = isHomescreen ? 'inline-flex' : 'none';
+        }
     }, [selectedCategory, searchQuery]);
 
     const activeCategory = curriculum.find(c => c.id === selectedCategory);
@@ -67,6 +67,21 @@ export function Dashboard({ onSelectTopic }: DashboardProps) {
                             ? 'Wähle ein Thema aus diesem Bereich.' 
                             : 'Wähle eine Kategorie, um unbegrenzt Aufgaben zu lösen.')}
                 </p>
+
+                {/* Install Button - ONLY on root dashboard */}
+                {!selectedCategory && (!searchQuery || searchQuery.length <= 1) && (
+                    <button 
+                        id="btn-trigger-install"
+                        className="mt-6 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm font-medium transition-all inline-flex items-center gap-2 group shadow-sm"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-primary group-hover:scale-110 transition-transform">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="7 10 12 15 17 10"/>
+                            <line x1="12" y1="15" x2="12" y2="3"/>
+                        </svg>
+                        <span>App installieren</span>
+                    </button>
+                )}
             </div>
 
             {/* Content Area */}
@@ -140,11 +155,11 @@ export function Dashboard({ onSelectTopic }: DashboardProps) {
                         {/* Cycle 1 */}
                         {activeCategory.topics.filter(t => t.cycle === 1).length > 0 && (
                             <div className="animate-fade-in">
-                                <h3 className="text-lg font-semibold text-primary mb-4 flex items-center gap-2">
+                                <h3 className="text-lg font-semibold text-primary mb-4 flex items-center justify-center gap-2">
                                     <span className="w-2 h-2 rounded-full bg-primary/60"></span>
                                     Zyklus 1 <span className="text-muted-foreground font-normal text-sm ml-2">(1. – 2. Klasse)</span>
                                 </h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <div className="flex flex-wrap justify-center gap-4">
                                     {activeCategory.topics.filter(t => t.cycle === 1).map(topic => (
                                         <TopicCard 
                                             key={topic.id} 
@@ -160,11 +175,11 @@ export function Dashboard({ onSelectTopic }: DashboardProps) {
                         {/* Cycle 2 */}
                         {activeCategory.topics.filter(t => t.cycle === 2).length > 0 && (
                             <div className="animate-fade-in" style={{ animationDelay: '100ms' }}>
-                                <h3 className="text-lg font-semibold text-primary mb-4 flex items-center gap-2">
+                                <h3 className="text-lg font-semibold text-primary mb-4 flex items-center justify-center gap-2">
                                     <span className="w-2 h-2 rounded-full bg-primary/60"></span>
                                     Zyklus 2 <span className="text-muted-foreground font-normal text-sm ml-2">(3. – 6. Klasse)</span>
                                 </h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <div className="flex flex-wrap justify-center gap-4">
                                     {activeCategory.topics.filter(t => t.cycle === 2).map(topic => (
                                         <TopicCard 
                                             key={topic.id} 
@@ -191,7 +206,7 @@ function TopicCard({ topic, colorClass, onClick }: { topic: any, colorClass: str
     return (
         <div 
             onClick={onClick}
-            className="glass-card rounded-xl p-6 cursor-pointer transition-all duration-200 group"
+            className="glass-card rounded-xl p-6 cursor-pointer transition-all duration-200 group w-full sm:w-[calc(50%-1rem)] lg:w-[calc(33.33%-1rem)] min-w-[280px] max-w-[360px]"
         >
             <div className="mb-4">
                 <div className={`h-1.5 w-10 rounded-full ${dotColor} mb-3 opacity-60 group-hover:opacity-100 transition-opacity`}></div>

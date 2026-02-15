@@ -38,16 +38,9 @@
             const installBtn = document.getElementById('btn-trigger-install');
 
             // 1. Handle Back Button (Numo Logo)
-            // Hide if we are running standalone (no matter if iframe or not, 
-            // but usually standalone apps are not in iframes unless it's the shell)
-            // Actually, the user says: "nur, wenn die Unterapps im Standalone sind, der Numo zurück Button nicht angezeigt wird"
-            if (backBtn) {
-                if (currentStandalone && !isInIframe) {
-                    backBtn.style.display = 'none';
-                } else {
-                    // Show in browser or when in shell
-                    backBtn.style.display = 'flex';
-                }
+            // Hide if we are running standalone
+            if (backBtn && currentStandalone && !isInIframe) {
+                backBtn.style.display = 'none';
             }
 
             // 2. Handle Install Button
@@ -55,32 +48,31 @@
                 // Hide if:
                 // - Already standalone
                 // - OR Parent is standalone (Numo App is already installed)
-                // - OR Not on dashboard/main view
-                const mainElement = document.querySelector('main');
-                const shouldHide = currentStandalone || isParentStandalone || !mainElement;
+                const shouldHide = currentStandalone || isParentStandalone;
 
                 if (shouldHide) {
                     installBtn.style.display = 'none';
-                } else {
-                    installBtn.style.display = 'block';
+                }
+                
+                // Add listener if not already added (simple way)
+                if (!installBtn.hasListener) {
+                    installBtn.addEventListener('click', () => {
+                        if (window.parent !== window) {
+                            const url = new URL(window.location.href);
+                            url.searchParams.set('install', 'true');
+                            window.open(url.toString(), '_blank');
+                            return;
+                        }
+                        showInstallModal();
+                    });
+                    installBtn.hasListener = true;
                 }
             }
         }
 
         setInterval(checkVisibility, 500);
         checkVisibility();
-
-        installBtn.addEventListener('click', () => {
-            // If in iframe, open direct URL in new tab
-            if (window.parent !== window) {
-                const url = new URL(window.location.href);
-                url.searchParams.set('install', 'true');
-                window.open(url.toString(), '_blank');
-                return;
-            }
-
-            showInstallModal();
-        });
+    }
 
         // Close logic
         const closeBtn = document.getElementById('btn-close-install');

@@ -10,13 +10,22 @@ function App() {
   // Sync Numo Back Button visibility with app state
   useEffect(() => {
     const backLink = document.getElementById('numo-back-link');
+    const installBtn = document.getElementById('btn-trigger-install');
+    
     if (backLink) {
       // Hide if we are deeper than the dashboard root
       if (currentTopic) {
         backLink.style.display = 'none';
       } else {
+        // Dashboard.tsx will handle the more specific "Homescreen" check
+        // but we ensure it's at least possibly visible here
         backLink.style.display = 'flex';
       }
+    }
+
+    if (installBtn && currentTopic) {
+      // Hide install button when we leave dashboard
+      installBtn.style.display = 'none';
     }
   }, [currentTopic]);
 
