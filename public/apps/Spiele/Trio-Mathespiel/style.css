@@ -2626,3 +2626,104 @@ body {
     text-align: right;
     font-weight: bold;
 }
+
+/* Mobile Final Polishing */
+@media (max-width: 600px), (max-height: 500px) {
+    /* Calculation Modal Compact Mode */
+    #calc-modal .modal-content {
+        padding: 10px !important;
+        gap: 5px !important;
+    }
+    
+    #calc-modal h2 { font-size: 1.2rem; margin: 0 !important; }
+    #modal-target-display { font-size: 1rem !important; margin-bottom: 5px !important; }
+    
+    .formula-display {
+        height: 50px !important;
+        font-size: 1.6rem !important;
+        margin: 5px 0 !important;
+    }
+    
+    .numpad-section {
+        margin-bottom: 5px !important;
+        gap: 10px !important;
+    }
+    
+    .btn-calc.num-btn {
+        width: 50px !important;
+        height: 50px !important;
+        font-size: 1.5rem !important;
+    }
+    
+    .operator-pad {
+        gap: 4px !important;
+    }
+    
+    .btn-calc {
+        padding: 8px 0 !important;
+        font-size: 1.1rem !important;
+    }
+
+    #btn-backspace { font-size: 1.1rem !important; }
+
+    #calc-modal .btn-primary, #calc-modal .btn-secondary {
+        padding: 10px !important;
+        font-size: 1rem !important;
+        margin-top: 10px !important;
+    }
+
+    /* Game Over Modal Compact Mode */
+    #game-over-modal .modal-content {
+        padding: 15px !important;
+        width: 95% !important;
+    }
+
+    #game-over-modal h1 {
+        font-size: 1.5rem !important;
+        margin-bottom: 5px !important;
+    }
+
+    #game-over-winner-text {
+        font-size: 0.9rem !important;
+        margin-bottom: 10px !important;
+    }
+
+    .podium-container {
+        height: 100px !important;
+        margin: 10px 0 !important;
+    }
+
+    .podium-block {
+        font-size: 1.1rem !important;
+    }
+
+    .podium-name {
+        font-size: 0.75rem !important;
+        margin-bottom: 4px !important;
+    }
+
+    .first .podium-block { height: 70px !important; }
+    .second .podium-block { height: 50px !important; }
+    .third .podium-block { height: 35px !important; }
+
+    .ranking-list-container {
+        margin-top: 10px !important;
+        max-height: 150px !important;
+    }
+
+    .ranking-list-container td {
+        padding: 6px !important;
+        font-size: 0.85rem !important;
+    }
+
+    #personal-rank-display {
+        margin-top: 10px !important;
+        font-size: 0.95rem !important;
+    }
+
+    #game-over-modal .btn-primary {
+        margin-top: 15px !important;
+        padding: 12px !important;
+        font-size: 1rem !important;
+    }
+}

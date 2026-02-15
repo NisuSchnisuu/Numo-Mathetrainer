@@ -103,8 +103,6 @@ function saveSession() {
             gameId: appState.gameId,
             playerId: appState.playerId,
             isHost: appState.isHost,
-            isHost: appState.isHost,
-            isHost: appState.isHost,
             playerName: appState.playerName,
             difficulty: appState.difficulty,
             currentView: appState.currentView,
@@ -137,8 +135,11 @@ function checkSession() {
                 appState.gameId = session.gameId;
                 appState.playerId = session.playerId;
                 appState.isHost = session.isHost;
-                appState.playerName = session.playerName;
+                appState.playerName = session.playerName || '';
                 if (session.difficulty) appState.difficulty = session.difficulty;
+
+                // Pre-fill name input if it exists
+                if (inputs.playerName) inputs.playerName.value = appState.playerName;
 
                 console.log("Restoring session:", session);
                 subscribeToGame(appState.gameId);
@@ -146,8 +147,8 @@ function checkSession() {
                 // Optimistic View Restore
                 if (session.currentView) {
                     console.log("Optimistic Switch to:", session.currentView);
-                    // if (session.currentView === 'game') switchView('game'); // DISABLED to prevent Zombie State
-                    if (session.currentView === 'waiting') enterWaitingRoom();
+                    if (session.currentView === 'game') switchView('game');
+                    else if (session.currentView === 'waiting') enterWaitingRoom();
                 }
 
                 return true;
@@ -158,6 +159,29 @@ function checkSession() {
         }
     }
     return false;
+}
+
+function loadGameSettings() {
+    const settingsStr = localStorage.getItem('trio_game_settings');
+    if (!settingsStr) return;
+
+    try {
+        const settings = JSON.parse(settingsStr);
+        console.log("Loading saved game settings:", settings);
+
+        if (settings.difficulty && inputs.difficulty) inputs.difficulty.value = settings.difficulty;
+        if (settings.gridSize && inputs.gridSize) inputs.gridSize.value = settings.gridSize;
+        if (settings.winningScore && inputs.winningScore) {
+            inputs.winningScore.value = settings.winningScore;
+            if (settings.winningScore === 'custom' && inputs.customScore) {
+                inputs.customScore.value = settings.customScore || '';
+                inputs.customScore.style.display = 'block';
+            }
+        }
+        if (settings.numberRange && inputs.numberRange) inputs.numberRange.value = settings.numberRange;
+    } catch (e) {
+        console.error("Error loading settings", e);
+    }
 }
 
 // PWA Install Logic
@@ -224,6 +248,32 @@ function init() {
             const modal = document.getElementById('pwa-install-modal');
             if (modal) modal.classList.remove('active');
         };
+    }
+
+    // --- SESSION & URL RESTORATION ---
+    
+    // 1. Pre-fill Player Name
+    const savedName = localStorage.getItem('trio_player_name');
+    if (savedName && inputs.playerName) {
+        inputs.playerName.value = savedName;
+        appState.playerName = savedName;
+    }
+
+    // 2. Check for Join Link via URL Parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const joinCode = urlParams.get('join');
+    
+    // 3. Load Saved Game Settings (Difficulty, Grid, etc.)
+    loadGameSettings();
+    
+    if (joinCode) {
+        console.log("Join code found in URL:", joinCode);
+        if (inputs.joinCode) inputs.joinCode.value = joinCode.toUpperCase();
+        enableQuickJoinMode();
+        // Skip session restore if we're explicitly trying to join a new game via link
+    } else {
+        // 3. Check for existing session
+        checkSession();
     }
 
     setupEventListeners();
@@ -354,6 +404,7 @@ function setupEventListeners() {
             // Persist Settings
             const settings = {
                 difficulty: inputs.difficulty.value,
+                gridSize: inputs.gridSize.value,
                 winningScore: inputs.winningScore.value,
                 customScore: inputs.customScore.value,
                 numberRange: inputs.numberRange ? inputs.numberRange.value : 'base'
