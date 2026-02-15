@@ -57,14 +57,25 @@ export async function generateWorksheetPdf(config: PdfConfig) {
     // Generate Tasks
     const taskCount = 20;
     const tasks: PdfTask[] = [];
+    const usedTerms = new Set<string>();
+
     for (let i = 0; i < taskCount; i++) {
         let attempts = 0;
         let task: PdfTask | null = null;
-        while (attempts < 20) {
+        // Wir erhöhen die Versuche und nutzen einen Zeitstempel-Faktor für die Randomness
+        while (attempts < 100) {
             try {
                 const { task: t } = generateTerm(range, ops, difficulty);
                 const solutionString = t.orderedElements.map((e: GameElement) => e.val.toString()).join(' ');
                 
+                // Check for duplicates
+                const uniqueKey = `${solutionString}=${t.target}`;
+                if (usedTerms.has(uniqueKey)) {
+                    attempts++;
+                    continue;
+                }
+                usedTerms.add(uniqueKey);
+
                 if (exerciseType === 'berechnen') {
                     task = { display: `${solutionString} = `, target: t.target, solution: `${solutionString} = ${t.target}` } as BerechnenTask;
                 } else if (exerciseType === 'einsetzen') {
@@ -129,10 +140,16 @@ export async function generateWorksheetPdf(config: PdfConfig) {
         } else if (exerciseType === 'baumeister') {
             const t = task as BaumeisterTask;
             doc.setFontSize(9);
-            doc.text(`Zahlen: ${t.numbers.join(', ')}`, x, y - 4);
+            const numbersStr = `Zahlen: ${t.numbers.join(', ')}`;
+            doc.text(numbersStr, x, y - 4);
+            
+            // Anzeige der verfügbaren Zeichen rechts daneben
+            const opsStr = `Zeichen: ${t.ops.join(' ')}`;
+            doc.text(opsStr, x + 40, y - 4);
+            
             doc.setFontSize(12);
             doc.text(`Ziel: ${t.target}`, x, y + 4);
-            doc.line(x + 25, y + 4, x + 75, y + 4);
+            doc.line(x + 20, y + 4, x + 85, y + 4);
         }
     });
 
@@ -149,7 +166,9 @@ export async function generateWorksheetPdf(config: PdfConfig) {
         doc.text(`${index + 1})  ${task.solution}`, colX, rowY);
     });
 
-    // Download
-    const fileName = `${title.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+    // Download mit präzisem Zeitstempel (verhindert Caching-Probleme)
+    const now = new Date();
+    const timeStr = `${now.getHours()}-${now.getMinutes()}-${now.getSeconds()}`;
+    const fileName = `${title.replace(/\s+/g, '_')}_${now.toISOString().split('T')[0]}_${timeStr}.pdf`;
     doc.save(fileName);
 }

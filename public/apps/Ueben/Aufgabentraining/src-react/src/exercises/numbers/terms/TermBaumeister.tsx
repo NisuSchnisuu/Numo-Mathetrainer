@@ -77,6 +77,17 @@ export function TermBaumeister({ onBack }: TermBaumeisterProps) {
 function ConfigView({ config, setConfig, onStart, onBack }: { config: Config, setConfig: (c: Config) => void, onStart: () => void, onBack: () => void }) {
     const [shakeKey, setShakeKey] = useState<string | null>(null);
     const [toastMsg, setToastMsg] = useState<string | null>(null);
+    const [isGenerating, setIsGenerating] = useState(false);
+
+    const handlePdf = async () => {
+        setIsGenerating(true);
+        await new Promise(r => setTimeout(r, 600));
+        try {
+            await generateWorksheetPdf({ ...config, title: 'Term-Baumeister', exerciseType: 'baumeister' });
+        } finally {
+            setIsGenerating(false);
+        }
+    };
 
     const toggleOp = (key: keyof OperatorState) => {
         if (config.difficulty === 'allround') return; // Locked
@@ -84,23 +95,22 @@ function ConfigView({ config, setConfig, onStart, onBack }: { config: Config, se
 
         const isTurningOff = config.ops[key];
 
-        if (isTurningOff) {
-            // Check if this would violate the rules
-            const nextOps = { ...config.ops, [key]: false };
-            const hasLine = nextOps.plus || nextOps.minus;
-            const hasPoint = nextOps.mult || nextOps.div;
-
-            if (!hasLine || !hasPoint) {
-                // Prevent change
-                setShakeKey(key);
-                setToastMsg("Mindestens eine Strich- (+/-) und Punktrechnung (×/÷) nötig!");
-                setTimeout(() => setShakeKey(null), 500);
-                setTimeout(() => setToastMsg(null), 3000);
-                return;
-            }
-        }
-
-        setConfig({
+                    if (isTurningOff) {
+                        // Check if this would violate the rules
+                        const nextOps = { ...config.ops, [key]: false };
+                        const hasLine = nextOps.plus || nextOps.minus;
+                        const hasPoint = nextOps.mult || nextOps.div;
+        
+                        if (!hasLine || !hasPoint) {
+                            // Prevent change
+                            setShakeKey(key);
+                            setToastMsg("Mindestens eine Strich- (+/-) und Punktrechnung (·/÷) nötig!");
+                            setTimeout(() => setShakeKey(null), 500);
+                            setTimeout(() => setToastMsg(null), 3000);
+                            return;
+                        }
+                    }
+                setConfig({
             ...config,
             ops: { ...config.ops, [key]: !config.ops[key] }
         });
@@ -137,13 +147,14 @@ function ConfigView({ config, setConfig, onStart, onBack }: { config: Config, se
                     <label className="text-sm font-semibold text-white">Rechenzeichen</label>
                     <span className="text-xs text-muted-foreground">Was soll vorkommen?</span>
                 </div>
-                <div className="grid grid-cols-5 gap-3">
-                    <OpToggle label="+" active={config.ops.plus} locked={isAllround} shake={shakeKey === 'plus'} onClick={() => toggleOp('plus')} />
-                    <OpToggle label="-" active={config.ops.minus} locked={isAllround} shake={shakeKey === 'minus'} onClick={() => toggleOp('minus')} />
-                    <OpToggle label="×" active={config.ops.mult} locked={isAllround} shake={shakeKey === 'mult'} onClick={() => toggleOp('mult')} />
-                    <OpToggle label="÷" active={config.ops.div} locked={isAllround} shake={shakeKey === 'div'} onClick={() => toggleOp('div')} />
-                    <OpToggle label="( )" active={config.ops.brackets} locked={isAllround || isProfi} shake={shakeKey === 'brackets'} onClick={() => toggleOp('brackets')} />
-                </div>
+                                    <div className="grid grid-cols-5 gap-3">
+                                        <OpToggle label="+" active={config.ops.plus} locked={isAllround} shake={shakeKey === 'plus'} onClick={() => toggleOp('plus')} />
+                                        <OpToggle label="-" active={config.ops.minus} locked={isAllround} shake={shakeKey === 'minus'} onClick={() => toggleOp('minus')} />
+                                        <OpToggle label="·" active={config.ops.mult} locked={isAllround} shake={shakeKey === 'mult'} onClick={() => toggleOp('mult')} />
+                                        <OpToggle label="÷" active={config.ops.div} locked={isAllround} shake={shakeKey === 'div'} onClick={() => toggleOp('div')} />
+                                        <OpToggle label="( )" active={config.ops.brackets} locked={isAllround || isProfi} shake={shakeKey === 'brackets'} onClick={() => toggleOp('brackets')} />
+                                    </div>
+                
             </div>
 
             {/* Range */}
@@ -185,14 +196,20 @@ function ConfigView({ config, setConfig, onStart, onBack }: { config: Config, se
             <div className="mt-auto pt-4 relative space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                     <button
-                        onClick={() => generateWorksheetPdf({ ...config, title: 'Term-Baumeister', exerciseType: 'baumeister' })}
-                        className="flex items-center justify-center gap-2 bg-white/5 text-white border border-white/10 font-bold py-4 rounded-xl hover:bg-white/10 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg"
+                        onClick={handlePdf}
+                        disabled={isGenerating}
+                        className="flex items-center justify-center gap-2 bg-white/5 text-white border border-white/10 font-bold py-4 rounded-xl hover:bg-white/10 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/></svg>
-                        PDF
+                        {isGenerating ? (
+                            <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                        ) : (
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/></svg>
+                        )}
+                        {isGenerating ? 'Lädt...' : 'PDF'}
                     </button>
                     <button
                         onClick={onStart}
+                        disabled={isGenerating}
                         className="bg-primary text-primary-foreground font-bold text-lg py-4 rounded-xl hover:opacity-90 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-primary/20"
                     >
                         Übung starten
@@ -333,7 +350,7 @@ function GameSession({ config, onExit, forcedActive }: { config: Config, onExit:
 
     const checkSolution = () => {
         if (!task) return;
-        const termStr = userTerm.map(e => e.val.toString().replace('×', '*').replace('÷', '/')).join(' ');
+        const termStr = userTerm.map(e => e.val.toString().replace('·', '*').replace('÷', '/')).join(' ');
 
         try {
             if (!/^[0-9+\-*/().\s]+$/.test(termStr)) throw new Error("Format");
@@ -588,7 +605,7 @@ function generateTask(config: Config): Task {
             // --- Variety Check ---
             if (candidateTask) {
                 const usedOps = candidateTask.elements
-                    .filter(e => e.type === 'op' && ['+', '-', '×', '÷', '*', '/'].includes(String(e.val)))
+                    .filter(e => e.type === 'op' && ['+', '-', '·', '÷', '*', '/'].includes(String(e.val)))
                     .map(e => String(e.val));
 
                 // Count available specific ops to see if variety is even possible
@@ -617,7 +634,7 @@ function generateTask(config: Config): Task {
         }
     }
     // Fallback
-    if (!task) return { target: 10, currentDiff: 'normal', elements: [{ type: 'number', val: 5, id: 'n1' }, { type: 'number', val: 2, id: 'n2' }, { type: 'op', val: '×', id: 'o1' }] };
+    if (!task) return { target: 10, currentDiff: 'normal', elements: [{ type: 'number', val: 5, id: 'n1' }, { type: 'number', val: 2, id: 'n2' }, { type: 'op', val: '·', id: 'o1' }] };
 
     // Grouping and Sorting
     const numbers = task.elements.filter(e => e.type === 'number').sort(() => Math.random() - 0.5);

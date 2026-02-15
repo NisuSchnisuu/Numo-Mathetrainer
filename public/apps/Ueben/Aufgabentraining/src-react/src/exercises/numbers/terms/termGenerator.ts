@@ -29,13 +29,15 @@ export function generateTerm(range: number, ops: OperatorState, difficulty: Diff
     // Allround-Logik
     if (difficulty === 'allround') {
         const r = Math.random();
-        if (r < 0.50) selectedDiff = 'normal';       // 50%
-        else if (r < 0.80) selectedDiff = 'advanced'; // 30%
-        else selectedDiff = 'profi';                 // 20%
+        if (r < 0.40) selectedDiff = 'normal';       // 40%
+        else if (r < 0.75) selectedDiff = 'advanced'; // 35%
+        else selectedDiff = 'profi';                 // 25%
     }
 
     const activeOps = { ...ops };
-    if (selectedDiff === 'profi' || (selectedDiff === 'advanced' && Math.random() > 0.4)) {
+    if (selectedDiff === 'profi') {
+        activeOps.brackets = true; // Profi always has brackets if possible
+    } else if (selectedDiff === 'advanced' && Math.random() > 0.4) {
         activeOps.brackets = true;
     }
 
@@ -66,11 +68,12 @@ export function generateTerm(range: number, ops: OperatorState, difficulty: Diff
 // --- Strategien ---
 
 function generateNormal(range: number, ops: OperatorState): TermTask {
-    const useBrackets = ops.brackets && Math.random() < 0.5;
+    const useBrackets = ops.brackets && Math.random() < 0.4;
 
     if (useBrackets) {
         return createSimpleBracketTerm(range, ops);
     } else {
+        // Mindestens 3 Zahlen
         return createLinearChain(range, ops, 3);
     }
 }
@@ -92,28 +95,44 @@ function generateAdvanced(range: number, ops: OperatorState): TermTask {
         }
     }
 
-    // 3. Lange Kette (Rest ca. 40%)
+    // 3. Lange Kette (Rest ca. 40%) - Mindestens 4 Zahlen
     return createLinearChain(range, ops, 4);
 }
 
 function generateProfi(range: number, ops: OperatorState): TermTask {
     if (!ops.brackets) return createLinearChain(range, ops, 5);
 
-    // Schritt 1: Innerster Term
-    const inner = createSafeDuo(Math.floor(range / 2), ops);
+    // Ziel: Verschachtelte Klammern
+    // Struktur: a * (b + (c * d)) oder ((a + b) * c) + d
+    
+    let attempts = 0;
+    while (attempts < 20) {
+        attempts++;
+        try {
+            // 1. Erzeuge einen einfachen Duo-Term: (c * d)
+            const innerDuo = createSafeDuo(Math.max(10, Math.floor(range / 2)), ops);
+            
+            // 2. Erweitere ihn und erzwinge Klammern: (b + (c * d))
+            const level2 = extendTerm(innerDuo, Math.max(20, Math.floor(range * 0.8)), ops, true);
+            
+            // 3. Erweitere ihn erneut: a * (b + (c * d))
+            // Wir entscheiden zufällig, ob wir noch eine Ebene Klammern drumherum machen
+            const needsOuterBrackets = Math.random() > 0.5;
+            const finalTerm = extendTerm(level2, range, ops, needsOuterBrackets);
 
-    // Schritt 2: Erweitere um eine Zahl (Verschachtelung 1)
-    const step2 = extendTerm(inner, Math.floor(range * 0.8), ops, true);
+            if (finalTerm.orderedElements.length >= 7) { // a op ( b op ( c op d ) ) -> approx 7-9 elements
+                 return {
+                    target: finalTerm.val,
+                    elements: finalTerm.elements,
+                    orderedElements: finalTerm.orderedElements,
+                    topLevelOp: finalTerm.lastOp
+                };
+            }
+        } catch { /* retry */ }
+    }
 
-    // Schritt 3: Erweitere um noch eine Zahl
-    const step3 = extendTerm(step2, range, ops, false);
-
-    return {
-        target: step3.val,
-        elements: step3.elements,
-        orderedElements: step3.orderedElements,
-        topLevelOp: step3.lastOp
-    };
+    // Fallback if nested fails
+    return createLinearChain(range, ops, 5);
 }
 
 
@@ -153,7 +172,7 @@ function randInt(min: number, max: number): number {
 }
 
 function formatOp(op: string): string {
-    if (op === '*') return '×';
+    if (op === '*') return '·';
     if (op === '/') return '÷';
     return op;
 }
@@ -286,7 +305,7 @@ function extendTermWithSpecificOp(base: TermFragment, numVal: number, op: string
         else if (op === '-') res = isPost ? base.val - numVal : numVal - base.val;
         else if (op === '*') res = isPost ? base.val * numVal : numVal * base.val;
         else if (op === '/') res = isPost ? base.val / numVal : numVal / base.val;
-    } catch (e) { res = 0; }
+    } catch { res = 0; }
 
     return {
         val: res,
@@ -301,8 +320,10 @@ function extendTermWithSpecificOp(base: TermFragment, numVal: number, op: string
 // --- Generators Implementations ---
 
 function createLinearChain(range: number, ops: OperatorState, length: number): TermTask {
+    // Start with a duo
     let current = createSafeDuo(range, ops);
 
+    // Extend until reaching desired length (number of numbers)
     for (let i = 0; i < length - 2; i++) {
         current = extendTerm(current, range, ops, false);
     }
@@ -342,7 +363,7 @@ function createDoubleBracketTerm(range: number, ops: OperatorState): TermTask {
         valid = res <= range;
     } else if (op === '-') {
         if (left.val < right.val) {
-            valid = false; // Einfacher Retry
+            valid = false; // Simple retry
         } else {
             res = left.val - right.val;
             valid = true;
@@ -356,7 +377,7 @@ function createDoubleBracketTerm(range: number, ops: OperatorState): TermTask {
     }
 
     if (!valid) {
-        // Fallback: Addition
+        // Fallback: Addition or just a chain
         if (left.val + right.val <= range) {
             return manualCombine(left, right, '+');
         }
@@ -405,7 +426,7 @@ function createTrickyLinear(range: number): TermTask {
     const elB: GameElement = { type: 'number', val: b, id: getId('n') };
     const elC: GameElement = { type: 'number', val: c, id: getId('n') };
     const op1: GameElement = { type: 'op', val: '-', id: getId('o') };
-    const op2: GameElement = { type: 'op', val: '×', id: getId('o') };
+    const op2: GameElement = { type: 'op', val: '·', id: getId('o') };
 
     return {
         target: a - prod,
@@ -416,12 +437,16 @@ function createTrickyLinear(range: number): TermTask {
 }
 
 function createFallback(): TermTask {
+    // Fallback with at least 3 numbers: 5 + 2 * 3 = 11
     const el1: GameElement = { type: 'number', val: 5, id: 'f1' };
     const el2: GameElement = { type: 'number', val: 2, id: 'f2' };
-    const op: GameElement = { type: 'op', val: '+', id: 'f3' };
+    const op1: GameElement = { type: 'op', val: '+', id: 'f3' };
+    const el3: GameElement = { type: 'number', val: 3, id: 'f4' };
+    const op2: GameElement = { type: 'op', val: '·', id: 'f5' };
+    
     return {
-        target: 7,
-        elements: [el1, el2, op],
-        orderedElements: [el1, op, el2]
+        target: 11,
+        elements: [el1, el2, op1, el3, op2],
+        orderedElements: [el1, op1, el2, op2, el3]
     };
 }
