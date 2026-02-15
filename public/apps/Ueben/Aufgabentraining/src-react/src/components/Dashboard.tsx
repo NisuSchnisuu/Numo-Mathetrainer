@@ -34,7 +34,7 @@ export function Dashboard({ onSelectTopic }: DashboardProps) {
         cat.topics.map(topic => ({ ...topic, categoryColor: cat.color }))
     );
 
-    const filteredTopics = searchQuery.length > 1 
+    const filteredTopics = searchQuery.length > 0 
         ? allTopics.filter(t => 
             t.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
             t.description.toLowerCase().includes(searchQuery.toLowerCase())
@@ -84,6 +84,24 @@ export function Dashboard({ onSelectTopic }: DashboardProps) {
                 )}
             </div>
 
+            {/* Search Bar Section - Always visible when not in a specific category topic list */}
+            {!selectedCategory && (
+                <div className="flex flex-col items-center gap-4 mb-12">
+                    <div className="relative w-full max-w-md group">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground group-focus-within:text-primary transition-colors"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                        </div>
+                        <input 
+                            type="text"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            placeholder="Nach Themen suchen (z.B. Terme)..."
+                            className="block w-full pl-10 pr-3 py-3 bg-white/5 border border-white/10 rounded-xl leading-5 text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all sm:text-sm"
+                        />
+                    </div>
+                </div>
+            )}
+
             {/* Content Area */}
             {searchQuery ? (
                 // Search Results View
@@ -128,22 +146,6 @@ export function Dashboard({ onSelectTopic }: DashboardProps) {
                                 <p className="text-sm text-muted-foreground leading-relaxed">{cat.description}</p>
                             </div>
                         ))}
-                    </div>
-
-                    {/* Search Bar Section */}
-                    <div className="flex flex-col items-center gap-4 py-8 border-t border-white/5">
-                        <div className="relative w-full max-w-md group">
-                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground group-focus-within:text-primary transition-colors"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-                            </div>
-                            <input 
-                                type="text"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                placeholder="Nach Themen suchen (z.B. Terme)..."
-                                className="block w-full pl-10 pr-3 py-3 bg-white/5 border border-white/10 rounded-xl leading-5 text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all sm:text-sm"
-                            />
-                        </div>
                     </div>
                 </div>
             ) : (

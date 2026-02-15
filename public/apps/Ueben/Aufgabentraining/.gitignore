@@ -1,0 +1,19 @@
+# Build artifacts
+index.html
+assets/
+sw.js
+workbox-*.js
+manifest.webmanifest
+registerSW.js
+
+# Static files copied from src-react/public
+install-logic.js
+install-modal.css
+numo-logo-home.png
+vite.svg
+
+# Keep src-react and other source folders
+!src-react/
+!legacy/
+!DEVELOPMENT.md
+!numo-logo.png
