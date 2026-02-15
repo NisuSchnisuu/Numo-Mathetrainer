@@ -373,6 +373,7 @@ function GameSession({ config, onExit, forcedActive }: { config: Config, onExit:
         } else {
             setFeedback('incorrect');
             setStats(prev => ({ ...prev, wrong: prev.wrong + 1 }));
+            setTimeout(() => setFeedback(null), 2000);
         }
     };
 
@@ -446,6 +447,13 @@ function GameSession({ config, onExit, forcedActive }: { config: Config, onExit:
         </div>
     );
 
+    const diffLabels: Record<Difficulty, string> = {
+        normal: "Normal",
+        advanced: "Fortgeschritten",
+        profi: "Profi",
+        allround: "Allround"
+    };
+
     return (
         <div className="w-full max-w-4xl mx-auto flex flex-col h-full animate-fade-in relative pb-4 md:pb-8" ref={containerRef}>
             {/* Header */}
@@ -454,18 +462,29 @@ function GameSession({ config, onExit, forcedActive }: { config: Config, onExit:
                     &larr; Exit
                 </button>
 
-                <button
-                    onClick={() => setShowStats(true)}
-                    className="flex items-center gap-3 px-3 py-1.5 bg-[#0b1120]/80 backdrop-blur-md border border-white/10 rounded-full shadow-lg hover:bg-white/5 transition-all"
-                >
-                    <div className="flex items-center gap-1.5 text-green-400 font-bold" title="Gelöst">
-                        <span className="text-[10px]">✔</span> {stats.correct}
+                <div className="flex items-center gap-2">
+                    <div className={`hidden md:block px-3 py-1 rounded-full text-[10px] uppercase tracking-wider font-bold border ${config.difficulty === 'allround' && task.currentDiff ? (
+                            task.currentDiff === 'normal' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                                task.currentDiff === 'advanced' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                                    'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                        ) : 'bg-white/5 border-white/10 text-muted-foreground'
+                        }`}>
+                        {diffLabels[task.currentDiff || config.difficulty]}
                     </div>
-                    <div className="w-px h-3 bg-white/10"></div>
-                    <div className="flex items-center gap-1.5 text-red-400 font-bold" title="Falsch">
-                        <span className="text-[10px]">✖</span> {stats.wrong}
-                    </div>
-                </button>
+
+                    <button
+                        onClick={() => setShowStats(true)}
+                        className="flex items-center gap-3 px-3 py-1.5 bg-[#0b1120]/80 backdrop-blur-md border border-white/10 rounded-full shadow-lg hover:bg-white/5 transition-all"
+                    >
+                        <div className="flex items-center gap-1.5 text-green-400 font-bold" title="Gelöst">
+                            <span className="text-[10px]">✔</span> {stats.correct}
+                        </div>
+                        <div className="w-px h-3 bg-white/10"></div>
+                        <div className="flex items-center gap-1.5 text-red-400 font-bold" title="Falsch">
+                            <span className="text-[10px]">✖</span> {stats.wrong}
+                        </div>
+                    </button>
+                </div>
 
                 <button onClick={skipTask} className="flex items-center gap-2 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-white text-sm font-medium transition-colors">
                     Skip &rarr;
@@ -495,16 +514,6 @@ function GameSession({ config, onExit, forcedActive }: { config: Config, onExit:
                     <div className="absolute right-6 top-1/2 -translate-y-1/2 px-4 py-2 bg-neutral-900/80 backdrop-blur rounded-xl border border-white/10 text-2xl sm:text-3xl font-mono text-purple-400 font-bold select-none shadow-lg">
                         = {task.targetValue}
                     </div>
-
-                    {/* Active Difficulty Badge (only for Allround) */}
-                    {config.difficulty === 'allround' && task.currentDiff && (
-                        <div className={`absolute -top-3 left-6 px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider border shadow-sm ${task.currentDiff === 'normal' ? 'bg-green-500/20 text-green-300 border-green-500/30' :
-                            task.currentDiff === 'advanced' ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30' :
-                                task.currentDiff === 'profi' ? 'bg-red-500/20 text-red-300 border-red-500/30' : ''
-                            }`}>
-                            {task.currentDiff}
-                        </div>
-                    )}
                 </div>
 
                 {/* Available Operators Pool */}
@@ -531,32 +540,35 @@ function GameSession({ config, onExit, forcedActive }: { config: Config, onExit:
                     </div>
                 </div>
 
-                {/* Clear Button */}
-                <div className="mb-4">
-                    <button
-                        onClick={() => {
-                            const allPlaced = placedItems.flat();
-                            setPlacedItems(placedItems.map(() => []));
-                            setAvailableItems(prev => {
-                                const combined = [...prev, ...allPlaced].filter(i => i !== '|');
-                                return combined.sort();
-                            });
-                            setFeedback(null);
-                        }}
-                        className="flex items-center gap-2 px-8 py-3 text-sm font-medium text-gray-400 hover:text-white transition-colors"
-                    >
-                        <span className="text-xl">🗑️</span> Alles löschen
-                    </button>
+                {/* Action Buttons Container */}
+                <div className="mb-4 w-full max-w-2xl">
+                    <div className="h-24 flex flex-row items-center justify-center gap-6">
+                        <button
+                            onClick={() => {
+                                const allPlaced = placedItems.flat();
+                                setPlacedItems(placedItems.map(() => []));
+                                setAvailableItems(prev => {
+                                    const combined = [...prev, ...allPlaced].filter(i => i !== '|');
+                                    return combined.sort();
+                                });
+                                setFeedback(null);
+                            }}
+                            className="flex items-center gap-2 px-6 py-4 text-sm font-medium text-gray-400 hover:text-white transition-all hover:bg-white/5 rounded-xl border border-transparent hover:border-white/10"
+                        >
+                            <span className="text-xl">🗑️</span> Alles löschen
+                        </button>
+
+                        <button
+                            onClick={handleCheck}
+                            className={`text-base font-bold px-10 py-4 rounded-xl shadow-lg transition-all min-w-[200px]
+                                ${feedback === 'correct' ? 'bg-green-500 shadow-green-500/20 text-white' :
+                                    feedback === 'incorrect' ? 'bg-red-500 shadow-red-500/20 text-white animate-shake' :
+                                        'bg-primary shadow-primary/20 text-primary-foreground hover:scale-105 active:scale-95'}`}
+                        >
+                            {feedback === 'correct' ? 'Richtig! ✓' : feedback === 'incorrect' ? 'Falsch ✗' : 'Überprüfen'}
+                        </button>
+                    </div>
                 </div>
-                <button
-                    onClick={handleCheck}
-                    className={`text-base font-bold px-10 py-4 rounded-xl shadow-lg transition-all 
-                        ${feedback === 'correct' ? 'bg-green-500 shadow-green-500/20 text-white' :
-                            feedback === 'incorrect' ? 'bg-red-500 shadow-red-500/20 text-white' :
-                                'bg-primary shadow-primary/20 text-primary-foreground hover:scale-105 active:scale-95'}`}
-                >
-                    {feedback === 'correct' ? 'Richtig! ✓' : feedback === 'incorrect' ? 'Falsch ✗' : 'Überprüfen'}
-                </button>
             </div>
 
             {/* Success Overlay */}
