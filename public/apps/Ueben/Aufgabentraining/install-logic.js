@@ -31,7 +31,7 @@
             }
         }
 
-        // Visibility Check: Only on Homescreen or Topic list (where <main> element exists)
+        // Visibility Check: Only on Homescreen or Topic list
         function checkVisibility() {
             const currentStandalone = checkStandalone();
             const backBtn = document.getElementById('numo-back-link');
@@ -39,8 +39,10 @@
 
             // 1. Handle Back Button (Numo Logo)
             // Hide if we are running standalone
-            if (backBtn && currentStandalone && !isInIframe) {
-                backBtn.style.display = 'none';
+            if (backBtn) {
+                if (currentStandalone && !isInIframe) {
+                    backBtn.style.display = 'none';
+                }
             }
 
             // 2. Handle Install Button
@@ -52,11 +54,17 @@
 
                 if (shouldHide) {
                     installBtn.style.display = 'none';
+                } else {
+                    // Show if not hidden by other logic
+                    // installBtn.style.display = 'flex'; // Keep CSS default or React control
                 }
                 
-                // Add listener if not already added (simple way)
-                if (!installBtn.hasListener) {
-                    installBtn.addEventListener('click', () => {
+                // Add listener if not already added
+                if (!installBtn.hasInstallListener) {
+                    installBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
                         if (window.parent !== window) {
                             const url = new URL(window.location.href);
                             url.searchParams.set('install', 'true');
@@ -65,14 +73,13 @@
                         }
                         showInstallModal();
                     });
-                    installBtn.hasListener = true;
+                    installBtn.hasInstallListener = true;
                 }
             }
         }
 
         setInterval(checkVisibility, 500);
         checkVisibility();
-    }
 
         // Close logic
         const closeBtn = document.getElementById('btn-close-install');

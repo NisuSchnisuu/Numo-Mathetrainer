@@ -1,4 +1,4 @@
-/* PWA Install Modal & Button Styles */
+/* PWA Install Modal & Button Styles - Synced with Trio */
 .btn-trigger-install {
     display: none;
     font-size: 0.85rem;
@@ -9,12 +9,7 @@
     border-radius: 12px;
     cursor: pointer;
     transition: all 0.2s;
-    position: fixed;
-    top: 1.1rem;
-    right: 1.1rem;
-    z-index: 9999;
-    backdrop-filter: blur(8px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    /* React version handles positioning via classes, but we keep ID styles for generic use */
 }
 
 .btn-native-install {
@@ -51,6 +46,8 @@
     align-items: center;
     opacity: 0;
     transition: opacity 0.5s ease;
+    padding: 20px 10px;
+    overflow-y: auto;
 }
 
 .modal-overlay.active {
@@ -60,13 +57,12 @@
 
 .install-content {
     background: #1e293b;
-    padding: 30px;
+    padding: 30px 20px;
     border-radius: 20px;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
     width: 90%;
     max-width: 600px;
-    max-height: 85vh;
-    overflow-y: auto;
+    margin: auto;
     text-align: center;
     border: 1px solid rgba(255, 255, 255, 0.1);
     position: relative;
@@ -89,6 +85,7 @@
     align-items: center;
     justify-content: center;
     transition: all 0.2s;
+    z-index: 50;
 }
 
 .btn-icon-close:hover {
@@ -100,68 +97,167 @@
 .app-icon-large {
     font-size: 3rem;
     display: block;
-    margin-bottom: 20px;
+    margin-bottom: 15px;
+    margin-top: 5px;
+    animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+    0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+    40% { transform: translateY(-12px); }
+    60% { transform: translateY(-6px); }
 }
 
 .install-title {
-    font-size: 2.2rem;
+    font-size: 2rem;
     font-weight: 800;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
+    background: linear-gradient(135deg, #fff, #94a3b8);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
 }
 
 .install-subtitle {
+    font-size: 1.1rem;
     color: #94a3b8;
-    margin-bottom: 30px;
+    margin-bottom: 25px;
 }
 
 .platform-guide {
     background: #0f172a;
-    border-radius: 16px;
-    padding: 20px;
+    border-radius: 20px;
+    padding: 25px 15px;
     margin-top: 20px;
     border: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.5);
+    animation: slideUp 0.5s ease-out;
+}
+
+@keyframes slideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.platform-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    margin-bottom: 30px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    padding-bottom: 20px;
+}
+
+.icon-os {
+    font-size: 2rem;
+}
+
+.platform-header h3 {
+    font-size: 1.5rem;
+    color: white;
+    font-weight: 700;
+    margin: 0;
 }
 
 .steps-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    grid-template-columns: repeat(3, 1fr);
     gap: 15px;
-    margin-top: 20px;
+}
+
+.single-step {
+    grid-template-columns: 1fr 1fr;
 }
 
 .step-card {
     background: rgba(255, 255, 255, 0.03);
-    padding: 15px;
     border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 12px 8px;
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 10px;
+    justify-content: space-between;
+    height: 100%;
+    border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .step-num {
+    position: absolute;
+    top: -8px;
+    left: 50%;
+    transform: translateX(-50%);
     background: #6366f1;
-    width: 24px;
-    height: 24px;
+    color: white;
+    width: 22px;
+    height: 22px;
     border-radius: 50%;
-    font-size: 0.8rem;
+    font-size: 0.85rem;
     font-weight: bold;
     display: flex;
     align-items: center;
     justify-content: center;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
 }
 
 .step-text {
     font-size: 0.85rem;
     color: #e2e8f0;
+    line-height: 1.3;
+    margin-bottom: 8px;
+    margin-top: 8px;
+}
+
+.step-text strong {
+    color: #ec4899;
+}
+
+.step-icon {
+    font-size: 1.5rem;
+    color: #94a3b8;
 }
 
 .refresh-hint-box {
-    margin-top: 30px;
-    padding: 10px;
+    margin-top: 25px;
+    padding: 12px;
     background: rgba(16, 185, 129, 0.1);
-    border-radius: 8px;
+    border-radius: 10px;
+    display: inline-block;
+    border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.refresh-hint-box p {
     color: #10b981;
+    font-weight: 500;
+    margin: 0;
     font-size: 0.9rem;
+}
+
+@media (max-width: 640px) {
+    .steps-grid {
+        grid-template-columns: 1fr;
+        gap: 25px;
+    }
+    .single-step {
+        grid-template-columns: 1fr;
+    }
+    .install-title {
+        font-size: 1.8rem;
+    }
+}
+
+@media (max-height: 800px) {
+    .install-content {
+        padding: 20px !important;
+        max-height: 85vh;
+        overflow-y: auto;
+    }
+    .install-header {
+        margin-bottom: 20px;
+    }
+    .app-icon-large {
+        font-size: 2rem;
+        margin-bottom: 10px;
+    }
 }
