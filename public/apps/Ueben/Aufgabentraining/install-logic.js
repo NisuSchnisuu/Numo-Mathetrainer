@@ -70,20 +70,17 @@
         setInterval(checkVisibility, 500);
         checkVisibility();
 
-        const installBtn = document.getElementById('btn-trigger-install');
-        if (installBtn) {
-            installBtn.addEventListener('click', () => {
-                // If in iframe, open direct URL in new tab
-                if (window.parent !== window) {
-                    const url = new URL(window.location.href);
-                    url.searchParams.set('install', 'true');
-                    window.open(url.toString(), '_blank');
-                    return;
-                }
+        installBtn.addEventListener('click', () => {
+            // If in iframe, open direct URL in new tab
+            if (window.parent !== window) {
+                const url = new URL(window.location.href);
+                url.searchParams.set('install', 'true');
+                window.open(url.toString(), '_blank');
+                return;
+            }
 
-                showInstallModal();
-            });
-        }
+            showInstallModal();
+        });
 
         // Close logic
         const closeBtn = document.getElementById('btn-close-install');

@@ -246,6 +246,7 @@ function GameSession({ config, onExit, forcedActive }: { config: Config, onExit:
     const [availableItems, setAvailableItems] = useState<string[]>([]);
     const [draggedItem, setDraggedItem] = useState<{ item: string, fromGap: number | null, fromIndex: number | null } | null>(null);
     const [pointerDrag, setPointerDrag] = useState<PointerDrag | null>(null);
+    const [hoveredZone, setHoveredZone] = useState<{ gap: number, insert: number } | null>(null);
     const [feedback, setFeedback] = useState<'correct' | 'incorrect' | null>(null);
 
     // Refs for global pointer events
@@ -260,27 +261,60 @@ function GameSession({ config, onExit, forcedActive }: { config: Config, onExit:
 
     // Pointer Event Handlers
     useEffect(() => {
-        if (!pointerDrag) return;
+        if (!pointerDrag) {
+            setHoveredZone(null);
+            return;
+        }
 
         const handlePointerMove = (e: PointerEvent) => {
             setPointerDrag(prev => prev ? { ...prev, x: e.clientX, y: e.clientY } : null);
+
+            // 1. Get all potential drop zones
+            const zones = Array.from(document.querySelectorAll('[data-drop-gap]')) as HTMLElement[];
+            if (zones.length === 0) return;
+
+            // 2. Find the zone that is closest to the cursor horizontally
+            // and within a reasonable vertical range
+            let closestZone: { gap: number, insert: number, dist: number } | null = null;
+
+            zones.forEach(el => {
+                const rect = el.getBoundingClientRect();
+                const centerX = rect.left + rect.width / 2;
+                const centerY = rect.top + rect.height / 2;
+
+                const distX = Math.abs(e.clientX - centerX);
+                const distY = Math.abs(e.clientY - centerY);
+
+                // Vertical range: Only detect if we are near the equation vertically (e.g. max 250px away)
+                if (distY < 250) {
+                    if (closestZone === null || distX < closestZone.dist) {
+                        closestZone = {
+                            gap: parseInt(el.getAttribute('data-drop-gap') || '0'),
+                            insert: parseInt(el.getAttribute('data-drop-insert') || '0'),
+                            dist: distX
+                        };
+                    }
+                }
+            });
+
+            // If we are close enough horizontally (e.g. 80px), highlight it
+            if (closestZone && (closestZone as any).dist < 80) {
+                setHoveredZone({ gap: (closestZone as any).gap, insert: (closestZone as any).insert });
+            } else {
+                setHoveredZone(null);
+            }
         };
 
-        const handlePointerUp = (e: PointerEvent) => {
-            // Find drop zone at this position
-            const elements = document.elementsFromPoint(e.clientX, e.clientY);
-            const dropZone = elements.find(el => el.hasAttribute('data-drop-gap'));
-
-            if (dropZone) {
-                const gapIdx = parseInt(dropZone.getAttribute('data-drop-gap') || '0');
-                const insertIdx = parseInt(dropZone.getAttribute('data-drop-insert') || '0');
-                handleDrop(gapIdx, insertIdx, { 
+        const handlePointerUp = () => {
+            if (hoveredZone) {
+                handleDrop(hoveredZone.gap, hoveredZone.insert, { 
                     item: pointerDrag.item, 
                     fromGap: pointerDrag.fromGap, 
                     fromIndex: pointerDrag.fromIndex 
                 });
             } else {
                 setPointerDrag(null);
+                setHoveredZone(null);
             }
         };
 
@@ -346,10 +380,10 @@ function GameSession({ config, onExit, forcedActive }: { config: Config, onExit:
         // Only trigger for touch or primary mouse button
         if (e.pointerType === 'mouse' && e.button !== 0) return;
         
-        // Prevent scrolling on touch
-        if (e.pointerType === 'touch') {
-            (e.target as HTMLElement).releasePointerCapture(e.pointerId);
-        }
+        // Essential: Prevent browser default behavior (like scrolling or native DnD)
+        // Note: For this to work in all browsers, touch-action: none must be on the element
+        const target = e.currentTarget as HTMLElement;
+        target.setPointerCapture(e.pointerId);
 
         setPointerDrag({
             item,
@@ -362,7 +396,10 @@ function GameSession({ config, onExit, forcedActive }: { config: Config, onExit:
 
     const handleDrop = (toGap: number, insertIndex: number, overrideDraggedItem?: { item: string, fromGap: number | null, fromIndex: number | null }) => {
         const itemToUse = overrideDraggedItem || draggedItem;
-        if (!itemToUse) return;
+        if (!itemToUse) {
+            setPointerDrag(null);
+            return;
+        }
 
         const newPlaced = placedItems.map(gap => [...gap]);
         const newAvailable = [...availableItems];
@@ -451,6 +488,7 @@ function GameSession({ config, onExit, forcedActive }: { config: Config, onExit:
                         onDragEnd={() => { setDraggedItem(null); setPointerDrag(null); }}
                         bracketsEnabled={config.ops.brackets}
                         isDragging={!!draggedItem || !!pointerDrag}
+                        hoveredZone={hoveredZone}
                     />
 
                     {/* Target Display Pinned Right */}
@@ -579,7 +617,7 @@ function GameSession({ config, onExit, forcedActive }: { config: Config, onExit:
                     className="fixed pointer-events-none z-[9999] px-4 py-3 rounded-xl border-2 text-xl font-mono shadow-2xl scale-110 bg-blue-600 border-blue-400 text-white"
                     style={{ 
                         left: pointerDrag.x, 
-                        top: pointerDrag.y, 
+                        top: pointerDrag.y - 50, // Offset upwards to be visible above finger
                         transform: 'translate(-50%, -50%)' 
                     }}
                 >
@@ -593,7 +631,7 @@ function GameSession({ config, onExit, forcedActive }: { config: Config, onExit:
 
 // --- UI Components ---
 
-function SequenceBuilder({ numbers, placedItems, onDrop, onRemove, onPointerStart, onNativeDragStart, onDragEnd, bracketsEnabled, isDragging }: {
+function SequenceBuilder({ numbers, placedItems, onDrop, onRemove, onPointerStart, onNativeDragStart, onDragEnd, bracketsEnabled, isDragging, hoveredZone }: {
     numbers: string[],
     placedItems: string[][],
     onDrop: (gapIndex: number, insertIndex: number) => void,
@@ -602,7 +640,8 @@ function SequenceBuilder({ numbers, placedItems, onDrop, onRemove, onPointerStar
     onNativeDragStart: (item: string, gap: number, idx: number) => void,
     onDragEnd: () => void,
     bracketsEnabled: boolean,
-    isDragging: boolean
+    isDragging: boolean,
+    hoveredZone: { gap: number, insert: number } | null
 }) {
     return (
         <div className="flex flex-wrap items-center justify-center gap-1">
@@ -616,6 +655,7 @@ function SequenceBuilder({ numbers, placedItems, onDrop, onRemove, onPointerStar
                     onNativeDragStart={onNativeDragStart}
                     onDragEnd={onDragEnd}
                     isDragging={isDragging}
+                    hoveredZone={hoveredZone}
                 />
             )}
 
@@ -635,6 +675,7 @@ function SequenceBuilder({ numbers, placedItems, onDrop, onRemove, onPointerStar
                             onNativeDragStart={onNativeDragStart}
                             onDragEnd={onDragEnd}
                             isDragging={isDragging}
+                            hoveredZone={hoveredZone}
                         />
                     )}
                 </div>
@@ -643,7 +684,7 @@ function SequenceBuilder({ numbers, placedItems, onDrop, onRemove, onPointerStar
     );
 }
 
-function GapRenderer({ gapIndex, items, onDrop, onRemove, onPointerStart, onNativeDragStart, onDragEnd, isDragging }: {
+function GapRenderer({ gapIndex, items, onDrop, onRemove, onPointerStart, onNativeDragStart, onDragEnd, isDragging, hoveredZone }: {
     gapIndex: number,
     items: string[],
     onDrop: (gapIndex: number, insertIndex: number) => void,
@@ -651,7 +692,8 @@ function GapRenderer({ gapIndex, items, onDrop, onRemove, onPointerStart, onNati
     onPointerStart: (e: React.PointerEvent, item: string, gap: number, idx: number) => void,
     onNativeDragStart: (item: string, gap: number, idx: number) => void,
     onDragEnd: () => void,
-    isDragging: boolean
+    isDragging: boolean,
+    hoveredZone: { gap: number, insert: number } | null
 }) {
     return (
         <div className="flex items-center gap-1 transition-all">
@@ -660,6 +702,7 @@ function GapRenderer({ gapIndex, items, onDrop, onRemove, onPointerStart, onNati
                 insertIndex={0}
                 onDrop={onDrop}
                 isDragging={isDragging}
+                isHovered={hoveredZone?.gap === gapIndex && hoveredZone?.insert === 0}
             />
             {items.map((item, i) => (
                 <div key={i} className="flex items-center gap-1">
@@ -675,6 +718,7 @@ function GapRenderer({ gapIndex, items, onDrop, onRemove, onPointerStart, onNati
                         insertIndex={i + 1}
                         onDrop={onDrop}
                         isDragging={isDragging}
+                        isHovered={hoveredZone?.gap === gapIndex && hoveredZone?.insert === i + 1}
                     />
                 </div>
             ))}
@@ -682,13 +726,16 @@ function GapRenderer({ gapIndex, items, onDrop, onRemove, onPointerStart, onNati
     )
 }
 
-function DropZone({ gapIndex, insertIndex, onDrop, isDragging }: {
+function DropZone({ gapIndex, insertIndex, onDrop, isDragging, isHovered }: {
     gapIndex: number,
     insertIndex: number,
     onDrop: (gapIndex: number, insertIndex: number) => void,
-    isDragging: boolean
+    isDragging: boolean,
+    isHovered: boolean
 }) {
-    const [isOver, setIsOver] = useState(false);
+    // Keep native events for mouse users who use traditional DnD
+    const [isNativeOver, setIsOver] = useState(false);
+    const active = isHovered || isNativeOver;
 
     return (
         <div
@@ -706,7 +753,7 @@ function DropZone({ gapIndex, insertIndex, onDrop, isDragging }: {
             }}
             className={`
                 h-16 flex items-center justify-center transition-all duration-300 relative
-                ${!isDragging ? 'w-0 opacity-0 overflow-hidden translate-x-0' : (isOver ? 'w-12 opacity-100' : 'w-6 opacity-0 sm:opacity-50')} 
+                ${!isDragging ? 'w-0 opacity-0 overflow-hidden translate-x-0' : (active ? 'w-12 opacity-100' : 'w-6 opacity-0 sm:opacity-50')} 
             `}
         >
             {isDragging && (
@@ -718,7 +765,7 @@ function DropZone({ gapIndex, insertIndex, onDrop, isDragging }: {
 
             <div className={`
                 w-1 h-12 rounded-full transition-all duration-200 pointer-events-none relative z-10
-                ${isOver ? 'bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,1)] scale-y-110' :
+                ${active ? 'bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,1)] scale-y-110' :
                     isDragging ? 'bg-blue-500/30 scale-y-75' : 'bg-transparent scale-y-0'}
             `} />
         </div>
@@ -736,7 +783,6 @@ function DraggableItem({ item, onPointerStart, onDragStart, onDragEnd, onClick }
 
     return (
         <div
-            draggable
             onPointerDown={onPointerStart}
             onDragStart={onDragStart}
             onDragEnd={onDragEnd}
