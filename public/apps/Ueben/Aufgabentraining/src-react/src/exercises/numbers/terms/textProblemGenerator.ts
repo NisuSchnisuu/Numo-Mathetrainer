@@ -16,7 +16,7 @@ export interface CheckResult {
   message: string;
 }
 
-export function generateProblem(difficulty: Difficulty | 'mixed'): ProblemInstance {
+export function generateProblem(difficulty: Difficulty | 'mixed', excludeId?: string): ProblemInstance {
   let attempts = 0;
   
   let selectedDiff: Difficulty;
@@ -38,6 +38,11 @@ export function generateProblem(difficulty: Difficulty | 'mixed'): ProblemInstan
   while (attempts < 50) {
     attempts++;
     const template = diffTemplates[Math.floor(Math.random() * diffTemplates.length)];
+    
+    // Skip if it's the same ID as the last one, unless we've tried too many times 
+    // (unlikely, but safe for small template pools)
+    if (template.id === excludeId && diffTemplates.length > 1 && attempts < 10) continue;
+
     const variables: Record<string, number> = {};
 
     for (const [key, [min, max]] of Object.entries(template.ranges)) {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { generateProblem, checkSolution } from './textProblemGenerator';
 import type { ProblemInstance } from './textProblemGenerator';
 import type { Difficulty } from './textProblemData';
@@ -20,6 +20,7 @@ export function TextaufgabenTerme({ onBack }: TextaufgabenTermeProps) {
   const [difficulty, setDifficulty] = useState<ConfigDifficulty>('normal');
   
   const [problem, setProblem] = useState<ProblemInstance | null>(null);
+  const lastIdRef = useRef<string | undefined>(undefined);
   const [userTerm, setUserTerm] = useState<GameElement[]>([]);
   const [userResult, setUserResult] = useState<string>('');
   const [isFinished, setIsFinished] = useState(false);
@@ -28,7 +29,9 @@ export function TextaufgabenTerme({ onBack }: TextaufgabenTermeProps) {
   const [stats, setStats] = useState({ correct: 0, wrong: 0 });
 
   const nextTask = useCallback(() => {
-    const p = generateProblem(difficulty);
+    const p = generateProblem(difficulty, lastIdRef.current);
+    lastIdRef.current = p.templateId; // Using templateId as that identifies the question type
+    
     setProblem(p);
     setUserTerm([]);
     setUserResult('');
