@@ -106,7 +106,7 @@ function createSimpleEquation(range: number, ops: OperatorState, numElements: nu
         }
         remainingNums -= size;
 
-        const minNum = range <= 20 ? 1 : (range <= 100 ? 4 : 10);
+        const minNum = range <= 20 ? 1 : (range <= 100 ? 3 : 5);
         const maxNum = range <= 20 ? 10 : (range <= 100 ? 25 : 50);
 
         let currentVal = Math.floor(Math.random() * (maxNum - minNum + 1)) + minNum;
@@ -114,12 +114,23 @@ function createSimpleEquation(range: number, ops: OperatorState, numElements: nu
 
         for (let k = 1; k < size; k++) {
             const op = pointOps[Math.floor(Math.random() * pointOps.length)];
-            let nextNum = Math.floor(Math.random() * (maxNum - minNum + 1)) + minNum;
+            let nextNum;
 
             if (op === '/') {
+                // Avoid dividing by currentVal (result 1) or 1 (result self) if possible
                 const factors = [];
-                for (let f = 1; f <= currentVal; f++) if (currentVal % f === 0) factors.push(f);
-                nextNum = factors[Math.floor(Math.random() * factors.length)];
+                for (let f = 2; f < currentVal; f++) if (currentVal % f === 0) factors.push(f);
+                
+                if (factors.length > 0) {
+                    nextNum = factors[Math.floor(Math.random() * factors.length)];
+                } else {
+                    // If no factors, maybe change to multiplication or pick 1 if forced
+                    nextNum = (currentVal > 1 && Math.random() > 0.3) ? 1 : currentVal;
+                }
+            } else {
+                nextNum = Math.floor(Math.random() * (maxNum - minNum + 1)) + minNum;
+                // Avoid multiplication by 1
+                if (op === '*' && nextNum === 1) nextNum = 2;
             }
 
             // eslint-disable-next-line no-eval
@@ -180,7 +191,9 @@ function createBracketEquationNormal(range: number, ops: OperatorState, formatOp
     let a = Math.floor(Math.random() * (maxNum - minNum + 1)) + minNum;
     let b = Math.floor(Math.random() * (maxNum - minNum + 1)) + minNum;
 
-    if (opLine === '-' && a <= b) a = b + Math.floor(Math.random() * 5) + 1;
+    // Avoid result 0 or 1 in brackets if possible
+    if (opLine === '-' && a <= b) a = b + Math.floor(Math.random() * 8) + 2;
+    if (opLine === '+' && (a+b) <= 2) a += 2;
 
     const innerRes = (opLine === '+') ? a + b : a - b;
     let c;
@@ -188,20 +201,21 @@ function createBracketEquationNormal(range: number, ops: OperatorState, formatOp
     const isPost = Math.random() < 0.5;
 
     if (opPoint === '*') {
-        c = Math.floor(Math.random() * (range <= 20 ? 4 : 8)) + 2;
+        c = Math.floor(Math.random() * (range <= 20 ? 3 : 7)) + 2;
     } else {
         // Division: ensure integer result AND integer intermediate step
         if (isPost) {
             // (a +/- b) / c
             const factors = [];
-            for (let i = 2; i <= innerRes; i++) if (innerRes % i === 0) factors.push(i);
-            if (factors.length === 0) c = 1; else c = factors[Math.floor(Math.random() * factors.length)];
+            for (let i = 2; i < innerRes; i++) if (innerRes % i === 0) factors.push(i);
+            if (factors.length === 0) c = (innerRes > 1 && Math.random() > 0.5) ? innerRes : 1; 
+            else c = factors[Math.floor(Math.random() * factors.length)];
         } else {
             // c / (a +/- b)
             if (innerRes === 0) throw "Zero divisor";
             const maxMult = Math.floor(range / innerRes);
-            if (maxMult < 1) throw "Range too small";
-            c = innerRes * (Math.floor(Math.random() * Math.min(5, maxMult)) + 1);
+            if (maxMult < 2) throw "Range too small";
+            c = innerRes * (Math.floor(Math.random() * Math.min(4, maxMult - 1)) + 2);
         }
     }
 
@@ -250,7 +264,7 @@ function createBracketEquationAdvanced(range: number, ops: OperatorState, format
     if (allOps.length === 0) throw "No ops";
 
     const newOp = allOps[Math.floor(Math.random() * allOps.length)];
-    let d = Math.floor(Math.random() * (range <= 20 ? 5 : (range <= 100 ? 25 : 50))) + 5;
+    let d = Math.floor(Math.random() * (range <= 20 ? 5 : (range <= 100 ? 20 : 40))) + 2;
 
     const isPost = Math.random() < 0.5;
 
@@ -258,17 +272,20 @@ function createBracketEquationAdvanced(range: number, ops: OperatorState, format
     if (newOp === '/') {
         if (isPost) {
             const factors = [];
-            for (let i = 2; i <= blockVal; i++) if (blockVal % i === 0) factors.push(i);
-            if (factors.length === 0) d = 1; else d = factors[Math.floor(Math.random() * factors.length)];
+            for (let i = 2; i < blockVal; i++) if (blockVal % i === 0) factors.push(i);
+            if (factors.length === 0) d = (blockVal > 1 && Math.random() > 0.5) ? blockVal : 1; 
+            else d = factors[Math.floor(Math.random() * factors.length)];
         } else {
             if (blockVal === 0) throw "Zero divisor";
             const maxMult = Math.floor(range / blockVal);
-            if (maxMult < 1) throw "Range too small";
-            d = blockVal * (Math.floor(Math.random() * Math.min(5, maxMult)) + 1);
+            if (maxMult < 2) throw "Range too small";
+            d = blockVal * (Math.floor(Math.random() * Math.min(4, maxMult - 1)) + 2);
         }
     } else if (newOp === '-') {
-        if (isPost && blockVal < d) d = Math.floor(Math.random() * blockVal);
-        else if (!isPost && d < blockVal) d = blockVal + Math.floor(Math.random() * 10) + 1;
+        if (isPost && blockVal < d) d = Math.floor(Math.random() * (blockVal > 2 ? blockVal - 2 : blockVal));
+        else if (!isPost && d < blockVal) d = blockVal + Math.floor(Math.random() * 10) + 2;
+    } else if (newOp === '*') {
+        if (d === 1) d = 2;
     }
 
     let evalStr;
@@ -302,14 +319,18 @@ function createBracketEquationAdvanced(range: number, ops: OperatorState, format
 
 // 4. Profi Bracket
 function createBracketEquationProfi(range: number, ops: OperatorState, formatOp: (s: string) => string): TermTask {
-    const pattern = Math.random() < 0.5 ? 'double' : 'nested';
+    // Weight towards nested pattern for Profi
+    const pattern = Math.random() < 0.3 ? 'double' : 'nested';
 
     const lineOps = []; if (ops.plus) lineOps.push('+'); if (ops.minus) lineOps.push('-');
     const pointOps = []; if (ops.mult) pointOps.push('*'); if (ops.div) pointOps.push('/');
     const availOps = [...lineOps, ...pointOps];
     if (availOps.length < 2) throw "Not enough ops";
 
-    const randOp = () => availOps[Math.floor(Math.random() * availOps.length)];
+    const randOp = (list?: string[]) => {
+        const source = list || availOps;
+        return source[Math.floor(Math.random() * source.length)];
+    };
     const minNum = range <= 20 ? 1 : (range <= 100 ? 3 : 5);
     const maxNum = range <= 20 ? 8 : (range <= 100 ? 15 : 30);
     const randNum = () => Math.floor(Math.random() * (maxNum - minNum + 1)) + minNum;
@@ -321,9 +342,14 @@ function createBracketEquationProfi(range: number, ops: OperatorState, formatOp:
         let b = randNum();
 
         if (op === '/') {
-            a = b * (Math.floor(Math.random() * 5) + 1);
+            // Factor should be >= 2 to avoid result 1
+            const mult = (Math.floor(Math.random() * 4) + 2);
+            a = b * mult;
         } else if (op === '-') {
             if (a < b) [a, b] = [b, a];
+            if (a === b) a += 2;
+        } else if (op === '*' && (a === 1 || b === 1)) {
+            if (a === 1) a = 2; if (b === 1) b = 2;
         }
 
         // eslint-disable-next-line no-eval
@@ -342,18 +368,22 @@ function createBracketEquationProfi(range: number, ops: OperatorState, formatOp:
         if (op2 === '/') {
             if (left.val === 0) throw "Zero left";
             const factors = [];
-            for (let i = 1; i <= left.val; i++) if (left.val % i === 0) factors.push(i);
-            const targetRight = factors[Math.floor(Math.random() * factors.length)];
+            for (let i = 2; i < left.val; i++) if (left.val % i === 0) factors.push(i);
+            
+            let targetRight;
+            if (factors.length > 0) targetRight = factors[Math.floor(Math.random() * factors.length)];
+            else targetRight = (left.val > 1 && Math.random() > 0.5) ? left.val : 1;
 
             // Reconstruct right
             let op3 = randOp();
             let c, d;
-            if (op3 === '+') { c = Math.floor(Math.random() * targetRight); d = targetRight - c; }
-            else if (op3 === '-') { d = Math.floor(Math.random() * 10) + 1; c = targetRight + d; }
+            if (op3 === '+') { c = Math.floor(Math.random() * (targetRight > 1 ? targetRight - 1 : targetRight)) + 1; d = targetRight - c; if (d === 0) { d = 1; targetRight++; } }
+            else if (op3 === '-') { d = Math.floor(Math.random() * 8) + 2; c = targetRight + d; }
             else if (op3 === '*') {
-                const fs = []; for (let i = 1; i <= targetRight; i++) if (targetRight % i === 0) fs.push(i);
-                c = fs[Math.floor(Math.random() * fs.length)]; d = targetRight / c;
-            } else { d = Math.floor(Math.random() * 5) + 1; c = targetRight * d; }
+                const fs = []; for (let i = 2; i < targetRight; i++) if (targetRight % i === 0) fs.push(i);
+                if (fs.length > 0) { c = fs[Math.floor(Math.random() * fs.length)]; d = targetRight / c; }
+                else { c = targetRight; d = 1; }
+            } else { d = (Math.floor(Math.random() * 3) + 2); c = targetRight * d; }
 
             if (c <= 0 || d <= 0) throw "Inv";
 
@@ -366,6 +396,7 @@ function createBracketEquationProfi(range: number, ops: OperatorState, formatOp:
             };
         } else if (op2 === '-') {
             if (left.val < right.val) [left, right] = [right, left];
+            if (left.val === right.val) left.val += 2; // Avoid 0
         }
 
         // eslint-disable-next-line no-eval
@@ -403,16 +434,23 @@ function createBracketEquationProfi(range: number, ops: OperatorState, formatOp:
         return { target: res, elements, orderedElements, topLevelOp: op2 };
 
     } else {
-        // Nested
-        let t1 = createSafeTerm('A');
-        let op2 = randOp();
+        // Nested: ((A op B) op2 C) op3 D
+        // To force nested brackets visually, we need specific precedence:
+        // (Line Op Point) Op2 ... or (Op Op_Higher) Op_Lower ...
+        
+        let t1 = createSafeTerm('A'); // (A op B)
+        // If t1 is Line, op2 should be Point to force brackets
+        let op2 = (lineOps.includes(t1.op) && pointOps.length > 0) ? randOp(pointOps) : randOp();
+        
         let c = randNum();
 
         if (op2 === '/') {
-            const fs = []; for (let i = 1; i <= t1.val; i++) if (t1.val % i === 0) fs.push(i);
-            c = fs[Math.floor(Math.random() * fs.length)];
+            const fs = []; for (let i = 2; i < t1.val; i++) if (t1.val % i === 0) fs.push(i);
+            if (fs.length > 0) c = fs[Math.floor(Math.random() * fs.length)];
+            else c = (t1.val > 1 && Math.random() > 0.5) ? t1.val : 1;
         } else if (op2 === '-') {
-            if (t1.val < c) c = Math.floor(Math.random() * t1.val);
+            if (t1.val < c) c = Math.floor(Math.random() * (t1.val > 2 ? t1.val - 2 : t1.val));
+            if (t1.val === c) c = Math.max(1, c - 2);
         }
 
         // eslint-disable-next-line no-eval
@@ -436,16 +474,19 @@ function createBracketEquationProfi(range: number, ops: OperatorState, formatOp:
 
         let orderedElements2: GameElement[] = [...t1Ordered, eOB, eNC];
 
-        let op3 = randOp();
+        // Final step: op3. If op2 was Point, op3 should be Point again or Line
+        // To force ANOTHER level of brackets, op3 must have higher precedence or be a tricky case
+        let op3 = (pointOps.includes(op2) && pointOps.length > 0 && Math.random() < 0.5) ? randOp(pointOps) : randOp();
         let d = randNum();
 
         if (op3 === '/') {
             if (res2 === 0) throw "Zero";
-            const fs = []; for (let i = 1; i <= res2; i++) if (res2 % i === 0) fs.push(i);
-            if (fs.length === 0) throw "No fact";
-            d = fs[Math.floor(Math.random() * fs.length)];
+            const fs = []; for (let i = 2; i < res2; i++) if (res2 % i === 0) fs.push(i);
+            if (fs.length > 0) d = fs[Math.floor(Math.random() * fs.length)];
+            else d = (res2 > 1 && Math.random() > 0.5) ? res2 : 1;
         } else if (op3 === '-') {
-            if (res2 < d) d = Math.floor(Math.random() * res2);
+            if (res2 < d) d = Math.floor(Math.random() * (res2 > 2 ? res2 - 2 : res2));
+            if (res2 === d) d = Math.max(1, d - 2);
         }
 
         // eslint-disable-next-line no-eval
@@ -471,4 +512,5 @@ function createBracketEquationProfi(range: number, ops: OperatorState, formatOp:
         return { target: finalRes, elements, orderedElements: finalOrdered, topLevelOp: op3 };
     }
 }
+
 

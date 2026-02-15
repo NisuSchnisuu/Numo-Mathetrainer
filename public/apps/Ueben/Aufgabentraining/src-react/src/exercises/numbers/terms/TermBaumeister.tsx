@@ -43,11 +43,34 @@ export function TermBaumeister({ onBack }: TermBaumeisterProps) {
         difficulty: 'normal'
     });
 
-    if (!isPlaying) {
-        return <ConfigView config={config} setConfig={setConfig} onStart={() => setIsPlaying(true)} onBack={onBack} />;
-    }
+    // Sync Numo Back Button visibility
+    useEffect(() => {
+        const backLink = document.getElementById('numo-back-link');
+        if (backLink) {
+            backLink.style.display = 'none';
+        }
+    }, []);
 
-    return <GameSession config={config} onExit={() => setIsPlaying(false)} />;
+    return (
+        <div className="w-full h-full min-h-screen bg-[#020617] relative overflow-hidden flex flex-col">
+            {/* Background Glows */}
+            <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-500/10 rounded-full blur-[120px] pointer-events-none" />
+            <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-500/10 rounded-full blur-[120px] pointer-events-none" />
+
+            {/* Always render GameSession container, but blur it when settings are open */}
+            <div className={`flex-1 transition-all duration-700 ${!isPlaying ? 'blur-sm grayscale-[0.3] opacity-50 scale-[0.98] pointer-events-none' : ''}`}>
+                <GameSession config={config} onExit={onBack} forcedActive={isPlaying} />
+            </div>
+
+            {/* Modal Overlay */}
+            {!isPlaying && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-md animate-in fade-in duration-300">
+                    <div className="absolute inset-0" onClick={onBack} />
+                    <ConfigView config={config} setConfig={setConfig} onStart={() => setIsPlaying(true)} onBack={onBack} />
+                </div>
+            )}
+        </div>
+    );
 }
 
 function ConfigView({ config, setConfig, onStart, onBack }: { config: Config, setConfig: (c: Config) => void, onStart: () => void, onBack: () => void }) {
@@ -100,81 +123,79 @@ function ConfigView({ config, setConfig, onStart, onBack }: { config: Config, se
     const isProfi = config.difficulty === 'profi';
 
     return (
-        <div className="w-full h-full flex items-center justify-center p-4">
-            <div className="w-full max-w-lg glass-card rounded-2xl p-8 animate-fade-in flex flex-col relative shadow-2xl border border-white/10 bg-[#0b1120]/80">
-                <button onClick={onBack} className="absolute top-6 left-6 text-muted-foreground hover:text-white transition-colors p-2 hover:bg-white/10 rounded-full">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
-                </button>
-                <h2 className="text-2xl font-bold mb-6 text-center text-white">Einstellungen</h2>
-                <p className="text-center text-muted-foreground text-sm -mt-4 mb-8">Konfiguriere deine Übung</p>
+        <div className="w-full max-w-lg glass-card rounded-3xl p-8 animate-in zoom-in-95 duration-300 flex flex-col relative shadow-2xl border border-white/10 bg-slate-900/80 backdrop-blur-md">
+            <button onClick={onBack} className="absolute top-6 left-6 text-muted-foreground hover:text-white transition-colors p-2 hover:bg-white/10 rounded-full">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
+            </button>
+            <h2 className="text-2xl font-bold mb-6 text-center text-white">Einstellungen</h2>
+            <p className="text-center text-muted-foreground text-sm -mt-4 mb-8">Konfiguriere deine Übung</p>
 
-                {/* Operators */}
-                <div className="mb-6 space-y-3">
-                    <div className="flex justify-between items-baseline">
-                        <label className="text-sm font-semibold text-white">Rechenzeichen</label>
-                        <span className="text-xs text-muted-foreground">Was soll vorkommen?</span>
-                    </div>
-                    <div className="grid grid-cols-5 gap-3">
-                        <OpToggle label="+" active={config.ops.plus} locked={isAllround} shake={shakeKey === 'plus'} onClick={() => toggleOp('plus')} />
-                        <OpToggle label="-" active={config.ops.minus} locked={isAllround} shake={shakeKey === 'minus'} onClick={() => toggleOp('minus')} />
-                        <OpToggle label="×" active={config.ops.mult} locked={isAllround} shake={shakeKey === 'mult'} onClick={() => toggleOp('mult')} />
-                        <OpToggle label="÷" active={config.ops.div} locked={isAllround} shake={shakeKey === 'div'} onClick={() => toggleOp('div')} />
-                        <OpToggle label="( )" active={config.ops.brackets} locked={isAllround || isProfi} shake={shakeKey === 'brackets'} onClick={() => toggleOp('brackets')} />
-                    </div>
+            {/* Operators */}
+            <div className="mb-6 space-y-3">
+                <div className="flex justify-between items-baseline">
+                    <label className="text-sm font-semibold text-white">Rechenzeichen</label>
+                    <span className="text-xs text-muted-foreground">Was soll vorkommen?</span>
                 </div>
-
-                {/* Range */}
-                <div className="mb-6 space-y-3">
-                    <div className="flex justify-between items-baseline">
-                        <label className="text-sm font-semibold text-white">Zahlenraum</label>
-                        <span className="text-xs text-muted-foreground">Maximales Ergebnis</span>
-                    </div>
-                    <div className="relative">
-                        <select
-                            value={config.range}
-                            onChange={(e) => setRange(parseInt(e.target.value))}
-                            className="w-full appearance-none bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary/50 hover:bg-white/10 transition-colors cursor-pointer"
-                        >
-                            <option value="20" className="bg-[#0b1120]">bis 20</option>
-                            <option value="100" className="bg-[#0b1120]">bis 100</option>
-                            <option value="1000" className="bg-[#0b1120]">bis 1'000</option>
-                        </select>
-                        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
-                        </div>
-                    </div>
+                <div className="grid grid-cols-5 gap-3">
+                    <OpToggle label="+" active={config.ops.plus} locked={isAllround} shake={shakeKey === 'plus'} onClick={() => toggleOp('plus')} />
+                    <OpToggle label="-" active={config.ops.minus} locked={isAllround} shake={shakeKey === 'minus'} onClick={() => toggleOp('minus')} />
+                    <OpToggle label="×" active={config.ops.mult} locked={isAllround} shake={shakeKey === 'mult'} onClick={() => toggleOp('mult')} />
+                    <OpToggle label="÷" active={config.ops.div} locked={isAllround} shake={shakeKey === 'div'} onClick={() => toggleOp('div')} />
+                    <OpToggle label="( )" active={config.ops.brackets} locked={isAllround || isProfi} shake={shakeKey === 'brackets'} onClick={() => toggleOp('brackets')} />
                 </div>
+            </div>
 
-                {/* Difficulty */}
-                <div className="mb-8 space-y-3">
-                    <div className="flex justify-between items-baseline">
-                        <label className="text-sm font-semibold text-white">Schwierigkeit</label>
-                        <span className="text-xs text-muted-foreground">Komplexität</span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                        <DiffButton label="Normal" sub="Einfache Terme" active={config.difficulty === 'normal'} onClick={() => setDiff('normal')} />
-                        <DiffButton label="Fortgeschritten" sub="Längere Terme" active={config.difficulty === 'advanced'} onClick={() => setDiff('advanced')} />
-                        <DiffButton label="Profi" sub="Verschachtelt" active={config.difficulty === 'profi'} onClick={() => setDiff('profi')} />
-                        <DiffButton label="Allround" sub="Alles gemischt" active={config.difficulty === 'allround'} onClick={() => setDiff('allround')} />
-                    </div>
+            {/* Range */}
+            <div className="mb-6 space-y-3">
+                <div className="flex justify-between items-baseline">
+                    <label className="text-sm font-semibold text-white">Zahlenraum</label>
+                    <span className="text-xs text-muted-foreground">Maximales Ergebnis</span>
                 </div>
-
-                <div className="mt-auto pt-4 relative">
-                    <button
-                        onClick={onStart}
-                        className="w-full bg-primary text-primary-foreground font-bold text-lg py-4 rounded-xl hover:opacity-90 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-lg shadow-primary/20"
+                <div className="relative">
+                    <select
+                        value={config.range}
+                        onChange={(e) => setRange(parseInt(e.target.value))}
+                        className="w-full appearance-none bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary/50 hover:bg-white/10 transition-colors cursor-pointer"
                     >
-                        Übung starten
-                    </button>
-
-                    {toastMsg && (
-                        <div className="absolute -bottom-16 left-0 right-0 flex justify-center animate-fade-in z-20">
-                            <div className="bg-red-500/90 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg border border-red-400/50 backdrop-blur-sm">
-                                {toastMsg}
-                            </div>
-                        </div>
-                    )}
+                        <option value="20" className="bg-[#0b1120]">bis 20</option>
+                        <option value="100" className="bg-[#0b1120]">bis 100</option>
+                        <option value="1000" className="bg-[#0b1120]">bis 1'000</option>
+                    </select>
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
+                    </div>
                 </div>
+            </div>
+
+            {/* Difficulty */}
+            <div className="mb-8 space-y-3">
+                <div className="flex justify-between items-baseline">
+                    <label className="text-sm font-semibold text-white">Schwierigkeit</label>
+                    <span className="text-xs text-muted-foreground">Komplexität</span>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                    <DiffButton label="Normal" sub="Einfache Terme" active={config.difficulty === 'normal'} onClick={() => setDiff('normal')} />
+                    <DiffButton label="Fortgeschritten" sub="Längere Terme" active={config.difficulty === 'advanced'} onClick={() => setDiff('advanced')} />
+                    <DiffButton label="Profi" sub="Verschachtelt" active={config.difficulty === 'profi'} onClick={() => setDiff('profi')} />
+                    <DiffButton label="Allround" sub="Alles gemischt" active={config.difficulty === 'allround'} onClick={() => setDiff('allround')} />
+                </div>
+            </div>
+
+            <div className="mt-auto pt-4 relative">
+                <button
+                    onClick={onStart}
+                    className="w-full bg-primary text-primary-foreground font-bold text-lg py-4 rounded-xl hover:opacity-90 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-lg shadow-primary/20"
+                >
+                    Übung starten
+                </button>
+
+                {toastMsg && (
+                    <div className="absolute -bottom-16 left-0 right-0 flex justify-center animate-fade-in z-20">
+                        <div className="bg-red-500/90 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg border border-red-400/50 backdrop-blur-sm">
+                            {toastMsg}
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -236,7 +257,7 @@ const initialStats: SessionStats = {
 
 // --- Game Session ---
 
-function GameSession({ config, onExit }: { config: Config, onExit: () => void }) {
+function GameSession({ config, onExit, forcedActive }: { config: Config, onExit: () => void, forcedActive: boolean }) {
     const [task, setTask] = useState<Task | null>(null);
     const [userTerm, setUserTerm] = useState<GameElement[]>([]);
     const [isFinished, setIsFinished] = useState(false);
@@ -248,8 +269,10 @@ function GameSession({ config, onExit }: { config: Config, onExit: () => void })
 
     // Init first task
     useEffect(() => {
-        nextTask();
-    }, []);
+        if (forcedActive && !task) {
+            nextTask();
+        }
+    }, [forcedActive]);
 
     const updateStats = (type: 'correct' | 'wrong' | 'skipped') => {
         if (!task) return;
@@ -334,10 +357,13 @@ function GameSession({ config, onExit }: { config: Config, onExit: () => void })
         setTimeout(() => setErrorMsg(null), 2000);
     };
 
-    if (!task) return <div>Loading...</div>;
+    if (!task) return (
+        <div className="w-full h-full flex items-center justify-center">
+            <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+        </div>
+    );
 
     const usedIds = new Set(userTerm.map(u => u.id));
-    // const allUsed = userTerm.length === task.elements.length;
 
     const diffLabels: Record<Difficulty, string> = {
         normal: "Normal",
@@ -536,7 +562,6 @@ function generateTask(config: Config): Task {
     const { range, ops, difficulty } = config;
     let task: Task | null = null;
     let attempts = 0;
-    // let selectedDiff: Difficulty = difficulty;
 
     while (!task && attempts < 100) {
         attempts++;
@@ -549,8 +574,6 @@ function generateTask(config: Config): Task {
                 topLevelOp: result.task.topLevelOp,
                 currentDiff: result.activeDiff
             };
-
-            // selectedDiff = result.activeDiff; // removed unused assignment
 
             // --- Variety Check ---
             if (candidateTask) {
@@ -565,14 +588,11 @@ function generateTask(config: Config): Task {
                 if (ops.mult) contentOpsCount++;
                 if (ops.div) contentOpsCount++;
 
-                // If result has >= 2 operators, and we have > 1 operator type available,
-                // we reject "all same" results to encourage variety.
                 if (usedOps.length >= 2 && contentOpsCount > 1) {
                     const firstOp = usedOps[0];
                     const allSame = usedOps.every(op => op === firstOp);
 
                     if (allSame) {
-                        // Reject and retry
                         candidateTask = null;
                     }
                 }
@@ -605,4 +625,3 @@ function generateTask(config: Config): Task {
     task.elements = grouped;
     return task;
 }
-

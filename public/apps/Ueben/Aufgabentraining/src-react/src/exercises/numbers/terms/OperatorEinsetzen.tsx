@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { generateTerm } from './termGenerator';
 import type { OperatorState, Difficulty } from './termGenerator';
@@ -30,11 +30,35 @@ export function OperatorEinsetzen({ onBack }: OperatorEinsetzenProps) {
         difficulty: 'normal'
     });
 
-    if (!isPlaying) {
-        return <ConfigView config={config} setConfig={setConfig} onStart={() => setIsPlaying(true)} onBack={onBack} />;
-    }
+    // Sync Numo Back Button visibility with app state
+    useEffect(() => {
+        const backLink = document.getElementById('numo-back-link');
+        if (backLink) {
+            // Hide if we are deeper than the dashboard root
+            backLink.style.display = 'none';
+        }
+    }, []);
 
-    return <GameSession config={config} onExit={() => setIsPlaying(false)} />;
+    return (
+        <div className="w-full h-full min-h-screen bg-[#020617] relative overflow-hidden flex flex-col">
+            {/* Background Glows */}
+            <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/10 rounded-full blur-[120px] pointer-events-none" />
+            <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-500/10 rounded-full blur-[120px] pointer-events-none" />
+
+            {/* Always render GameSession container, but blur it when settings are open */}
+            <div className={`flex-1 transition-all duration-700 ${!isPlaying ? 'blur-sm grayscale-[0.3] opacity-50 scale-[0.98] pointer-events-none' : ''}`}>
+                <GameSession config={config} onExit={onBack} forcedActive={isPlaying} />
+            </div>
+
+            {/* Modal Overlay */}
+            {!isPlaying && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-md animate-in fade-in duration-300">
+                    <div className="absolute inset-0" onClick={onBack} />
+                    <ConfigView config={config} setConfig={setConfig} onStart={() => setIsPlaying(true)} onBack={onBack} />
+                </div>
+            )}
+        </div>
+    );
 }
 
 function ConfigView({ config, setConfig, onStart, onBack }: { config: Config, setConfig: (c: Config) => void, onStart: () => void, onBack: () => void }) {
@@ -87,81 +111,79 @@ function ConfigView({ config, setConfig, onStart, onBack }: { config: Config, se
     const isAllround = config.difficulty === 'allround';
 
     return (
-        <div className="w-full h-full flex items-center justify-center p-4">
-            <div className="w-full max-w-lg glass-card rounded-2xl p-8 animate-fade-in flex flex-col relative shadow-2xl border border-white/10 bg-[#0b1120]/80">
-                <button onClick={onBack} className="absolute top-6 left-6 text-muted-foreground hover:text-white transition-colors p-2 hover:bg-white/10 rounded-full">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
-                </button>
-                <h2 className="text-2xl font-bold mb-6 text-center text-white">Einstellungen</h2>
-                <p className="text-center text-muted-foreground text-sm -mt-4 mb-8">Konfiguriere deine Übung</p>
+        <div className="w-full max-w-lg glass-card rounded-3xl p-8 animate-in zoom-in-95 duration-300 flex flex-col relative shadow-2xl border border-white/10 bg-slate-900/80 backdrop-blur-md">
+            <button onClick={onBack} className="absolute top-6 left-6 text-muted-foreground hover:text-white transition-colors p-2 hover:bg-white/10 rounded-full">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
+            </button>
+            <h2 className="text-2xl font-bold mb-6 text-center text-white">Einstellungen</h2>
+            <p className="text-center text-muted-foreground text-sm -mt-4 mb-8">Konfiguriere deine Übung</p>
 
-                {/* Operators */}
-                <div className="mb-6 space-y-3">
-                    <div className="flex justify-between items-baseline">
-                        <label className="text-sm font-semibold text-white">Rechenzeichen</label>
-                        <span className="text-xs text-muted-foreground">Was soll vorkommen?</span>
-                    </div>
-                    <div className="grid grid-cols-5 gap-3">
-                        <OpToggle label="+" active={config.ops.plus} locked={isAllround} shake={shakeKey === 'plus'} onClick={() => toggleOp('plus')} />
-                        <OpToggle label="-" active={config.ops.minus} locked={isAllround} shake={shakeKey === 'minus'} onClick={() => toggleOp('minus')} />
-                        <OpToggle label="×" active={config.ops.mult} locked={isAllround} shake={shakeKey === 'mult'} onClick={() => toggleOp('mult')} />
-                        <OpToggle label="÷" active={config.ops.div} locked={isAllround} shake={shakeKey === 'div'} onClick={() => toggleOp('div')} />
-                        <OpToggle label="( )" active={config.ops.brackets} locked={isProfi || isAllround} shake={shakeKey === 'brackets'} onClick={() => toggleOp('brackets')} />
-                    </div>
+            {/* Operators */}
+            <div className="mb-6 space-y-3">
+                <div className="flex justify-between items-baseline">
+                    <label className="text-sm font-semibold text-white">Rechenzeichen</label>
+                    <span className="text-xs text-muted-foreground">Was soll vorkommen?</span>
                 </div>
-
-                {/* Range */}
-                <div className="mb-6 space-y-3">
-                    <div className="flex justify-between items-baseline">
-                        <label className="text-sm font-semibold text-white">Zahlenraum</label>
-                        <span className="text-xs text-muted-foreground">Maximales Ergebnis</span>
-                    </div>
-                    <div className="relative">
-                        <select
-                            value={config.range}
-                            onChange={(e) => setRange(parseInt(e.target.value))}
-                            className="w-full appearance-none bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary/50 hover:bg-white/10 transition-colors cursor-pointer"
-                        >
-                            <option value="20" className="bg-[#0b1120]">bis 20</option>
-                            <option value="100" className="bg-[#0b1120]">bis 100</option>
-                            <option value="1000" className="bg-[#0b1120]">bis 1'000</option>
-                        </select>
-                        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
-                        </div>
-                    </div>
+                <div className="grid grid-cols-5 gap-3">
+                    <OpToggle label="+" active={config.ops.plus} locked={isAllround} shake={shakeKey === 'plus'} onClick={() => toggleOp('plus')} />
+                    <OpToggle label="-" active={config.ops.minus} locked={isAllround} shake={shakeKey === 'minus'} onClick={() => toggleOp('minus')} />
+                    <OpToggle label="×" active={config.ops.mult} locked={isAllround} shake={shakeKey === 'mult'} onClick={() => toggleOp('mult')} />
+                    <OpToggle label="÷" active={config.ops.div} locked={isAllround} shake={shakeKey === 'div'} onClick={() => toggleOp('div')} />
+                    <OpToggle label="( )" active={config.ops.brackets} locked={isProfi || isAllround} shake={shakeKey === 'brackets'} onClick={() => toggleOp('brackets')} />
                 </div>
+            </div>
 
-                {/* Difficulty */}
-                <div className="mb-8 space-y-3">
-                    <div className="flex justify-between items-baseline">
-                        <label className="text-sm font-semibold text-white">Schwierigkeit</label>
-                        <span className="text-xs text-muted-foreground">Komplexität</span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                        <DiffButton label="Normal" sub="3 Zahlen" active={config.difficulty === 'normal'} onClick={() => setDiff('normal')} />
-                        <DiffButton label="Fortgeschritten" sub="4 Zahlen" active={config.difficulty === 'advanced'} onClick={() => setDiff('advanced')} />
-                        <DiffButton label="Profi" sub="Mit Klammern" active={config.difficulty === 'profi'} onClick={() => setDiff('profi')} />
-                        <DiffButton label="Allround" sub="Alles gemischt" active={config.difficulty === 'allround'} onClick={() => setDiff('allround')} />
-                    </div>
+            {/* Range */}
+            <div className="mb-6 space-y-3">
+                <div className="flex justify-between items-baseline">
+                    <label className="text-sm font-semibold text-white">Zahlenraum</label>
+                    <span className="text-xs text-muted-foreground">Maximales Ergebnis</span>
                 </div>
-
-                <div className="mt-auto pt-4 relative">
-                    <button
-                        onClick={onStart}
-                        className="w-full bg-primary text-primary-foreground font-bold text-lg py-4 rounded-xl hover:opacity-90 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-lg shadow-primary/20"
+                <div className="relative">
+                    <select
+                        value={config.range}
+                        onChange={(e) => setRange(parseInt(e.target.value))}
+                        className="w-full appearance-none bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary/50 hover:bg-white/10 transition-colors cursor-pointer"
                     >
-                        Übung starten
-                    </button>
-
-                    {toastMsg && (
-                        <div className="absolute -bottom-16 left-0 right-0 flex justify-center animate-fade-in z-20">
-                            <div className="bg-red-500/90 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg border border-red-400/50 backdrop-blur-sm">
-                                {toastMsg}
-                            </div>
-                        </div>
-                    )}
+                        <option value="20" className="bg-[#0b1120]">bis 20</option>
+                        <option value="100" className="bg-[#0b1120]">bis 100</option>
+                        <option value="1000" className="bg-[#0b1120]">bis 1'000</option>
+                    </select>
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
+                    </div>
                 </div>
+            </div>
+
+            {/* Difficulty */}
+            <div className="mb-8 space-y-3">
+                <div className="flex justify-between items-baseline">
+                    <label className="text-sm font-semibold text-white">Schwierigkeit</label>
+                    <span className="text-xs text-muted-foreground">Komplexität</span>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                    <DiffButton label="Normal" sub="3 Zahlen" active={config.difficulty === 'normal'} onClick={() => setDiff('normal')} />
+                    <DiffButton label="Fortgeschritten" sub="4 Zahlen" active={config.difficulty === 'advanced'} onClick={() => setDiff('advanced')} />
+                    <DiffButton label="Profi" sub="Mit Klammern" active={config.difficulty === 'profi'} onClick={() => setDiff('profi')} />
+                    <DiffButton label="Allround" sub="Alles gemischt" active={config.difficulty === 'allround'} onClick={() => setDiff('allround')} />
+                </div>
+            </div>
+
+            <div className="mt-auto pt-4 relative">
+                <button
+                    onClick={onStart}
+                    className="w-full bg-primary text-primary-foreground font-bold text-lg py-4 rounded-xl hover:opacity-90 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-lg shadow-primary/20"
+                >
+                    Übung starten
+                </button>
+
+                {toastMsg && (
+                    <div className="absolute -bottom-16 left-0 right-0 flex justify-center animate-fade-in z-20">
+                        <div className="bg-red-500/90 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg border border-red-400/50 backdrop-blur-sm">
+                            {toastMsg}
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -206,38 +228,81 @@ function DiffButton({ label, sub, active, onClick }: { label: string, sub: strin
 
 type StatCounts = { correct: number; wrong: number; skipped: number };
 
-function GameSession({ config, onExit }: { config: Config, onExit: () => void }) {
+type PointerDrag = {
+    item: string;
+    fromGap: number | null;
+    fromIndex: number | null;
+    x: number;
+    y: number;
+};
+
+function GameSession({ config, onExit, forcedActive }: { config: Config, onExit: () => void, forcedActive: boolean }) {
     const [task, setTask] = useState<Task | null>(null);
     const [stats, setStats] = useState<StatCounts>({ correct: 0, wrong: 0, skipped: 0 });
     const [showStats, setShowStats] = useState(false);
 
-    // Drag & Drop State
+    // Unified Drag State (supports pointer and native DnD)
     const [placedItems, setPlacedItems] = useState<string[][]>([]); // List of items per gap
     const [availableItems, setAvailableItems] = useState<string[]>([]);
     const [draggedItem, setDraggedItem] = useState<{ item: string, fromGap: number | null, fromIndex: number | null } | null>(null);
+    const [pointerDrag, setPointerDrag] = useState<PointerDrag | null>(null);
     const [feedback, setFeedback] = useState<'correct' | 'incorrect' | null>(null);
+
+    // Refs for global pointer events
+    const containerRef = useRef<HTMLDivElement>(null);
 
     // Init first task
     useEffect(() => {
-        nextTask();
-    }, []);
+        if (forcedActive && !task) {
+            nextTask();
+        }
+    }, [forcedActive]);
+
+    // Pointer Event Handlers
+    useEffect(() => {
+        if (!pointerDrag) return;
+
+        const handlePointerMove = (e: PointerEvent) => {
+            setPointerDrag(prev => prev ? { ...prev, x: e.clientX, y: e.clientY } : null);
+        };
+
+        const handlePointerUp = (e: PointerEvent) => {
+            // Find drop zone at this position
+            const elements = document.elementsFromPoint(e.clientX, e.clientY);
+            const dropZone = elements.find(el => el.hasAttribute('data-drop-gap'));
+
+            if (dropZone) {
+                const gapIdx = parseInt(dropZone.getAttribute('data-drop-gap') || '0');
+                const insertIdx = parseInt(dropZone.getAttribute('data-drop-insert') || '0');
+                handleDrop(gapIdx, insertIdx, { 
+                    item: pointerDrag.item, 
+                    fromGap: pointerDrag.fromGap, 
+                    fromIndex: pointerDrag.fromIndex 
+                });
+            } else {
+                setPointerDrag(null);
+            }
+        };
+
+        window.addEventListener('pointermove', handlePointerMove);
+        window.addEventListener('pointerup', handlePointerUp);
+        return () => {
+            window.removeEventListener('pointermove', handlePointerMove);
+            window.removeEventListener('pointerup', handlePointerUp);
+        };
+    }, [pointerDrag]);
 
     const nextTask = () => {
         const newTask = generateTask(config);
         setTask(newTask);
-        // Initialize placedItems with empty arrays for each gap
-        // Gap 0 is before first number, Gap 1 after first number, etc.
-        // n numbers => n+1 gaps
         const numGaps = newTask.numberSequence.length + 1;
         setPlacedItems(Array.from({ length: numGaps }, () => []));
 
-        // Group and Sort available items
         const rawItems = [...newTask.availableOperators];
         const isParen = (s: string) => ['(', ')'].includes(s);
         const parens = rawItems.filter(isParen).sort();
         const others = rawItems.filter(s => !isParen(s));
 
-        // Shuffle others
         for (let i = others.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [others[i], others[j]] = [others[j], others[i]];
@@ -246,7 +311,6 @@ function GameSession({ config, onExit }: { config: Config, onExit: () => void })
         const grouped: string[] = [];
         if (others.length > 0) grouped.push(...others, '|');
         if (parens.length > 0) grouped.push(...parens);
-
         if (grouped[grouped.length - 1] === '|') grouped.pop();
 
         setAvailableItems(grouped);
@@ -260,15 +324,10 @@ function GameSession({ config, onExit }: { config: Config, onExit: () => void })
 
     const handleCheck = () => {
         if (!task) return;
-
-        // Build the expression from numbers and placed items
         const expression = buildExpression(task.numberSequence, placedItems);
-
-        // Validate and evaluate
         const result = evaluateExpression(expression);
 
         if (result.error) {
-            // Show error feedback
             setFeedback('incorrect');
             setTimeout(() => setFeedback(null), 2000);
             return;
@@ -283,50 +342,51 @@ function GameSession({ config, onExit }: { config: Config, onExit: () => void })
         }
     };
 
-    const handleDragStart = (item: string, fromGap: number | null, fromIndex: number | null) => {
-        setDraggedItem({ item, fromGap, fromIndex });
+    const startPointerDrag = (e: React.PointerEvent, item: string, fromGap: number | null, fromIndex: number | null) => {
+        // Only trigger for touch or primary mouse button
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+        
+        // Prevent scrolling on touch
+        if (e.pointerType === 'touch') {
+            (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+        }
+
+        setPointerDrag({
+            item,
+            fromGap,
+            fromIndex,
+            x: e.clientX,
+            y: e.clientY
+        });
     };
 
-    const handleDrop = (toGap: number, insertIndex: number) => {
-        if (!draggedItem) return;
+    const handleDrop = (toGap: number, insertIndex: number, overrideDraggedItem?: { item: string, fromGap: number | null, fromIndex: number | null }) => {
+        const itemToUse = overrideDraggedItem || draggedItem;
+        if (!itemToUse) return;
 
         const newPlaced = placedItems.map(gap => [...gap]);
         const newAvailable = [...availableItems];
 
-        // If dragging from available pool
-        if (draggedItem.fromGap === null) {
-            // Remove from available
-            const itemIdx = newAvailable.indexOf(draggedItem.item);
+        // Remove from source
+        if (itemToUse.fromGap === null) {
+            const itemIdx = newAvailable.indexOf(itemToUse.item);
             if (itemIdx > -1) newAvailable.splice(itemIdx, 1);
-
-            // Add to placed
-            newPlaced[toGap].splice(insertIndex, 0, draggedItem.item);
         } else {
-            // Moving from one slot to another
-            // Remove from old pos
-            if (draggedItem.fromGap !== null && draggedItem.fromIndex !== null) {
-                newPlaced[draggedItem.fromGap].splice(draggedItem.fromIndex, 1);
-            }
-
-            // Insert
-            // If target is same gap, we need to adjust index if we removed from before
-            let actualInsertIndex = insertIndex;
-            if (draggedItem.fromGap === toGap && draggedItem.fromIndex !== null && draggedItem.fromIndex < insertIndex) {
-                actualInsertIndex--;
-            }
-
-            newPlaced[toGap].splice(actualInsertIndex, 0, draggedItem.item);
+            newPlaced[itemToUse.fromGap].splice(itemToUse.fromIndex!, 1);
         }
 
-        setPlacedItems(newPlaced);
-        setAvailableItems(newAvailable);
-        setPlacedItems(newPlaced);
-        setAvailableItems(newAvailable);
-        setDraggedItem(null);
-    };
+        // Insert at target
+        let actualInsertIndex = insertIndex;
+        if (itemToUse.fromGap === toGap && itemToUse.fromIndex !== null && itemToUse.fromIndex < insertIndex) {
+            actualInsertIndex--;
+        }
 
-    const handleDragEnd = () => {
+        newPlaced[toGap].splice(actualInsertIndex, 0, itemToUse.item);
+
+        setPlacedItems(newPlaced);
+        setAvailableItems(newAvailable);
         setDraggedItem(null);
+        setPointerDrag(null);
     };
 
     const handleRemove = (gapIndex: number, itemIndex: number) => {
@@ -343,10 +403,14 @@ function GameSession({ config, onExit }: { config: Config, onExit: () => void })
         setAvailableItems(newAvailable);
     };
 
-    if (!task) return <div>Loading...</div>;
+    if (!task) return (
+        <div className="w-full h-full flex items-center justify-center">
+            <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+        </div>
+    );
 
     return (
-        <div className="w-full max-w-4xl mx-auto flex flex-col h-full animate-fade-in relative pb-4 md:pb-8">
+        <div className="w-full max-w-4xl mx-auto flex flex-col h-full animate-fade-in relative pb-4 md:pb-8" ref={containerRef}>
             {/* Header */}
             <div className="flex justify-between items-center z-10 p-4">
                 <button onClick={onExit} className="flex items-center gap-2 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-lg text-red-400 text-sm font-medium transition-colors">
@@ -382,10 +446,11 @@ function GameSession({ config, onExit }: { config: Config, onExit: () => void })
                         placedItems={placedItems}
                         onDrop={handleDrop}
                         onRemove={handleRemove}
-                        onDragStart={handleDragStart}
-                        onDragEnd={handleDragEnd}
+                        onPointerStart={startPointerDrag}
+                        onNativeDragStart={(item, gap, idx) => setDraggedItem({ item, fromGap: gap, fromIndex: idx })}
+                        onDragEnd={() => { setDraggedItem(null); setPointerDrag(null); }}
                         bracketsEnabled={config.ops.brackets}
-                        isDragging={!!draggedItem}
+                        isDragging={!!draggedItem || !!pointerDrag}
                     />
 
                     {/* Target Display Pinned Right */}
@@ -416,8 +481,9 @@ function GameSession({ config, onExit }: { config: Config, onExit: () => void })
                                 <DraggableItem
                                     key={`${item}-${idx}`}
                                     item={item}
-                                    onDragStart={() => handleDragStart(item, null, null)}
-                                    onDragEnd={handleDragEnd}
+                                    onPointerStart={(e) => startPointerDrag(e, item, null, null)}
+                                    onDragStart={() => setDraggedItem({ item, fromGap: null, fromIndex: null })}
+                                    onDragEnd={() => { setDraggedItem(null); setPointerDrag(null); }}
                                 />
                             );
                         })}
@@ -427,15 +493,14 @@ function GameSession({ config, onExit }: { config: Config, onExit: () => void })
                     </div>
                 </div>
 
-                {/* Check Button */}
+                {/* Clear Button */}
                 <div className="mb-4">
                     <button
                         onClick={() => {
                             const allPlaced = placedItems.flat();
-
                             setPlacedItems(placedItems.map(() => []));
                             setAvailableItems(prev => {
-                                const combined = [...prev, ...allPlaced];
+                                const combined = [...prev, ...allPlaced].filter(i => i !== '|');
                                 return combined.sort();
                             });
                             setFeedback(null);
@@ -444,11 +509,6 @@ function GameSession({ config, onExit }: { config: Config, onExit: () => void })
                     >
                         <span className="text-xl">🗑️</span> Alles löschen
                     </button>
-                    {/* Note: The check logic happens automatically or via button? 
-                        User previous code had a check button. 
-                        Let's keep the Check button but style it better or maybe match runner's 'Submit' if exists?
-                        Runner has auto-check or explicit submit. Here it's explicit check.
-                    */}
                 </div>
                 <button
                     onClick={handleCheck}
@@ -512,32 +572,48 @@ function GameSession({ config, onExit }: { config: Config, onExit: () => void })
                 </div>,
                 document.body
             )}
+
+            {/* Pointer Drag Ghost */}
+            {pointerDrag && createPortal(
+                <div 
+                    className="fixed pointer-events-none z-[9999] px-4 py-3 rounded-xl border-2 text-xl font-mono shadow-2xl scale-110 bg-blue-600 border-blue-400 text-white"
+                    style={{ 
+                        left: pointerDrag.x, 
+                        top: pointerDrag.y, 
+                        transform: 'translate(-50%, -50%)' 
+                    }}
+                >
+                    {pointerDrag.item === '*' ? '×' : pointerDrag.item === '/' ? '÷' : pointerDrag.item}
+                </div>,
+                document.body
+            )}
         </div>
     );
 }
 
 // --- UI Components ---
 
-function SequenceBuilder({ numbers, placedItems, onDrop, onRemove, onDragStart, onDragEnd, bracketsEnabled, isDragging }: {
+function SequenceBuilder({ numbers, placedItems, onDrop, onRemove, onPointerStart, onNativeDragStart, onDragEnd, bracketsEnabled, isDragging }: {
     numbers: string[],
     placedItems: string[][],
     onDrop: (gapIndex: number, insertIndex: number) => void,
     onRemove: (gapIndex: number, itemIndex: number) => void,
-    onDragStart: (item: string, fromGap: number, fromIndex: number) => void,
+    onPointerStart: (e: React.PointerEvent, item: string, gap: number, idx: number) => void,
+    onNativeDragStart: (item: string, gap: number, idx: number) => void,
     onDragEnd: () => void,
     bracketsEnabled: boolean,
     isDragging: boolean
 }) {
     return (
         <div className="flex flex-wrap items-center justify-center gap-1">
-            {/* Gap 0 (Before first number) - Only if brackets enabled */}
             {bracketsEnabled && (
                 <GapRenderer
                     gapIndex={0}
                     items={placedItems[0]}
                     onDrop={onDrop}
                     onRemove={onRemove}
-                    onDragStart={onDragStart}
+                    onPointerStart={onPointerStart}
+                    onNativeDragStart={onNativeDragStart}
                     onDragEnd={onDragEnd}
                     isDragging={isDragging}
                 />
@@ -545,19 +621,18 @@ function SequenceBuilder({ numbers, placedItems, onDrop, onRemove, onDragStart, 
 
             {numbers.map((num, idx) => (
                 <div key={idx} className="flex items-center gap-1">
-                    {/* Number - Fixed Style */}
                     <div className="px-4 py-2 rounded-xl text-xl sm:text-2xl font-mono border bg-neutral-800 border-white/10 text-white cursor-default shadow-lg z-10 relative">
                         {num}
                     </div>
 
-                    {/* Gap after this number (Gap idx + 1) */}
                     {(idx < numbers.length - 1 || bracketsEnabled) && (
                         <GapRenderer
                             gapIndex={idx + 1}
                             items={placedItems[idx + 1]}
                             onDrop={onDrop}
                             onRemove={onRemove}
-                            onDragStart={onDragStart}
+                            onPointerStart={onPointerStart}
+                            onNativeDragStart={onNativeDragStart}
                             onDragEnd={onDragEnd}
                             isDragging={isDragging}
                         />
@@ -568,12 +643,13 @@ function SequenceBuilder({ numbers, placedItems, onDrop, onRemove, onDragStart, 
     );
 }
 
-function GapRenderer({ gapIndex, items, onDrop, onRemove, onDragStart, onDragEnd, isDragging }: {
+function GapRenderer({ gapIndex, items, onDrop, onRemove, onPointerStart, onNativeDragStart, onDragEnd, isDragging }: {
     gapIndex: number,
     items: string[],
     onDrop: (gapIndex: number, insertIndex: number) => void,
     onRemove: (gapIndex: number, itemIndex: number) => void,
-    onDragStart: (item: string, fromGap: number, fromIndex: number) => void,
+    onPointerStart: (e: React.PointerEvent, item: string, gap: number, idx: number) => void,
+    onNativeDragStart: (item: string, gap: number, idx: number) => void,
     onDragEnd: () => void,
     isDragging: boolean
 }) {
@@ -589,7 +665,8 @@ function GapRenderer({ gapIndex, items, onDrop, onRemove, onDragStart, onDragEnd
                 <div key={i} className="flex items-center gap-1">
                     <DraggableItem
                         item={item}
-                        onDragStart={() => onDragStart(item, gapIndex, i)}
+                        onPointerStart={(e) => onPointerStart(e, item, gapIndex, i)}
+                        onDragStart={() => onNativeDragStart(item, gapIndex, i)}
                         onDragEnd={onDragEnd}
                         onClick={() => onRemove(gapIndex, i)}
                     />
@@ -613,12 +690,10 @@ function DropZone({ gapIndex, insertIndex, onDrop, isDragging }: {
 }) {
     const [isOver, setIsOver] = useState(false);
 
-    // Initial State: Invisible/Collapsed
-    // Dragging: Visible as target (w-6) (but maybe transparent bg until hover?)
-    // Hover: Expanded (w-12) + Blue Line
-
     return (
         <div
+            data-drop-gap={gapIndex}
+            data-drop-insert={insertIndex}
             onDragOver={(e) => {
                 e.preventDefault();
                 setIsOver(true);
@@ -634,7 +709,6 @@ function DropZone({ gapIndex, insertIndex, onDrop, isDragging }: {
                 ${!isDragging ? 'w-0 opacity-0 overflow-hidden translate-x-0' : (isOver ? 'w-12 opacity-100' : 'w-6 opacity-0 sm:opacity-50')} 
             `}
         >
-            {/* Extended Hit Area for Touch - Only active when dragging */}
             {isDragging && (
                 <div
                     className="absolute -top-6 -bottom-24 -left-4 -right-4 z-0 bg-transparent"
@@ -642,13 +716,6 @@ function DropZone({ gapIndex, insertIndex, onDrop, isDragging }: {
                 />
             )}
 
-            {/* Visual Indicator (Blue Line) 
-                User: "blue lines should not always be visible... only indicators when dragging"
-                Interpretation:
-                - Not dragging: Hidden.
-                - Dragging: Visible (faintly?).
-                - Hovering: Strong.
-             */}
             <div className={`
                 w-1 h-12 rounded-full transition-all duration-200 pointer-events-none relative z-10
                 ${isOver ? 'bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,1)] scale-y-110' :
@@ -658,23 +725,27 @@ function DropZone({ gapIndex, insertIndex, onDrop, isDragging }: {
     );
 }
 
-function DraggableItem({ item, onDragStart, onDragEnd, onClick }: { item: string, onDragStart: () => void, onDragEnd?: () => void, onClick?: () => void }) {
-    const isNum = !isNaN(parseFloat(item)) && !['+', '-', '*', '/', '·', ':'].includes(item);
+function DraggableItem({ item, onPointerStart, onDragStart, onDragEnd, onClick }: { 
+    item: string, 
+    onPointerStart: (e: React.PointerEvent) => void,
+    onDragStart: () => void, 
+    onDragEnd?: () => void, 
+    onClick?: () => void 
+}) {
     const isBracket = ['(', ')'].includes(item);
 
     return (
         <div
             draggable
+            onPointerDown={onPointerStart}
             onDragStart={onDragStart}
             onDragEnd={onDragEnd}
             onClick={onClick}
             className={`
-                px-4 py-3 rounded-xl border-2 text-xl font-mono transition-all select-none cursor-grab active:cursor-grabbing hover:shadow-md
-                ${isNum
-                    ? 'bg-neutral-800 border-white/10 text-white cursor-default'
-                    : isBracket
-                        ? 'bg-indigo-600/20 border-indigo-500 text-indigo-100 hover:bg-indigo-600/30'
-                        : 'bg-blue-600/20 border-blue-500 text-blue-100 hover:bg-blue-600/30'
+                px-4 py-3 rounded-xl border-2 text-xl font-mono transition-all select-none cursor-grab active:cursor-grabbing hover:shadow-md touch-none
+                ${isBracket
+                    ? 'bg-indigo-600/20 border-indigo-500 text-indigo-100 hover:bg-indigo-600/30'
+                    : 'bg-blue-600/20 border-blue-500 text-blue-100 hover:bg-blue-600/30'
                 }
                 hover:scale-105 active:scale-95 group relative z-20
                 ${onClick ? 'cursor-pointer hover:bg-red-500/20 hover:border-red-500 hover:text-red-100' : ''}
@@ -694,28 +765,9 @@ function generateTask(config: Config): Task {
     while (attempts < 50) {
         attempts++;
         try {
-            // Use shared generator
             const { task: generatedTerm, activeDiff } = generateTerm(range, ops, difficulty);
-
-            // Convert TermTask elements to numberSequence (from orderedElements) and availableOperators
-            const numbers = generatedTerm.orderedElements
-                .filter(e => e.type === 'number')
-                .map(e => String(e.val));
-
-            const operators = generatedTerm.elements
-                .filter(e => e.type === 'op')
-                .map(e => String(e.val));
-
-            // Clean up separators if any (though generator logic usually keeps them separate, 
-            // the GameElement might have separators. generateTerm returns GameElement[] which might include separators?
-            // createSimpleEquation et al return GameElement[] but do they include separators? 
-            // Checking termGenerator.ts: createSimpleEquation uses | separators? 
-            // No, createSimpleEquation returns elements without separators. 
-            // TermBaumeister added them locally in generateTask.
-            // So generatedTerm.elements is clean.
-
-            // --- Variety Check ---
-            // Re-implement variety check similar to TermBaumeister to insure interesting tasks
+            const numbers = generatedTerm.orderedElements.filter(e => e.type === 'number').map(e => String(e.val));
+            const operators = generatedTerm.elements.filter(e => e.type === 'op').map(e => String(e.val));
             const usedOps = operators.filter(op => ['+', '-', '×', '÷', '*', '/'].includes(op));
 
             let contentOpsCount = 0;
@@ -727,82 +779,42 @@ function generateTask(config: Config): Task {
             if (usedOps.length >= 2 && contentOpsCount > 1) {
                 const firstOp = usedOps[0];
                 const allSame = usedOps.every(op => op === firstOp);
-                if (allSame) continue; // Try again
+                if (allSame) continue;
             }
 
             return {
                 numberSequence: numbers,
                 availableOperators: operators,
                 targetValue: generatedTerm.target,
-                solutionExpression: '', // Not strictly needed anymore as we verify via evaluation
+                solutionExpression: '', 
                 difficulty: difficulty,
                 currentDiff: activeDiff
             };
-
-        } catch (e) {
-            // retry
-        }
+        } catch (e) { /* retry */ }
     }
-
-    // Fallback
-    return {
-        numberSequence: ['2', '3', '5'],
-        availableOperators: ['+', '×'],
-        targetValue: 11,
-        solutionExpression: '2 + 3 × 5',
-        difficulty: 'normal',
-        currentDiff: 'normal'
-    };
+    return { numberSequence: ['2', '3', '5'], availableOperators: ['+', '×'], targetValue: 11, solutionExpression: '2 + 3 × 5', difficulty: 'normal', currentDiff: 'normal' };
 }
-
-// --- Validation Logic ---
 
 function buildExpression(numbers: string[], placedItems: string[][]): string {
     let expression = '';
-
     for (let i = 0; i < placedItems.length; i++) {
-        // Add all items in the current gap
-        for (const item of placedItems[i]) {
-            expression += item + ' ';
-        }
-
-        // Add the number that follows this gap (if it exists)
-        if (i < numbers.length) {
-            expression += numbers[i] + ' ';
-        }
+        for (const item of placedItems[i]) expression += item + ' ';
+        if (i < numbers.length) expression += numbers[i] + ' ';
     }
-
     return expression.trim();
 }
 
 function evaluateExpression(expression: string): { value: number | null, error: string | null } {
     try {
-        // Replace display operators with eval-friendly ones
         let cleaned = expression.replace(/×/g, '*').replace(/÷/g, '/');
-
-        // Check for balanced parentheses
         const openCount = (cleaned.match(/\(/g) || []).length;
         const closeCount = (cleaned.match(/\)/g) || []).length;
-
-        if (openCount !== closeCount) {
-            return { value: null, error: 'Unbalanced parentheses' };
-        }
-
-        // Validate only contains numbers, operators, spaces, and parentheses
-        if (!/^[\d\s+\-*/().]+$/.test(cleaned)) {
-            return { value: null, error: 'Invalid characters' };
-        }
-
-        // Evaluate
-        // eslint-disable-next-line no-eval
+        if (openCount !== closeCount) return { value: null, error: 'Unbalanced' };
+        if (!/^[\d\s+\-*/().]+$/.test(cleaned)) return { value: null, error: 'Invalid' };
         const result = eval(cleaned);
-
-        if (!Number.isFinite(result)) {
-            return { value: null, error: 'Invalid result' };
-        }
-
+        if (!Number.isFinite(result)) return { value: null, error: 'Invalid' };
         return { value: result, error: null };
     } catch (e) {
-        return { value: null, error: 'Evaluation error' };
+        return { value: null, error: 'Error' };
     }
 }

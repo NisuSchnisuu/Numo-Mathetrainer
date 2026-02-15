@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dashboard } from './components/Dashboard';
 import { ExerciseList } from './components/ExerciseList';
 import { exercises } from './data/exercises';
@@ -6,6 +6,19 @@ import { exercises } from './data/exercises';
 function App() {
   const [currentTopic, setCurrentTopic] = useState<string | null>(null);
   const [currentExerciseId, setCurrentExerciseId] = useState<string | null>(null);
+
+  // Sync Numo Back Button visibility with app state
+  useEffect(() => {
+    const backLink = document.getElementById('numo-back-link');
+    if (backLink) {
+      // Hide if we are deeper than the dashboard root
+      if (currentTopic) {
+        backLink.style.display = 'none';
+      } else {
+        backLink.style.display = 'flex';
+      }
+    }
+  }, [currentTopic]);
 
   // 1. Level: Thema wählen (vom Dashboard)
   const handleSelectTopic = (topicId: string) => {

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { curriculum } from '../data/curriculum';
 
 interface DashboardProps {
@@ -8,6 +8,24 @@ interface DashboardProps {
 export function Dashboard({ onSelectTopic }: DashboardProps) {
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
+
+    // Sync Numo Back Button visibility with internal dashboard state
+    useEffect(() => {
+        const backLink = document.getElementById('numo-back-link');
+        if (backLink) {
+            // Hide if we are in a sub-view (category selected or searching)
+            if (selectedCategory || (searchQuery && searchQuery.length > 1)) {
+                backLink.style.display = 'none';
+            } else {
+                backLink.style.display = 'flex';
+            }
+        }
+        
+        // Cleanup when component unmounts (managed by App.tsx, but safe here)
+        return () => {
+            // App.tsx effect will take over if we unmount because of topic selection
+        };
+    }, [selectedCategory, searchQuery]);
 
     const activeCategory = curriculum.find(c => c.id === selectedCategory);
 
