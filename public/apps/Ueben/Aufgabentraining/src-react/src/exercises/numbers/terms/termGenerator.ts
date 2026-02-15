@@ -17,7 +17,7 @@ export interface GameElement {
 export interface TermTask {
     target: number;
     elements: GameElement[];
-    orderedElements: GameElement[]; // Für die korrekte Anzeigereihenfolge (z.B. 3 + 4)
+    orderedElements: GameElement[];
     topLevelOp?: string;
 }
 
@@ -26,7 +26,7 @@ export interface TermTask {
 export function generateTerm(range: number, ops: OperatorState, difficulty: Difficulty): { task: TermTask, activeDiff: Difficulty } {
     let selectedDiff: Difficulty = difficulty;
 
-    // Allround-Logik: Wählt zufällig eine Stufe
+    // Allround-Logik
     if (difficulty === 'allround') {
         const r = Math.random();
         if (r < 0.50) selectedDiff = 'normal';       // 50%
@@ -34,7 +34,6 @@ export function generateTerm(range: number, ops: OperatorState, difficulty: Diff
         else selectedDiff = 'profi';                 // 20%
     }
 
-    // Sicherstellen, dass für Profi/Advanced Brackets intern aktiv sind
     const activeOps = { ...ops };
     if (selectedDiff === 'profi' || (selectedDiff === 'advanced' && Math.random() > 0.4)) {
         activeOps.brackets = true;
@@ -57,7 +56,6 @@ export function generateTerm(range: number, ops: OperatorState, difficulty: Diff
                 task = generateNormal(range, activeOps);
         }
     } catch (e) {
-        // Fallback, falls bei sehr engen Constraints keine Lösung gefunden wird
         console.warn("Generation failed, using fallback", e);
         task = createFallback();
     }
@@ -80,21 +78,21 @@ function generateNormal(range: number, ops: OperatorState): TermTask {
 function generateAdvanced(range: number, ops: OperatorState): TermTask {
     const rand = Math.random();
 
-    // 1. Doppel-Pack (ca. 40%) - Nur wenn Klammern erlaubt
+    // 1. Doppel-Pack (ca. 40%)
     if (ops.brackets && rand < 0.4) {
         return createDoubleBracketTerm(range, ops);
     }
 
-    // 2. Tricky 3 (ca. 20%) - Kurz, aber gemeine Punkt-vor-Strich
+    // 2. Tricky 3 (ca. 20%)
     if (rand >= 0.4 && rand < 0.6 && ops.minus && ops.mult) {
         try {
             return createTrickyLinear(range);
         } catch {
-            // Fallback zu linear
+            // Fallback
         }
     }
 
-    // 3. Lange Kette (Rest ca. 40%) - 4 Zahlen
+    // 3. Lange Kette (Rest ca. 40%)
     return createLinearChain(range, ops, 4);
 }
 
@@ -208,7 +206,7 @@ function extendTerm(base: TermFragment, maxRange: number, ops: OperatorState, fo
     const availOps = getOpsList(ops, 'all');
     const op = randOp(availOps);
 
-    let newVal, res;
+    let newVal;
     const isPost = Math.random() < 0.5;
 
     if (op === '/') {
@@ -217,34 +215,31 @@ function extendTerm(base: TermFragment, maxRange: number, ops: OperatorState, fo
             for (let i = 2; i < base.val; i++) if (base.val % i === 0) factors.push(i);
             if (factors.length === 0) {
                 newVal = randInt(2, 5);
-                res = base.val * newVal;
+                // Fallback: Multiplikation statt Division
                 return extendTermWithSpecificOp(base, newVal, '*', isPost, forceParens);
             }
             newVal = factors[Math.floor(Math.random() * factors.length)];
-            res = base.val / newVal;
         } else {
             if (base.val === 0) throw new Error("Div Zero");
             const maxMult = Math.floor(maxRange / base.val);
             if (maxMult < 2) throw new Error("Range too small for division");
             const mult = randInt(2, maxMult);
             newVal = base.val * mult;
-            res = newVal / base.val;
         }
     } else if (op === '*') {
         newVal = randInt(2, Math.max(2, Math.floor(maxRange / (base.val || 1))));
-        res = base.val * newVal;
     } else if (op === '-') {
         if (isPost) {
-            if (base.val < 2) { newVal = randInt(1, 5); res = base.val + newVal; return extendTermWithSpecificOp(base, newVal, '+', isPost, forceParens); }
+            if (base.val < 2) {
+                newVal = randInt(1, 5);
+                return extendTermWithSpecificOp(base, newVal, '+', isPost, forceParens);
+            }
             newVal = randInt(1, base.val - 1);
-            res = base.val - newVal;
         } else {
             newVal = randInt(base.val + 1, maxRange);
-            res = newVal - base.val;
         }
     } else {
         newVal = randInt(1, Math.max(1, maxRange - base.val));
-        res = base.val + newVal;
     }
 
     return extendTermWithSpecificOp(base, newVal, op, isPost, forceParens);
@@ -284,7 +279,7 @@ function extendTermWithSpecificOp(base: TermFragment, numVal: number, op: string
         }
     }
 
-    // Manuelle Berechnung statt eval()
+    // Manuelle Berechnung
     let res = 0;
     try {
         if (op === '+') res = isPost ? base.val + numVal : numVal + base.val;
@@ -320,7 +315,7 @@ function createLinearChain(range: number, ops: OperatorState, length: number): T
     };
 }
 
-function createSimpleBracketTerm(range: number, ops: OperatorState, length: number = 3): TermTask {
+function createSimpleBracketTerm(range: number, ops: OperatorState): TermTask {
     const duo = createSafeDuo(Math.floor(range / 2), ops);
     const final = extendTerm(duo, range, ops, true);
 
