@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { generateTerm } from './termGenerator';
+import { generateWorksheetPdf } from '../../../utils/pdfGenerator';
 
 type OperatorState = {
     plus: boolean;
@@ -181,13 +182,22 @@ function ConfigView({ config, setConfig, onStart, onBack }: { config: Config, se
                 </div>
             </div>
 
-            <div className="mt-auto pt-4 relative">
-                <button
-                    onClick={onStart}
-                    className="w-full bg-primary text-primary-foreground font-bold text-lg py-4 rounded-xl hover:opacity-90 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-lg shadow-primary/20"
-                >
-                    Übung starten
-                </button>
+            <div className="mt-auto pt-4 relative space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                    <button
+                        onClick={() => generateWorksheetPdf({ ...config, title: 'Term-Baumeister', exerciseType: 'baumeister' })}
+                        className="flex items-center justify-center gap-2 bg-white/5 text-white border border-white/10 font-bold py-4 rounded-xl hover:bg-white/10 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/></svg>
+                        PDF
+                    </button>
+                    <button
+                        onClick={onStart}
+                        className="bg-primary text-primary-foreground font-bold text-lg py-4 rounded-xl hover:opacity-90 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-primary/20"
+                    >
+                        Übung starten
+                    </button>
+                </div>
 
                 {toastMsg && (
                     <div className="absolute -bottom-16 left-0 right-0 flex justify-center animate-fade-in z-20">
@@ -267,12 +277,19 @@ function GameSession({ config, onExit, forcedActive }: { config: Config, onExit:
     const [stats, setStats] = useState<SessionStats>(JSON.parse(JSON.stringify(initialStats))); // Deep copy
     const [showStats, setShowStats] = useState(false);
 
+    const nextTask = useCallback(() => {
+        setIsFinished(false);
+        setUserTerm([]);
+        setErrorMsg(null);
+        setTask(generateTask(config));
+    }, [config]);
+
     // Init first task
     useEffect(() => {
         if (forcedActive && !task) {
             nextTask();
         }
-    }, [forcedActive]);
+    }, [forcedActive, task, nextTask]);
 
     const updateStats = (type: 'correct' | 'wrong' | 'skipped') => {
         if (!task) return;
@@ -286,13 +303,6 @@ function GameSession({ config, onExit, forcedActive }: { config: Config, onExit:
             next.byDifficulty[diff] = { ...prev.byDifficulty[diff], [type]: prev.byDifficulty[diff][type] + 1 };
             return next;
         });
-    };
-
-    const nextTask = () => {
-        setIsFinished(false);
-        setUserTerm([]);
-        setErrorMsg(null);
-        setTask(generateTask(config));
     };
 
     const skipTask = () => {
@@ -326,7 +336,7 @@ function GameSession({ config, onExit, forcedActive }: { config: Config, onExit:
         const termStr = userTerm.map(e => e.val.toString().replace('×', '*').replace('÷', '/')).join(' ');
 
         try {
-            if (!/^[0-9+\-*/().\s]+$/.test(termStr)) throw "Format";
+            if (!/^[0-9+\-*/().\s]+$/.test(termStr)) throw new Error("Format");
             // eslint-disable-next-line no-eval
             const result = eval(termStr);
 
@@ -345,7 +355,7 @@ function GameSession({ config, onExit, forcedActive }: { config: Config, onExit:
                 updateStats('wrong');
                 setUserTerm([]); // Reset on error
             }
-        } catch (e) {
+        } catch {
             showError("Ungültige Rechnung");
             updateStats('wrong');
             setUserTerm([]); // Reset on error
@@ -602,7 +612,7 @@ function generateTask(config: Config): Task {
                 task = candidateTask;
             }
 
-        } catch (e) {
+        } catch {
             // retry
         }
     }

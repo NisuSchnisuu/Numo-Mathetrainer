@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { generateTerm } from './termGenerator';
 import type { OperatorState, Difficulty } from './termGenerator';
+import { generateWorksheetPdf } from '../../../utils/pdfGenerator';
 
 interface Config {
     ops: OperatorState;
@@ -169,13 +170,22 @@ function ConfigView({ config, setConfig, onStart, onBack }: { config: Config, se
                 </div>
             </div>
 
-            <div className="mt-auto pt-4 relative">
-                <button
-                    onClick={onStart}
-                    className="w-full bg-primary text-primary-foreground font-bold text-lg py-4 rounded-xl hover:opacity-90 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-lg shadow-primary/20"
-                >
-                    Übung starten
-                </button>
+            <div className="mt-auto pt-4 relative space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                    <button
+                        onClick={() => generateWorksheetPdf({ ...config, title: 'Operator einsetzen', exerciseType: 'einsetzen' })}
+                        className="flex items-center justify-center gap-2 bg-white/5 text-white border border-white/10 font-bold py-4 rounded-xl hover:bg-white/10 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/></svg>
+                        PDF
+                    </button>
+                    <button
+                        onClick={onStart}
+                        className="bg-primary text-primary-foreground font-bold text-lg py-4 rounded-xl hover:opacity-90 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-primary/20"
+                    >
+                        Übung starten
+                    </button>
+                </div>
 
                 {toastMsg && (
                     <div className="absolute -bottom-16 left-0 right-0 flex justify-center animate-fade-in z-20">
@@ -252,12 +262,69 @@ function GameSession({ config, onExit, forcedActive }: { config: Config, onExit:
     // Refs for global pointer events
     const containerRef = useRef<HTMLDivElement>(null);
 
+    const nextTask = useCallback(() => {
+        const newTask = generateTask(config);
+        setTask(newTask);
+        const numGaps = newTask.numberSequence.length + 1;
+        setPlacedItems(Array.from({ length: numGaps }, () => []));
+
+        const rawItems = [...newTask.availableOperators];
+        const isParen = (s: string) => ['(', ')'].includes(s);
+        const parens = rawItems.filter(isParen).sort();
+        const others = rawItems.filter(s => !isParen(s));
+
+        for (let i = others.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [others[i], others[j]] = [others[j], others[i]];
+        }
+
+        const grouped: string[] = [];
+        if (others.length > 0) grouped.push(...others, '|');
+        if (parens.length > 0) grouped.push(...parens);
+        if (grouped[grouped.length - 1] === '|') grouped.pop();
+
+        setAvailableItems(grouped);
+        setFeedback(null);
+    }, [config]);
+
     // Init first task
     useEffect(() => {
         if (forcedActive && !task) {
             nextTask();
         }
-    }, [forcedActive]);
+    }, [forcedActive, task, nextTask]);
+
+    const handleDrop = useCallback((toGap: number, insertIndex: number, overrideDraggedItem?: { item: string, fromGap: number | null, fromIndex: number | null }) => {
+        const itemToUse = overrideDraggedItem || draggedItem;
+        if (!itemToUse) {
+            setPointerDrag(null);
+            return;
+        }
+
+        const newPlaced = placedItems.map(gap => [...gap]);
+        const newAvailable = [...availableItems];
+
+        // Remove from source
+        if (itemToUse.fromGap === null) {
+            const itemIdx = newAvailable.indexOf(itemToUse.item);
+            if (itemIdx > -1) newAvailable.splice(itemIdx, 1);
+        } else {
+            newPlaced[itemToUse.fromGap].splice(itemToUse.fromIndex!, 1);
+        }
+
+        // Insert at target
+        let actualInsertIndex = insertIndex;
+        if (itemToUse.fromGap === toGap && itemToUse.fromIndex !== null && itemToUse.fromIndex < insertIndex) {
+            actualInsertIndex--;
+        }
+
+        newPlaced[toGap].splice(actualInsertIndex, 0, itemToUse.item);
+
+        setPlacedItems(newPlaced);
+        setAvailableItems(newAvailable);
+        setDraggedItem(null);
+        setPointerDrag(null);
+    }, [draggedItem, placedItems, availableItems]);
 
     // Pointer Event Handlers
     useEffect(() => {
@@ -324,32 +391,7 @@ function GameSession({ config, onExit, forcedActive }: { config: Config, onExit:
             window.removeEventListener('pointermove', handlePointerMove);
             window.removeEventListener('pointerup', handlePointerUp);
         };
-    }, [pointerDrag]);
-
-    const nextTask = () => {
-        const newTask = generateTask(config);
-        setTask(newTask);
-        const numGaps = newTask.numberSequence.length + 1;
-        setPlacedItems(Array.from({ length: numGaps }, () => []));
-
-        const rawItems = [...newTask.availableOperators];
-        const isParen = (s: string) => ['(', ')'].includes(s);
-        const parens = rawItems.filter(isParen).sort();
-        const others = rawItems.filter(s => !isParen(s));
-
-        for (let i = others.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [others[i], others[j]] = [others[j], others[i]];
-        }
-
-        const grouped: string[] = [];
-        if (others.length > 0) grouped.push(...others, '|');
-        if (parens.length > 0) grouped.push(...parens);
-        if (grouped[grouped.length - 1] === '|') grouped.pop();
-
-        setAvailableItems(grouped);
-        setFeedback(null);
-    };
+    }, [pointerDrag, hoveredZone, handleDrop]);
 
     const skipTask = () => {
         setStats(prev => ({ ...prev, skipped: prev.skipped + 1 }));
@@ -382,7 +424,6 @@ function GameSession({ config, onExit, forcedActive }: { config: Config, onExit:
         if (e.pointerType === 'mouse' && e.button !== 0) return;
         
         // Essential: Prevent browser default behavior (like scrolling or native DnD)
-        // Note: For this to work in all browsers, touch-action: none must be on the element
         const target = e.currentTarget as HTMLElement;
         target.setPointerCapture(e.pointerId);
 
@@ -393,38 +434,6 @@ function GameSession({ config, onExit, forcedActive }: { config: Config, onExit:
             x: e.clientX,
             y: e.clientY
         });
-    };
-
-    const handleDrop = (toGap: number, insertIndex: number, overrideDraggedItem?: { item: string, fromGap: number | null, fromIndex: number | null }) => {
-        const itemToUse = overrideDraggedItem || draggedItem;
-        if (!itemToUse) {
-            setPointerDrag(null);
-            return;
-        }
-
-        const newPlaced = placedItems.map(gap => [...gap]);
-        const newAvailable = [...availableItems];
-
-        // Remove from source
-        if (itemToUse.fromGap === null) {
-            const itemIdx = newAvailable.indexOf(itemToUse.item);
-            if (itemIdx > -1) newAvailable.splice(itemIdx, 1);
-        } else {
-            newPlaced[itemToUse.fromGap].splice(itemToUse.fromIndex!, 1);
-        }
-
-        // Insert at target
-        let actualInsertIndex = insertIndex;
-        if (itemToUse.fromGap === toGap && itemToUse.fromIndex !== null && itemToUse.fromIndex < insertIndex) {
-            actualInsertIndex--;
-        }
-
-        newPlaced[toGap].splice(actualInsertIndex, 0, itemToUse.item);
-
-        setPlacedItems(newPlaced);
-        setAvailableItems(newAvailable);
-        setDraggedItem(null);
-        setPointerDrag(null);
     };
 
     const handleRemove = (gapIndex: number, itemIndex: number) => {
@@ -848,7 +857,7 @@ function generateTask(config: Config): Task {
                 difficulty: difficulty,
                 currentDiff: activeDiff
             };
-        } catch (e) { /* retry */ }
+        } catch { /* retry */ }
     }
     return { numberSequence: ['2', '3', '5'], availableOperators: ['+', '×'], targetValue: 11, solutionExpression: '2 + 3 × 5', difficulty: 'normal', currentDiff: 'normal' };
 }
@@ -864,15 +873,16 @@ function buildExpression(numbers: string[], placedItems: string[][]): string {
 
 function evaluateExpression(expression: string): { value: number | null, error: string | null } {
     try {
-        let cleaned = expression.replace(/×/g, '*').replace(/÷/g, '/');
+        const cleaned = expression.replace(/×/g, '*').replace(/÷/g, '/');
         const openCount = (cleaned.match(/\(/g) || []).length;
         const closeCount = (cleaned.match(/\)/g) || []).length;
         if (openCount !== closeCount) return { value: null, error: 'Unbalanced' };
         if (!/^[\d\s+\-*/().]+$/.test(cleaned)) return { value: null, error: 'Invalid' };
+        // eslint-disable-next-line no-eval
         const result = eval(cleaned);
         if (!Number.isFinite(result)) return { value: null, error: 'Invalid' };
         return { value: result, error: null };
-    } catch (e) {
+    } catch {
         return { value: null, error: 'Error' };
     }
 }
