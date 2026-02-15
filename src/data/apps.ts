@@ -27,4 +27,13 @@ export const apps: App[] = [
     category: 'Üben',
     tags: ['Training', 'Mathe', 'Üben'],
   },
+  {
+    id: 'bingolator',
+    name: 'Bingolator',
+    description: 'Multiplayer-Mathe-Lotto für die ganze Klasse.',
+    path: 'apps/Spiele/Bingolator/index.html',
+    icon: 'app-thumbnails/Aufgabentraining.svg', // Placeholder
+    category: 'Spiele',
+    tags: ['Bingo', 'Multiplayer', 'Kopfrechnen', 'Echtzeit'],
+  },
 ];

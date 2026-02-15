@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bingolator Host - Numo MatheTrainer</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <a href="index.html" class="back-button" id="exitButton">
+        <div class="icon">
+            <img src="../../../numo-logo/Numo-logo-192x192.png" alt="Numo Logo">
+        </div>
+        <span class="label">Beenden</span>
+    </a>
+
+    <div class="container">
+        <!-- LOBBY SETUP VIEW -->
+        <div id="lobbySetup">
+            <h1>Spiel hosten</h1>
+            <div class="game-id-display" id="displayId">----</div>
+            <p class="description">Warte auf Spieler...</p>
+
+            <div class="settings-grid">
+                <div class="input-group">
+                    <label>Rechenart</label>
+                    <select id="opType">
+                        <option value="add">Addition (+)</option>
+                        <option value="sub">Subtraktion (-)</option>
+                        <option value="mul">Multiplikation (×)</option>
+                        <option value="div">Division (÷)</option>
+                        <option value="mixed">Gemischt (+ - × ÷)</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>Zahlenraum</label>
+                    <select id="range">
+                        <option value="20">bis 20</option>
+                        <option value="100">bis 100</option>
+                        <option value="1x1">Kleines Einmaleins</option>
+                    </select>
+                </div>
+            </div>
+
+            <button class="btn btn-primary" id="startGameBtn">Spiel starten</button>
+        </div>
+
+        <!-- ACTIVE GAME VIEW -->
+        <div id="gameActive" class="hidden">
+            <h1>Bingolator</h1>
+            <div class="problem-display">
+                <div class="current-term" id="currentTerm">?</div>
+                <p class="text-muted" id="currentResult" style="margin-top: 10px; font-size: 1.5rem;"></p>
+            </div>
+
+            <button class="btn btn-primary" id="nextProblemBtn">Nächste Zahl ziehen</button>
+
+            <div style="margin-top: 40px;">
+                <p class="text-muted">Letzte Zahlen:</p>
+                <div class="history-list" id="historyList">
+                    <!-- History items go here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
+    <script src="game.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const params = new URLSearchParams(window.location.search);
+            const gameId = params.get('id');
+            if (gameId) {
+                document.getElementById('displayId').textContent = gameId;
+            }
+
+            // Bind Host specific UI events
+            document.getElementById('startGameBtn').addEventListener('click', () => {
+                const settings = {
+                    opType: document.getElementById('opType').value,
+                    range: document.getElementById('range').value
+                };
+                hostStartGame(gameId, settings);
+            });
+
+            document.getElementById('nextProblemBtn').addEventListener('click', () => {
+                hostDrawNext();
+            });
+        });
+
+        // UI transitions for Host
+        function showGameView() {
+            document.getElementById('lobbySetup').classList.add('hidden');
+            document.getElementById('gameActive').classList.remove('hidden');
+            document.getElementById('exitButton').querySelector('.label').textContent = "Abbrechen";
+        }
+
+        function updateHostDisplay(term, result, history) {
+            document.getElementById('currentTerm').textContent = term;
+            document.getElementById('currentResult').textContent = "= " + result;
+            
+            const list = document.getElementById('historyList');
+            list.innerHTML = '';
+            history.slice(-3).reverse().forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'history-item';
+                div.textContent = item.result;
+                list.appendChild(div);
+            });
+        }
+    </script>
+</body>
+</html>
