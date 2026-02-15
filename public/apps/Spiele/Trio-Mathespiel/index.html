@@ -42,7 +42,6 @@
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 
     <style>
-    <style>
         /* New Lobby Layout Styles */
         #lobby-view .lobby-container {
             display: flex;
@@ -54,7 +53,8 @@
             padding: 60px;
             text-align: left;
             width: 100%;
-            margin: auto; /* Vertically center in flex parent, allows scroll if too tall */
+            margin: auto;
+            /* Vertically center in flex parent, allows scroll if too tall */
             box-sizing: border-box;
         }
 
@@ -115,7 +115,7 @@
                 flex: none;
                 width: 100%;
             }
-            
+
             .game-title {
                 font-size: 2.5rem !important;
             }
@@ -124,26 +124,29 @@
         /* Landscape Mobile Fix for Lobby */
         @media (orientation: landscape) and (max-height: 600px) {
             #lobby-view.view.active {
-                padding: 5px; /* Extremely minimal padding */
+                padding: 5px;
+                /* Extremely minimal padding */
                 justify-content: center;
             }
 
             #lobby-view .lobby-container {
                 flex-direction: row;
-                gap: 10px; /* Minimal gap */
+                gap: 10px;
+                /* Minimal gap */
                 padding: 10px;
                 max-width: 100%;
                 width: 100%;
                 margin: auto;
                 border: none;
-                background: transparent; /* Save space/visual weight */
+                background: transparent;
+                /* Save space/visual weight */
                 box-shadow: none;
             }
-            
+
             .game-title {
                 font-size: 1.6rem !important;
             }
-            
+
             .lobby-left {
                 flex: 1.3;
                 min-width: 0;
@@ -153,14 +156,14 @@
                 margin-bottom: 8px !important;
                 font-size: 0.85rem !important;
             }
-            
+
             .lobby-right {
                 flex: 1;
                 gap: 5px;
                 max-width: 260px;
                 min-width: 0;
             }
-            
+
             .lobby-right .btn-primary {
                 padding: 8px !important;
                 font-size: 0.9rem !important;
@@ -239,7 +242,8 @@
             font-size: 0.9rem !important;
         }
 
-        @media (max-width: 600px), (max-height: 600px) {
+        @media (max-width: 600px),
+        (max-height: 600px) {
             .settings-grid-modal {
                 grid-template-columns: 1fr;
             }
@@ -266,15 +270,17 @@
             cursor: pointer;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             text-decoration: none;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
             overflow: hidden;
-            width: 48px; /* Initial width (circle-ish) */
+            width: 48px;
+            /* Initial width (circle-ish) */
             height: 48px;
         }
-        
+
         .numo-back-btn:hover {
             background: rgba(15, 23, 42, 0.9);
-            width: 90px; /* Expanded width */
+            width: 90px;
+            /* Expanded width */
             gap: 8px;
             padding-left: 12px;
         }
@@ -287,6 +293,7 @@
                 height: 40px;
                 padding: 4px;
             }
+
             .numo-logo-img {
                 width: 24px !important;
                 height: 24px !important;
@@ -318,20 +325,17 @@
         }
     </style>
 
-    <a href="../../../" 
-       id="numo-back-link"
-       class="numo-back-btn"
-       onclick="if(window.parent !== window) { window.parent.postMessage('numo-back-to-home', '*'); return false; }"
-       title="Zurück zum Hauptmenü">
+    <a href="../../../" id="numo-back-link" class="numo-back-btn"
+        onclick="if(window.parent !== window) { window.parent.postMessage('numo-back-to-home', '*'); return false; }"
+        title="Zurück zum Hauptmenü">
         <div class="numo-back-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M19 12H5"/>
-                <path d="M12 19l-7-7 7-7"/>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 12H5" />
+                <path d="M12 19l-7-7 7-7" />
             </svg>
         </div>
-        <img src="assets/numo-logo.png" 
-             alt="Numo" 
-             class="numo-logo-img">
+        <img src="assets/numo-logo.png" alt="Numo" class="numo-logo-img">
     </a>
 
     <!-- VIEW 1: LOBBY -->
@@ -719,7 +723,9 @@
                 <h1 class="install-title">App installieren</h1>
                 <p class="install-subtitle">Installiere <strong>TRIO</strong> für das beste Spielerlebnis (Vollbild,
                     Offline-Support).</p>
-                <button id="btn-native-install" class="btn-primary" style="display: none; margin: 20px auto; padding: 12px 24px; font-size: 1.1rem; border-radius: 50px;">Jetzt direkt installieren</button>
+                <button id="btn-native-install" class="btn-primary"
+                    style="display: none; margin: 20px auto; padding: 12px 24px; font-size: 1.1rem; border-radius: 50px;">Jetzt
+                    direkt installieren</button>
             </div>
 
             <div id="install-instructions-container">
@@ -862,7 +868,8 @@
     <div id="game-over-modal" class="modal-overlay">
         <div class="modal-content" style="max-width: 600px; width: 90%; padding: 40px; text-align: center;">
             <h1 style="font-size: 2.5rem; margin-bottom: 10px; color: var(--success);">SPIEL BEENDET! 🏆</h1>
-            <p id="game-over-winner-text" style="font-size: 1.2rem; color: var(--text-muted); margin-bottom: 30px;">--</p>
+            <p id="game-over-winner-text" style="font-size: 1.2rem; color: var(--text-muted); margin-bottom: 30px;">--
+            </p>
 
             <!-- PODIUM -->
             <div class="podium-container">
@@ -881,7 +888,8 @@
             </div>
 
             <!-- RANKING LIST -->
-            <div class="ranking-list-container" style="margin-top: 30px; text-align: left; max-height: 200px; overflow-y: auto;">
+            <div class="ranking-list-container"
+                style="margin-top: 30px; text-align: left; max-height: 200px; overflow-y: auto;">
                 <table style="width: 100%; border-collapse: collapse;">
                     <tbody id="game-over-ranking-body">
                         <!-- Rankings injected here -->
@@ -890,12 +898,14 @@
             </div>
 
             <!-- PERSONAL RANK -->
-            <div id="personal-rank-display" style="margin-top: 20px; font-weight: bold; font-size: 1.1rem; color: var(--primary-color);">
+            <div id="personal-rank-display"
+                style="margin-top: 20px; font-weight: bold; font-size: 1.1rem; color: var(--primary-color);">
                 Dein Rang: --
             </div>
 
             <div style="margin-top: 40px;">
-                <button id="btn-game-over-home" class="btn-primary" style="width: 100%; padding: 15px; font-size: 1.1rem;">ZURÜCK ZUM HAUPTMENÜ</button>
+                <button id="btn-game-over-home" class="btn-primary"
+                    style="width: 100%; padding: 15px; font-size: 1.1rem;">ZURÜCK ZUM HAUPTMENÜ</button>
             </div>
         </div>
     </div>
@@ -903,4 +913,5 @@
     <!-- App Logic -->
     <script src="script.js?v=2.4"></script>
 </body>
+
 </html>
