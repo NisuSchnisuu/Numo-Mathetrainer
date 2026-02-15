@@ -1,4 +1,4 @@
-const CACHE_NAME = 'trio-v13'; // WICHTIG: Bei jeder Änderung am Code hier hochzählen (v8, v9...)!
+const CACHE_NAME = 'trio-v14'; // WICHTIG: Bei jeder Änderung am Code hier hochzählen (v8, v9...)!
 const ASSETS = [
     './',
     './index.html',

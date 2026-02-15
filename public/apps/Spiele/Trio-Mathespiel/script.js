@@ -802,21 +802,28 @@ function startGameAction() {
 
     if (appState.settings && appState.settings.classMode) {
         // --- CLASS MODE START ---
-        // 1. Shuffle Solutions to create a random path
-        const shuffled = solutions.sort(() => 0.5 - Math.random());
+        // 1. Filter for unique results to ensure no target appears twice
+        const uniqueMap = new Map();
+        solutions.forEach(s => {
+            if (!uniqueMap.has(s.result)) uniqueMap.set(s.result, s);
+        });
+        const uniqueSolutions = Array.from(uniqueMap.values());
 
-        // 2. Update DB
+        // 2. Shuffle Unique Solutions to create a random path
+        const shuffled = uniqueSolutions.sort(() => 0.5 - Math.random());
+
+        // 3. Update DB
         const updates = {
             grid: grid,
             state: 'playing',
-            solutions: shuffled, // Store ALL solutions for the class path
+            solutions: shuffled, // Store UNIQUE solutions for the class path
             // No global target in class mode
             target: null,
             vote: null,
             winner: null
         };
 
-        // 3. Reset all players to Index 0
+        // 4. Reset all players to Index 0
         Object.keys(appState.players).forEach(pid => {
             updates[`players/${pid}/currentSolutionIndex`] = 0;
             updates[`players/${pid}/score`] = 0;
@@ -837,10 +844,9 @@ function startGameAction() {
         db.ref(gameId).update({
             grid: grid,
             target: appState.target,
+            usedTargets: [appState.target], // Track used targets
             state: 'playing',
-            solutions: null, // Don't store full list in classic to save bandwidth? Or maybe we should?
-            // Classic mode doesn't need the full list on client usually, but standardizing wouldn't hurt.
-            // For now, keep as is to minimize regression risk.
+            solutions: null,
             currentAttempt: null,
             buzzerOwner: null,
             buzzerTimestamp: null,
@@ -981,6 +987,9 @@ function subscribeToGame(gameId) {
         }
         // Sync Solutions (Class Mode)
         if (data.solutions) appState.allSolutions = data.solutions;
+        
+        // Sync Used Targets (Classic Mode)
+        if (data.usedTargets) appState.usedTargets = data.usedTargets;
 
         if (appState.settings && appState.settings.classMode) {
             const myP = data.players ? data.players[appState.playerId] : null;
@@ -2646,12 +2655,25 @@ function generateNewTarget() {
         // Find solutions if missing
         appState.currSolutions = findSolutions(appState.gridData, appState.gridSize, appState.difficulty);
     }
-    const s = appState.currSolutions;
-    if (s.length > 0) {
-        const t = s[Math.floor(Math.random() * s.length)].result;
-        db.ref(`games/${appState.gameId}`).update({ target: t, veto: null });
+    
+    // Filter out used targets if they exist in state
+    const used = appState.usedTargets || [];
+    const availableSolutions = appState.currSolutions.filter(s => !used.includes(s.result));
+    
+    if (availableSolutions.length > 0) {
+        const t = availableSolutions[Math.floor(Math.random() * availableSolutions.length)].result;
+        
+        // Update target and append to usedTargets atomically
+        const gameRef = db.ref(`games/${appState.gameId}`);
+        gameRef.child('usedTargets').transaction(current => {
+            const arr = current || [];
+            if (!arr.includes(t)) arr.push(t);
+            return arr;
+        });
+        gameRef.update({ target: t, veto: null });
     } else {
-        // No solutions? Regenerate Grid
+        // All unique results used? Regenerate Grid
+        console.log("All unique targets used. Regenerating grid...");
         startGameAction();
     }
 }
