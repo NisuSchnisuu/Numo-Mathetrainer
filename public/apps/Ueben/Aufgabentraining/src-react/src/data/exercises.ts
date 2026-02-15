@@ -2,6 +2,7 @@ import type { ComponentType } from 'react';
 import { TermBaumeister } from '../exercises/numbers/terms/TermBaumeister';
 import { TermBerechnen } from '../exercises/numbers/terms/TermBerechnen';
 import { OperatorEinsetzen } from '../exercises/numbers/terms/OperatorEinsetzen';
+import { TextaufgabenTerme } from '../exercises/numbers/terms/TextaufgabenTerme';
 
 // Definition einer Übung
 export interface Exercise {
@@ -32,13 +33,12 @@ export const exercises: Record<string, Exercise[]> = {
             description: 'Setze die richtigen Operatoren und Klammern ein, um das Ziel zu erreichen.',
             component: OperatorEinsetzen
         },
-        // Hier können später einfach weitere Übungen hinzugefügt werden:
-        // {
-        //     id: 'term_calc_2',
-        //     title: 'Lückenfüller',
-        //     description: 'Finde die fehlende Zahl in der Gleichung.',
-        //     component: GapFillGame
-        // }
+        {
+            id: 'term_calc_4',
+            title: 'Textaufgaben',
+            description: 'Lies die Textaufgabe und baue den passenden mathematischen Term dazu.',
+            component: TextaufgabenTerme
+        }
     ],
     // Platzhalter für andere Themen, damit die App nicht abstürzt
     'number_space': [],
