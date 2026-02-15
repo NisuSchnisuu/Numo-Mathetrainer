@@ -5,13 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Bingolator - Numo MatheTrainer</title>
     
+    <!-- PWA Manifest & Meta -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0f172a">
+    <link rel="apple-touch-icon" href="assets/bingo_logo-192x192.png">
+    <link rel="icon" type="image/png" href="assets/bingo_logo-192x192.png">
+
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
     <!-- Styles -->
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=1.1">
 
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -21,10 +27,23 @@
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <!-- QR Code Generator (for Host) -->
     <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+
+    <!-- Register Service Worker -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('Service Worker registered', reg))
+                    .catch(err => console.log('Service Worker registration failed', err));
+            });
+        }
+    </script>
 </head>
 <body>
     <!-- Numo Back Button -->
-    <a href="../../../" id="numo-back-link" class="numo-back-btn">
+    <a href="../../../" id="numo-back-link" class="numo-back-btn" 
+        onclick="if(window.parent !== window) { window.parent.postMessage('numo-back-to-home', '*'); return false; }"
+        title="Zurück zum Hauptmenü">
         <div class="numo-back-icon">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M19 12H5" /><path d="M12 19l-7-7 7-7" />
@@ -39,9 +58,13 @@
             <div class="lobby-left">
                 <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 10px;">
                     <h1 class="game-title">BINGO</h1>
-                    <button class="btn-icon-help">?</button>
                 </div>
                 <p class="lobby-subtitle">Das interaktive Mathe-Lotto</p>
+
+                <button id="btn-trigger-install" class="btn-secondary"
+                    style="display: none; margin-bottom: 20px; font-size: 0.9rem; padding: 6px 12px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);">
+                    📲 App installieren
+                </button>
 
                 <div class="input-group" style="width: 100%; text-align: left; margin: 0;">
                     <label for="player-name" style="display:block; color:var(--text-muted); margin-bottom:10px; font-size: 0.9rem;">Dein Spielername</label>
@@ -213,6 +236,27 @@
         </div>
     </div>
 
+    <!-- Kick Confirm Modal (Host) -->
+    <div id="kick-confirm-modal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 400px; text-align: center;">
+            <h2 style="color: var(--danger);">Spieler entfernen?</h2>
+            <p style="color: var(--text-muted); margin-bottom: 25px;">Möchtest du diesen Spieler wirklich aus der Lobby entfernen?</p>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn-secondary" onclick="hideModal('kick-confirm-modal')" style="flex: 1;">Abbrechen</button>
+                <button class="btn-primary" id="btn-confirm-kick" style="flex: 1; background: var(--danger);">Entfernen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Player Kicked Modal (Player) -->
+    <div id="player-kicked-modal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 400px; text-align: center;">
+            <h2 style="color: var(--danger);">Entfernt</h2>
+            <p style="color: var(--text-muted); margin-bottom: 25px;">Du wurdest vom Host aus der Lobby entfernt.</p>
+            <button class="btn-primary" onclick="leaveGame()" style="width: 100%;">Zum Hauptmenü</button>
+        </div>
+    </div>
+
     <!-- Game Over Modal (Player Lost) -->
     <div id="gameOverOverlay" class="overlay hidden">
         <h2 style="color: var(--danger);">AUSGESCHIEDEN</h2>
@@ -223,6 +267,26 @@
     <div id="winOverlay" class="overlay hidden">
         <h2 style="color: var(--success);">BINGO!</h2>
         <button class="btn btn-primary" onclick="location.reload()">Nochmal</button>
+    </div>
+
+    <!-- PWA INSTALL MODAL -->
+    <div id="pwa-install-modal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 500px; width: 95%; position: relative;">
+            <button id="btn-close-install" class="btn-icon-close">&times;</button>
+            <div style="text-align: center; padding: 20px;">
+                <div style="font-size: 4rem; margin-bottom: 20px;">✨</div>
+                <h2 style="margin-bottom: 10px;">App installieren</h2>
+                <p style="color: var(--text-muted); margin-bottom: 20px;">Installiere <strong>Bingolator</strong> für das beste Spielerlebnis (Vollbild, Offline-Support).</p>
+                
+                <button id="btn-native-install" class="btn-primary" style="display: none; width: 100%; margin-bottom: 20px;">Jetzt installieren</button>
+
+                <div id="install-instructions" style="text-align: left; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 12px; font-size: 0.9rem;">
+                    <p id="inst-ios" style="display: none;">Tippe auf <strong>Teilen</strong> <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle;"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg> und dann auf <strong>"Zum Home-Bildschirm"</strong>.</p>
+                    <p id="inst-android" style="display: none;">Tippe auf das <strong>Dreipunkt-Menü</strong> und wähle <strong>"App installieren"</strong>.</p>
+                    <p id="inst-desktop" style="display: none;">Klicke auf das <strong>Installieren-Icon</strong> in der Adressleiste.</p>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="game.js"></script>
