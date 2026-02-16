@@ -37,6 +37,7 @@ const buttons = {
     enterGame: document.getElementById('btn-enter'),
     startGame: document.getElementById('btn-start-game'),
     buzzer: document.getElementById('buzzer-btn'),
+    installTrigger: document.getElementById('btn-trigger-install'),
     // New Back Buttons
     lobbyBack: document.getElementById('btn-lobby-back'),
     gameBack: document.getElementById('btn-game-back')
@@ -216,16 +217,16 @@ function init() {
         } catch (e) {}
     }
 
-    if (!isStandalone && !isParentStandalone) {
-        // Show the Trigger Button in Lobby
-        const installBtn = document.getElementById('btn-trigger-install');
-        if (installBtn) {
-            installBtn.style.display = 'block';
+    if (!isStandalone) {
+        // Show the Trigger Button in Lobby if not already standalone
+        if (buttons.installTrigger) {
+            buttons.installTrigger.style.display = 'block';
         }
     } else {
         // Explicitly hide install button if standalone
-        const installBtn = document.getElementById('btn-trigger-install');
-        if (installBtn) installBtn.style.display = 'none';
+        if (buttons.installTrigger) {
+            buttons.installTrigger.style.display = 'none';
+        }
     }
 
     // Interval to ensure back button visibility is correct based on view and mode
@@ -240,15 +241,6 @@ function init() {
             }
         }
     }, 500);
-
-    // Close Button Logic
-    const closeBtn = document.getElementById('btn-close-install');
-    if (closeBtn) {
-        closeBtn.onclick = () => {
-            const modal = document.getElementById('pwa-install-modal');
-            if (modal) modal.classList.remove('active');
-        };
-    }
 
     // --- SESSION & URL RESTORATION ---
     
@@ -274,6 +266,15 @@ function init() {
     } else {
         // 3. Check for existing session
         checkSession();
+    }
+
+    // 4. Auto-Show Install Modal if requested via URL
+    if (urlParams.get('install') === 'true') {
+        showInstallModal();
+        // Clean URL to avoid re-opening on reload
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.delete('install');
+        window.history.replaceState({}, document.title, newUrl.toString());
     }
 
     setupEventListeners();
@@ -355,6 +356,31 @@ function setupEventListeners() {
     setupLobbyNewEvents(); // Bind new lobby buttons
     setupTeacherShortcut(); // Init shortcut
     setupHelpSystem(); // Init Help System
+
+    // PWA Install Logic
+    const installTrigger = document.getElementById('btn-trigger-install');
+    if (installTrigger) {
+        installTrigger.addEventListener('click', (e) => {
+            if (e) e.preventDefault();
+            if (window.parent !== window) {
+                const url = new URL(window.location.href);
+                url.searchParams.set('install', 'true');
+                window.open(url.toString(), '_blank');
+            } else {
+                showInstallModal();
+            }
+        });
+    }
+
+    const closeInstallBtn = document.getElementById('btn-close-install');
+    if (closeInstallBtn) {
+        closeInstallBtn.addEventListener('click', (e) => {
+            if (e) e.preventDefault();
+            console.log("Trio Install Modal Close Clicked");
+            const modal = document.getElementById('pwa-install-modal');
+            if (modal) modal.classList.remove('active');
+        });
+    }
 
     // Teacher Broadcast Toggle Listener
     const cbBroadcast = document.getElementById('cb-teacher-broadcast');

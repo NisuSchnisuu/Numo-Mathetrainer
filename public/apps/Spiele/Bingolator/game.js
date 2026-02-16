@@ -128,25 +128,42 @@ let deferredPrompt;
 window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredPrompt = e;
-    const installBtn = document.getElementById('btn-trigger-install');
-    if (installBtn) installBtn.style.display = 'block';
+    // Show the native install button if it exists
+    const nativeBtn = document.getElementById('btn-native-install');
+    if (nativeBtn) nativeBtn.style.display = 'block';
 });
+
+// IMPROVED Standalone Check
+function isStandaloneMode() {
+    return window.matchMedia('(display-mode: standalone)').matches ||
+           window.matchMedia('(display-mode: minimal-ui)').matches ||
+           window.matchMedia('(display-mode: fullscreen)').matches ||
+           (window.navigator.standalone === true);
+}
 
 function showInstallModal() {
     const modal = document.getElementById('pwa-install-modal');
     if (!modal) return;
+    
     modal.classList.add('active');
 
-    const ua = navigator.userAgent;
-    const isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
-    const isAndroid = /Android/i.test(ua);
+    // Detect OS logic
+    const ua = navigator.userAgent || navigator.vendor || window.opera;
+    const isTouch = (navigator.maxTouchPoints && navigator.maxTouchPoints > 1);
+    const isIOS = (/iPad|iPhone|iPod/.test(ua) && !window.MSStream) || (ua.includes("Mac") && isTouch);
+    const isAndroid = /android/i.test(ua);
 
-    document.getElementById('inst-ios').style.display = isIOS ? 'block' : 'none';
-    document.getElementById('inst-android').style.display = isAndroid ? 'block' : 'none';
-    document.getElementById('inst-desktop').style.display = (!isIOS && !isAndroid) ? 'block' : 'none';
+    let targetId = 'install-desktop';
+    if (isIOS) targetId = 'install-ios';
+    else if (isAndroid) targetId = 'install-android';
 
+    document.querySelectorAll('.platform-guide').forEach(el => el.style.display = 'none');
+    const guide = document.getElementById(targetId);
+    if (guide) guide.style.display = 'block';
+
+    // Show native button only for non-iOS (Android or Desktop) if prompt is available
     const nativeBtn = document.getElementById('btn-native-install');
-    if (deferredPrompt && nativeBtn) {
+    if (nativeBtn && deferredPrompt && !isIOS) {
         nativeBtn.style.display = 'block';
         nativeBtn.onclick = async () => {
             deferredPrompt.prompt();
@@ -168,6 +185,32 @@ function initApp() {
         if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         database = firebase.database();
     }
+
+    const isStandalone = isStandaloneMode();
+    const isInIframe = window.parent !== window;
+
+    // Show the Trigger Button in Lobby if not already standalone
+    const installBtn = document.getElementById('btn-trigger-install');
+    if (installBtn) {
+        if (!isStandalone) {
+            installBtn.style.display = 'block';
+        } else {
+            installBtn.style.display = 'none';
+        }
+    }
+
+    // Interval to ensure back button visibility is correct
+    setInterval(() => {
+        const backBtn = document.getElementById('numo-back-link');
+        if (backBtn) {
+            const currentStandalone = isStandaloneMode();
+            if (currentView === 'lobby-view' && !(currentStandalone && !isInIframe)) {
+                backBtn.style.display = 'flex';
+            } else {
+                backBtn.style.display = 'none';
+            }
+        }
+    }, 500);
 
     // Restore Name
     const savedName = localStorage.getItem('bingolator_player_name');
@@ -193,13 +236,22 @@ function initApp() {
         } catch(e) { console.error("Error loading settings", e); }
     }
 
-    // Check for active session
-    if (checkSession()) return;
-
     // Bind UI Events
     bindEvents();
 
+    // Check for active session
+    if (checkSession()) return;
+
+    // 4. Auto-Show Install Modal if requested via URL
     const params = new URLSearchParams(window.location.search);
+    if (params.get('install') === 'true') {
+        showInstallModal();
+        // Clean URL
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.delete('install');
+        window.history.replaceState({}, document.title, newUrl.toString());
+    }
+
     if (params.has('join')) {
         const code = params.get('join').toUpperCase();
         const joinCodeInput = document.getElementById('join-code');
@@ -235,10 +287,28 @@ function bindEvents() {
     if (btnEnter) btnEnter.onclick = joinGameByCode;
     
     const btnTriggerInstall = document.getElementById('btn-trigger-install');
-    if (btnTriggerInstall) btnTriggerInstall.onclick = showInstallModal;
+    if (btnTriggerInstall) {
+        btnTriggerInstall.addEventListener('click', (e) => {
+            if (e) e.preventDefault();
+            if (window.parent !== window) {
+                // Open standalone URL in new tab
+                const url = new URL(window.location.href);
+                url.searchParams.set('install', 'true');
+                window.open(url.toString(), '_blank');
+            } else {
+                showInstallModal();
+            }
+        });
+    }
     
     const btnCloseInstall = document.getElementById('btn-close-install');
-    if (btnCloseInstall) btnCloseInstall.onclick = () => hideModal('pwa-install-modal');
+    if (btnCloseInstall) {
+        btnCloseInstall.addEventListener('click', (e) => {
+            if (e) e.preventDefault();
+            const modal = document.getElementById('pwa-install-modal');
+            if (modal) modal.classList.remove('active');
+        });
+    }
 
     const btnLeaveLobby = document.getElementById('btn-leave-lobby');
     if (btnLeaveLobby) btnLeaveLobby.onclick = confirmLeaveGame; 

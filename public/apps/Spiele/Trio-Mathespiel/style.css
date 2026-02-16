@@ -1776,7 +1776,7 @@ select option {
 }
 
 .install-content {
-    max-width: 600px !important;
+    max-width: 500px !important;
     width: 95%;
     margin: auto; /* Vertically center if possible */
     max-height: none;
@@ -2094,16 +2094,6 @@ select option {
     margin: 0;
     font-size: 0.9rem;
     color: var(--text-muted);
-}
-
-.install-content {
-    width: 100%;
-    max-width: 100% !important;
-    border-radius: 0;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    margin: 0;
 }
 
 /* GLOBAL APP SCALING - Removed to allow better native scaling like Bingolator */
