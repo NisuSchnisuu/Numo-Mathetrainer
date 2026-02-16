@@ -1047,6 +1047,7 @@ function subscribeToGame(gameId) {
                 // Reset buzzer button if it was showing penalty
                 if (buttons.buzzer && !appState.buzzerOwner) {
                     buttons.buzzer.innerText = "TRIO!";
+                    buttons.buzzer.classList.remove('buzzer-locked');
                     buttons.buzzer.disabled = false;
                 }
 
@@ -1464,6 +1465,7 @@ function handleGameWin(winnerId, players) {
     // Reset buzzer if exists
     if (buttons.buzzer) {
         buttons.buzzer.innerText = "TRIO!";
+        buttons.buzzer.classList.remove('buzzer-locked');
         buttons.buzzer.disabled = false;
     }
 
@@ -1600,6 +1602,7 @@ function handleBuzzerOwnerChange(ownerId, timestamp) {
     if (isMe) {
         buttons.buzzer.innerText = "WÄHLE 3 ZAHLEN!";
         buttons.buzzer.classList.add('active-buzzer');
+        buttons.buzzer.classList.remove('buzzer-locked');
         buttons.buzzer.disabled = false;
         appState.isLocked = false;
 
@@ -1621,12 +1624,14 @@ function handleBuzzerOwnerChange(ownerId, timestamp) {
         if (canObserve) {
             buttons.buzzer.innerText = `${ownerName} RECHNET... (ZUSCHAUEN)`;
             buttons.buzzer.classList.remove('active-buzzer');
+            buttons.buzzer.classList.remove('buzzer-locked');
             buttons.buzzer.disabled = false; // Enable for "Re-Open" action
             buttons.buzzer.style.opacity = '1';
             buttons.buzzer.style.cursor = 'pointer';
         } else {
             buttons.buzzer.innerText = `${ownerName} RECHNET...`;
             buttons.buzzer.classList.remove('active-buzzer');
+            buttons.buzzer.classList.remove('buzzer-locked');
             buttons.buzzer.disabled = true;
             buttons.buzzer.style.opacity = '0.7';
             buttons.buzzer.style.cursor = 'not-allowed';
@@ -1669,7 +1674,7 @@ function startSelectionTimer() {
 
 function updateBuzzerTimerDisplay(seconds) {
     if (appState.buzzerOwner === appState.playerId) {
-        buttons.buzzer.innerText = `WÄHLE 3 ZAHLEN! (${seconds})`;
+        buttons.buzzer.innerHTML = `WÄHLE 3 ZAHLEN! <span style="font-size: 0.9rem; display: block; margin-top: 5px; color: #0f172a; font-weight: bold;">🔒 ${seconds}s</span>`;
     }
 }
 
@@ -1703,6 +1708,7 @@ function resetBuzzerState() {
 
     buttons.buzzer.innerText = "TRIO!";
     buttons.buzzer.classList.remove('active-buzzer');
+    buttons.buzzer.classList.remove('buzzer-locked');
     buttons.buzzer.disabled = false;
 
     // Class Mode Safeguard
@@ -1715,7 +1721,8 @@ function resetBuzzerState() {
     // Check local lock
     if (appState.lockedUntil && appState.lockedUntil > Date.now()) {
         const wait = Math.ceil((appState.lockedUntil - Date.now()) / 1000);
-        buttons.buzzer.innerText = `GESPERRT (${wait}s)`;
+        buttons.buzzer.innerHTML = `TRIO! <span style="font-size: 0.9rem; display: block; margin-top: 5px; color: var(--danger); font-weight: bold;">🔒 ${wait}s</span>`;
+        buttons.buzzer.classList.add('buzzer-locked');
         buttons.buzzer.disabled = true;
     }
 }
@@ -2598,6 +2605,7 @@ function startPenaltyCountdown() {
         // Reset button text if not buzzer owner
         if (appState.buzzerOwner === null) {
             buttons.buzzer.innerText = "TRIO!";
+            buttons.buzzer.classList.remove('buzzer-locked');
             buttons.buzzer.disabled = false;
         }
         return;
@@ -2615,6 +2623,7 @@ function startPenaltyCountdown() {
         // CHECK: Is someone else calculating? If so, enable "Anschauen" despite penalty! (Classic Mode Only)
         if (!appState.settings?.classMode && appState.buzzerOwner && appState.buzzerOwner !== appState.playerId) {
             buttons.buzzer.innerText = "Anschauen";
+            buttons.buzzer.classList.remove('buzzer-locked');
             buttons.buzzer.disabled = false;
         } else if (remaining <= 0) {
             clearInterval(appState.penaltyInterval);
@@ -2624,11 +2633,13 @@ function startPenaltyCountdown() {
                 updateRankDisplay();
             } else if (appState.buzzerOwner === null) {
                 buttons.buzzer.innerText = "TRIO!";
+                buttons.buzzer.classList.remove('buzzer-locked');
                 buttons.buzzer.disabled = false;
             }
         } else {
             if (!appState.settings?.classMode) {
-                buttons.buzzer.innerText = `GESPERRT (${remaining}s)`;
+                buttons.buzzer.innerHTML = `TRIO! <span style="font-size: 0.9rem; display: block; margin-top: 5px; color: var(--danger); font-weight: bold;">🔒 ${remaining}s</span>`;
+                buttons.buzzer.classList.add('buzzer-locked');
                 buttons.buzzer.disabled = true;
             }
         }
@@ -2642,9 +2653,11 @@ function startPenaltyCountdown() {
         updateRankDisplay();
     } else if (appState.buzzerOwner && appState.buzzerOwner !== appState.playerId) {
         buttons.buzzer.innerText = "Anschauen";
+        buttons.buzzer.classList.remove('buzzer-locked');
         buttons.buzzer.disabled = false;
     } else {
-        buttons.buzzer.innerText = `GESPERRT (${remaining}s)`;
+        buttons.buzzer.innerHTML = `TRIO! <span style="font-size: 0.9rem; display: block; margin-top: 5px; color: var(--danger); font-weight: bold;">🔒 ${remaining}s</span>`;
+        buttons.buzzer.classList.add('buzzer-locked');
         buttons.buzzer.disabled = true;
     }
 }

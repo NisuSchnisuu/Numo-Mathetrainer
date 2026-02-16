@@ -134,8 +134,8 @@ body {
     justify-content: center;
     align-items: center;
     gap: 60px;
-    max-width: 1000px;
-    width: 100%;
+    max-width: 1200px;
+    width: 95%;
     padding: 60px;
     
     /* THE BOX STYLE */
@@ -146,6 +146,51 @@ body {
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
     
     transition: all 0.5s ease;
+}
+
+@media (max-width: 900px) {
+    .lobby-container {
+        gap: 30px;
+        padding: 40px;
+        width: 98%;
+    }
+}
+
+@media (orientation: landscape) and (max-height: 600px) {
+    .lobby-container {
+        padding: 15px 30px;
+        height: 90vh;
+        gap: 30px;
+    }
+    .game-title {
+        font-size: clamp(2rem, 8vh, 3.5rem) !important;
+    }
+    .lobby-subtitle {
+        margin-bottom: 10px;
+        font-size: 1rem;
+    }
+    .lobby-right {
+        gap: 10px;
+    }
+    .lobby-right .btn-primary {
+        padding: 12px;
+        font-size: 1rem;
+    }
+    
+    /* Fix QR Modal on mobile landscape */
+    .qr-modal-content {
+        padding: 20px !important;
+        gap: 10px !important;
+        width: 95% !important;
+        max-width: 500px !important;
+    }
+    .huge-code {
+        font-size: 3rem !important;
+    }
+    .qr-large-display img {
+        width: 180px !important;
+        height: 180px !important;
+    }
 }
 
 .lobby-left {
@@ -450,7 +495,7 @@ body {
     height: 100%;
     background: rgba(15, 23, 42, 0.85);
     backdrop-filter: blur(10px);
-    z-index: 10000;
+    z-index: 20000;
     justify-content: center;
     align-items: center;
     animation: fadeIn 0.2s ease-out;
@@ -903,4 +948,69 @@ input:focus, select:focus { border-color: var(--primary-color); }
     font-size: 1.5rem;
     font-weight: 700;
     color: var(--secondary-color);
+}
+
+/* ORIENTATION LOCK OVERLAY */
+.orientation-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: var(--background-dark);
+    z-index: 99999;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 20px;
+    backdrop-filter: blur(10px);
+}
+
+.orientation-overlay.active {
+    display: flex;
+}
+
+.orientation-content h2 {
+    font-size: 2rem;
+    margin: 30px 0 10px 0;
+    color: var(--secondary-color);
+}
+
+.orientation-content p {
+    font-size: 1.2rem;
+    color: var(--text-muted);
+}
+
+.rotate-animation {
+    color: white;
+    animation: rotateIcon 2s infinite ease-in-out;
+}
+
+@keyframes rotateIcon {
+    0% {
+        transform: rotate(0deg);
+        opacity: 0.8;
+    }
+
+    25% {
+        transform: rotate(90deg);
+        opacity: 1;
+    }
+
+    50% {
+        transform: rotate(90deg);
+        opacity: 1;
+    }
+
+    75% {
+        transform: rotate(0deg);
+        opacity: 0.8;
+    }
+
+    100% {
+        transform: rotate(0deg);
+        opacity: 0.8;
+    }
 }

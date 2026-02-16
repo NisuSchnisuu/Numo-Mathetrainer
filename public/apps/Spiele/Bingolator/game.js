@@ -832,4 +832,25 @@ function generateLottoCard(pool) {
 
 function rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
 
-document.addEventListener('DOMContentLoaded', initApp);
+document.addEventListener('DOMContentLoaded', () => {
+    // --- ORIENTATION LOCK LOGIC ---
+    const checkOrientation = () => {
+        const overlay = document.getElementById('orientation-lock-overlay');
+        if (!overlay) return;
+
+        // Check if portrait
+        const isPortrait = window.matchMedia("(orientation: portrait)").matches;
+
+        if (isPortrait) {
+            overlay.classList.add('active');
+        } else {
+            overlay.classList.remove('active');
+        }
+    };
+
+    window.addEventListener('resize', checkOrientation);
+    window.addEventListener('orientationchange', checkOrientation);
+    checkOrientation(); // Initial check
+
+    initApp();
+});
