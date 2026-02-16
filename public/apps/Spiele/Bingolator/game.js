@@ -24,40 +24,45 @@ let playerState = {
     markedCount: 0,
     card: null
 };
+let isLeaving = false; // Flag to prevent 'kicked' modal during voluntary exit
 
 let html5QrScanner = null;
 
 // --- Helper Functions ---
 
 function leaveGame() {
+    isLeaving = true;
     window.location.href = window.location.pathname; 
 }
 
 function showModal(modalId) {
-    document.getElementById(modalId).classList.add('active');
+    const el = document.getElementById(modalId);
+    if (el) el.classList.add('active');
 }
 
 function hideModal(modalId) {
-    document.getElementById(modalId).classList.remove('active');
+    const el = document.getElementById(modalId);
+    if (el) el.classList.remove('active');
 }
 
 function switchView(viewId) {
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-    document.getElementById(viewId).classList.add('active');
+    const view = document.getElementById(viewId);
+    if (view) view.classList.add('active');
     currentView = viewId;
 
     const backBtn = document.getElementById('numo-back-link');
     if (viewId === 'lobby-view' && !document.body.classList.contains('quick-join-active')) {
-        backBtn.style.display = 'flex';
+        if (backBtn) backBtn.style.display = 'flex';
     } else {
-        backBtn.style.display = 'none';
+        if (backBtn) backBtn.style.display = 'none';
     }
 }
 
 // --- Persistence & PWA Logic ---
 
 function saveSession() {
-    if (!gameId || !playerName) return;
+    if (!gameId || !playerName || isLeaving) return;
     const session = {
         gameId,
         playerName,
@@ -74,6 +79,12 @@ function saveSession() {
 
 function clearSession() {
     localStorage.removeItem('bingolator_session');
+    playerState = {
+        lives: 3,
+        streak: 0,
+        markedCount: 0,
+        card: null
+    };
 }
 
 function checkSession() {
@@ -84,7 +95,6 @@ function checkSession() {
         const session = JSON.parse(sessionStr);
         // 5 minute timeout
         if (Date.now() - session.lastActive > 5 * 60 * 1000) {
-            console.log("Session expired");
             clearSession();
             return false;
         }
@@ -94,9 +104,15 @@ function checkSession() {
         playerName = session.playerName;
         playerId = session.playerId;
         isHost = session.isHost;
+        playerState.card = session.card;
+        playerState.markedCount = session.markedCount || 0;
+        playerState.lives = session.lives !== undefined ? session.lives : 3;
         
-        console.log("Restoring session:", session);
+        console.log("Restoring session:", gameId);
         
+        // Ensure UI is ready
+        bindEvents();
+
         // Re-connect to game
         setupLobbyListener();
         
@@ -118,6 +134,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
 
 function showInstallModal() {
     const modal = document.getElementById('pwa-install-modal');
+    if (!modal) return;
     modal.classList.add('active');
 
     const ua = navigator.userAgent;
@@ -129,7 +146,7 @@ function showInstallModal() {
     document.getElementById('inst-desktop').style.display = (!isIOS && !isAndroid) ? 'block' : 'none';
 
     const nativeBtn = document.getElementById('btn-native-install');
-    if (deferredPrompt) {
+    if (deferredPrompt && nativeBtn) {
         nativeBtn.style.display = 'block';
         nativeBtn.onclick = async () => {
             deferredPrompt.prompt();
@@ -155,7 +172,8 @@ function initApp() {
     // Restore Name
     const savedName = localStorage.getItem('bingolator_player_name');
     if (savedName) {
-        document.getElementById('player-name').value = savedName;
+        const pNameInput = document.getElementById('player-name');
+        if (pNameInput) pNameInput.value = savedName;
         playerName = savedName;
     }
 
@@ -164,68 +182,104 @@ function initApp() {
     if (savedSettings) {
         try {
             const settings = JSON.parse(savedSettings);
-            if (settings.opType) document.getElementById('opType').value = settings.opType;
-            if (settings.range) document.getElementById('range').value = settings.range;
+            if (settings.opType) {
+                const opEl = document.getElementById('opType');
+                if (opEl) opEl.value = settings.opType;
+            }
+            if (settings.range) {
+                const rangeEl = document.getElementById('range');
+                if (rangeEl) rangeEl.value = settings.range;
+            }
         } catch(e) { console.error("Error loading settings", e); }
     }
 
+    // Check for active session
+    if (checkSession()) return;
+
     // Bind UI Events
-    document.getElementById('btn-open-create-modal').onclick = () => showModal('create-game-modal');
-    document.getElementById('btn-close-create-modal').onclick = () => hideModal('create-game-modal');
-    document.getElementById('btn-create-confirm').onclick = createNewGame;
-    document.getElementById('btn-enter').onclick = joinGameByCode;
-    
-    // PWA Events
-    document.getElementById('btn-trigger-install').onclick = showInstallModal;
-    document.getElementById('btn-close-install').onclick = () => hideModal('pwa-install-modal');
-
-    // Leave Game bindings
-    document.getElementById('btn-leave-lobby').onclick = confirmLeaveGame; 
-    document.getElementById('btn-confirm-leave').onclick = executeLeaveGame; 
-    
-    // Kick Bindings
-    document.getElementById('btn-confirm-kick').onclick = executeKickPlayer;
-
-    const btnQuickBack = document.getElementById('btn-quick-back');
-    if(btnQuickBack) btnQuickBack.onclick = leaveGame;
-
-    document.getElementById('btn-start-game').onclick = startGame;
-    document.getElementById('btn-host-draw').onclick = hostDrawNext;
-    
-    document.getElementById('btn-show-qr-large').onclick = () => showModal('lobby-qr-modal');
-    document.getElementById('btn-close-qr-large').onclick = () => hideModal('lobby-qr-modal');
-    document.getElementById('btn-scan-qr').onclick = startQrScanner;
-    document.getElementById('btn-close-qr').onclick = stopQrScanner;
-
-    // Click Outside Modal to Close (Safe Modals)
-    document.querySelectorAll('.modal-overlay').forEach(overlay => {
-        overlay.addEventListener('click', (e) => {
-            // List of modals that should NOT close on outside click (forcing a choice)
-            const persistentModals = ['leave-confirm-modal', 'host-left-modal', 'kick-confirm-modal', 'player-kicked-modal'];
-            
-            if (e.target === overlay && !persistentModals.includes(overlay.id)) {
-                hideModal(overlay.id);
-                if (overlay.id === 'qr-modal') stopQrScanner();
-            }
-        });
-    });
+    bindEvents();
 
     const params = new URLSearchParams(window.location.search);
     if (params.has('join')) {
         const code = params.get('join').toUpperCase();
-        document.getElementById('join-code').value = code;
+        const joinCodeInput = document.getElementById('join-code');
+        if (joinCodeInput) {
+            joinCodeInput.value = code;
+            joinCodeInput.disabled = true;
+        }
         document.body.classList.add('quick-join-active'); 
         const lobbyView = document.getElementById('lobby-view');
-        lobbyView.classList.add('quick-join-mode');
-        document.getElementById('btn-enter').textContent = `Beitreten`;
-        document.getElementById('join-code').disabled = true;
-        setTimeout(() => document.getElementById('player-name').focus(), 100);
-    } else {
-        // Only check session if not joining a new game via link
-        checkSession();
+        if (lobbyView) lobbyView.classList.add('quick-join-mode');
+        
+        const btnEnter = document.getElementById('btn-enter');
+        if (btnEnter) btnEnter.textContent = `Beitreten`;
+        
+        setTimeout(() => {
+            const pNameInput = document.getElementById('player-name');
+            if (pNameInput) pNameInput.focus();
+        }, 100);
     }
+}
 
-    // Auto-save session on hide
+function bindEvents() {
+    const btnOpenCreate = document.getElementById('btn-open-create-modal');
+    if (btnOpenCreate) btnOpenCreate.onclick = () => showModal('create-game-modal');
+    
+    const btnCloseCreate = document.getElementById('btn-close-create-modal');
+    if (btnCloseCreate) btnCloseCreate.onclick = () => hideModal('create-game-modal');
+    
+    const btnConfirmCreate = document.getElementById('btn-create-confirm');
+    if (btnConfirmCreate) btnConfirmCreate.onclick = createNewGame;
+    
+    const btnEnter = document.getElementById('btn-enter');
+    if (btnEnter) btnEnter.onclick = joinGameByCode;
+    
+    const btnTriggerInstall = document.getElementById('btn-trigger-install');
+    if (btnTriggerInstall) btnTriggerInstall.onclick = showInstallModal;
+    
+    const btnCloseInstall = document.getElementById('btn-close-install');
+    if (btnCloseInstall) btnCloseInstall.onclick = () => hideModal('pwa-install-modal');
+
+    const btnLeaveLobby = document.getElementById('btn-leave-lobby');
+    if (btnLeaveLobby) btnLeaveLobby.onclick = confirmLeaveGame; 
+    
+    const btnConfirmLeave = document.getElementById('btn-confirm-leave');
+    if (btnConfirmLeave) btnConfirmLeave.onclick = executeLeaveGame; 
+    
+    const btnConfirmKick = document.getElementById('btn-confirm-kick');
+    if (btnConfirmKick) btnConfirmKick.onclick = executeKickPlayer;
+
+    const btnQuickBack = document.getElementById('btn-quick-back');
+    if(btnQuickBack) btnQuickBack.onclick = leaveGame;
+
+    const btnStartGame = document.getElementById('btn-start-game');
+    if (btnStartGame) btnStartGame.onclick = startGame;
+    
+    const btnHostDraw = document.getElementById('btn-host-draw');
+    if (btnHostDraw) btnHostDraw.onclick = hostDrawNext;
+    
+    const btnShowQr = document.getElementById('btn-show-qr-large');
+    if (btnShowQr) btnShowQr.onclick = () => showModal('lobby-qr-modal');
+    
+    const btnCloseQrLarge = document.getElementById('btn-close-qr-large');
+    if (btnCloseQrLarge) btnCloseQrLarge.onclick = () => hideModal('lobby-qr-modal');
+    
+    const btnScanQr = document.getElementById('btn-scan-qr');
+    if (btnScanQr) btnScanQr.onclick = startQrScanner;
+    
+    const btnCloseQr = document.getElementById('btn-close-qr');
+    if (btnCloseQr) btnCloseQr.onclick = stopQrScanner;
+
+    document.querySelectorAll('.modal-overlay').forEach(overlay => {
+        overlay.onclick = (e) => {
+            const persistentModals = ['leave-confirm-modal', 'host-left-modal', 'kick-confirm-modal', 'player-kicked-modal'];
+            if (e.target === overlay && !persistentModals.includes(overlay.id)) {
+                hideModal(overlay.id);
+                if (overlay.id === 'qr-modal') stopQrScanner();
+            }
+        };
+    });
+
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'hidden') saveSession();
     });
@@ -287,7 +341,8 @@ function stopQrScanner() {
 async function createNewGame() {
     clearSession();
     isHost = true;
-    playerName = document.getElementById('player-name').value || "Host";
+    const nameInput = document.getElementById('player-name');
+    playerName = (nameInput ? nameInput.value : "") || "Host";
     localStorage.setItem('bingolator_player_name', playerName);
     gameId = Math.random().toString(36).substring(2, 6).toUpperCase();
     
@@ -329,10 +384,12 @@ async function createNewGame() {
  */
 async function joinGameByCode() {
     clearSession();
-    const code = document.getElementById('join-code').value.trim().toUpperCase();
+    const joinInput = document.getElementById('join-code');
+    const code = (joinInput ? joinInput.value : "").trim().toUpperCase();
     if (code.length !== 4) return alert("Code ungültig!");
     
-    playerName = document.getElementById('player-name').value;
+    const nameInput = document.getElementById('player-name');
+    playerName = nameInput ? nameInput.value : "";
     if (!playerName) return alert("Bitte gib deinen Namen ein!");
     localStorage.setItem('bingolator_player_name', playerName);
     
@@ -359,6 +416,8 @@ function setupLobbyListener() {
     const gameRef = database.ref('games/' + gameId);
     
     gameRef.on('value', (snapshot) => {
+        if (isLeaving) return;
+
         const data = snapshot.val();
         
         // 1. Host Left
@@ -373,7 +432,7 @@ function setupLobbyListener() {
         currentGameData = data;
 
         // 2. Player Kicked
-        if (!isHost && playerId) {
+        if (!isHost && playerId && !isLeaving) {
             if (!data.players || !data.players[playerId]) {
                 showModal('player-kicked-modal');
                 // Remove listener to prevent further updates
@@ -400,14 +459,13 @@ function setupLobbyListener() {
             updateLobbyUI();
         }
 
-        if (data.currentProblem) {
-            updateProblemDisplay(data.currentProblem);
-        }
+        updateProblemDisplay(data.currentProblem);
     });
 }
 
 function updatePlayerList(players) {
     const list = document.getElementById('lobby-player-slots');
+    if (!list) return;
     list.innerHTML = '';
     
     Object.entries(players).forEach(([pid, p]) => {
@@ -424,13 +482,17 @@ function updatePlayerList(players) {
     });
 
     if (isHost) {
-        document.getElementById('btn-start-game').classList.remove('hidden');
+        const btnStart = document.getElementById('btn-start-game');
+        if (btnStart) btnStart.classList.remove('hidden');
     }
 }
 
 function updateLobbyUI() {
-    document.getElementById('lobby-code-display').textContent = gameId;
-    document.getElementById('qr-modal-code').textContent = gameId;
+    const lobbyCodeDisplay = document.getElementById('lobby-code-display');
+    if (lobbyCodeDisplay) lobbyCodeDisplay.textContent = gameId;
+    
+    const qrModalCode = document.getElementById('qr-modal-code');
+    if (qrModalCode) qrModalCode.textContent = gameId;
     
     const baseUrl = window.location.href.split('?')[0];
     const joinUrl = `${baseUrl}?join=${gameId}`;
@@ -438,7 +500,8 @@ function updateLobbyUI() {
     const qr = qrcode(0, 'M');
     qr.addData(joinUrl);
     qr.make();
-    document.getElementById('lobby-qr-large-container').innerHTML = qr.createImgTag(8);
+    const qrContainer = document.getElementById('lobby-qr-large-container');
+    if (qrContainer) qrContainer.innerHTML = qr.createImgTag(8);
 }
 
 /**
@@ -463,6 +526,7 @@ function confirmLeaveGame() {
 }
 
 async function executeLeaveGame() {
+    isLeaving = true;
     hideModal('leave-confirm-modal');
     if (isHost) {
         await database.ref('games/' + gameId).remove();
@@ -478,41 +542,59 @@ async function executeLeaveGame() {
  */
 async function startGame() {
     if (!isHost) return;
-    await database.ref('games/' + gameId).update({ status: 'PLAYING' });
-    hostDrawNext();
+    // Don't draw immediately, let the host click the button
+    await database.ref('games/' + gameId).update({ 
+        status: 'PLAYING',
+        currentProblem: null,
+        history: [] 
+    });
 }
 
 function initGameScreen(data) {
     switchView('game-view');
     if (isHost) {
-        document.getElementById('host-dashboard').classList.remove('hidden');
+        const hostDashboard = document.getElementById('host-dashboard');
+        if (hostDashboard) hostDashboard.classList.remove('hidden');
+        
+        const resEl = document.getElementById('host-current-result');
+        if (resEl) {
+            resEl.textContent = "Bereit?";
+            resEl.className = 'huge-term-display ready-state';
+        }
+        
+        const termEl = document.getElementById('host-current-term');
+        if (termEl) termEl.textContent = "Klicke 'Zahl ziehen'";
     } else {
-        // Restore card if available in session
+        // Player setup
         const sessionStr = localStorage.getItem('bingolator_session');
+        let session = null;
         if (sessionStr) {
-            const session = JSON.parse(sessionStr);
-            if (session.card) {
-                playerState.card = session.card;
-                playerState.markedCount = session.markedCount || 0;
-                playerState.lives = session.lives !== undefined ? session.lives : 3;
-            }
+            try {
+                session = JSON.parse(sessionStr);
+            } catch(e) {}
         }
 
-        if (!playerState.card) {
-            playerState.card = generateLottoCard(data.pool);
-            playerState.markedCount = 0;
+        // Only restore if it's the SAME game
+        if (session && session.card && session.gameId === gameId) {
+            playerState.card = session.card;
+            playerState.markedCount = session.markedCount || 0;
+            playerState.lives = session.lives !== undefined ? session.lives : 3;
+        } else {
+            // New Game: Explicitly reset state
             playerState.lives = 3;
+            playerState.markedCount = 0;
+            playerState.card = generateLottoCard(data.pool);
+            saveSession();
         }
 
         renderBingoCard(playerState.card);
         updatePlayerHearts();
         
-        // Re-apply marks if any
-        if (playerState.markedCount > 0) {
-            const cells = document.querySelectorAll('.bingo-cell');
-            // We don't know which ones were marked exactly unless we store indices.
-            // Let's improve card storage to include 'marked' property in cells.
-        }
+        // Hide overlays
+        const goOverlay = document.getElementById('gameOverOverlay');
+        if (goOverlay) goOverlay.classList.add('hidden');
+        const winOverlay = document.getElementById('winOverlay');
+        if (winOverlay) winOverlay.classList.add('hidden');
     }
 }
 
@@ -521,7 +603,9 @@ async function hostDrawNext() {
     if (available.length === 0) return alert("Alle Zahlen gezogen!");
 
     const problem = available[Math.floor(Math.random() * available.length)];
-    problem.drawn = true;
+    const poolIndex = currentGameData.pool.findIndex(p => p.term === problem.term);
+    currentGameData.pool[poolIndex].drawn = true;
+    
     problem.id = Date.now();
 
     const history = currentGameData.history || [];
@@ -533,17 +617,48 @@ async function hostDrawNext() {
         pool: currentGameData.pool
     });
 
-    document.getElementById('host-current-result').textContent = problem.result;
-    document.getElementById('host-current-term').textContent = problem.term;
+    updateHostDrawDisplay(problem, history);
+}
+
+function updateHostDrawDisplay(problem, history) {
+    const resEl = document.getElementById('host-current-result');
+    const termEl = document.getElementById('host-current-term');
+    
+    if (resEl) {
+        resEl.textContent = problem.term;
+        resEl.className = 'huge-term-display';
+    }
+    if (termEl) termEl.textContent = "Aktuelle Aufgabe:";
+
+    const historyEl = document.getElementById('host-history');
+    if (historyEl) {
+        historyEl.innerHTML = '';
+        [...history].reverse().forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'history-item';
+            div.innerHTML = `<span class="h-term-only">${item.term}</span>`;
+            historyEl.appendChild(div);
+        });
+    }
 }
 
 function renderBingoCard(card) {
     const grid = document.getElementById('bingoCard');
+    if (!grid) return;
     grid.innerHTML = '';
     card.forEach((row, r) => {
         row.forEach((cellData, c) => {
-            const val = typeof cellData === 'object' && cellData !== null ? cellData.val : cellData;
-            const isMarked = typeof cellData === 'object' && cellData !== null ? cellData.marked : false;
+            let val = null;
+            let isMarked = false;
+
+            if (cellData !== null) {
+                if (typeof cellData === 'object') {
+                    val = cellData.val;
+                    isMarked = cellData.marked;
+                } else {
+                    val = cellData;
+                }
+            }
 
             const cell = document.createElement('div');
             cell.className = 'bingo-cell' + (val === null ? ' empty' : '') + (isMarked ? ' marked' : '');
@@ -557,41 +672,44 @@ function renderBingoCard(card) {
 }
 
 function handleCellClick(value, cell, r, c) {
-    if (!currentGameData.currentProblem || cell.classList.contains('marked')) return;
+    if (playerState.lives <= 0) return;
+    if (!currentGameData || !currentGameData.currentProblem || cell.classList.contains('marked')) return;
+    
     if (value === currentGameData.currentProblem.result) {
         cell.classList.add('marked');
         playerState.markedCount++;
-        
-        // Update card data for persistence
-        if (typeof playerState.card[r][c] === 'number') {
-            playerState.card[r][c] = { val: value, marked: true };
-        } else {
-            playerState.card[r][c].marked = true;
-        }
+        playerState.card[r][c] = { val: value, marked: true };
         saveSession();
 
-        if (playerState.markedCount === 15) document.getElementById('winOverlay').classList.remove('hidden');
+        if (playerState.markedCount === 15) {
+            const winOverlay = document.getElementById('winOverlay');
+            if (winOverlay) winOverlay.classList.remove('hidden');
+        }
     } else {
         cell.classList.add('error-shake');
         setTimeout(() => cell.classList.remove('error-shake'), 500);
         
-        if (playerState.lives > 0) {
-            playerState.lives--;
-            updatePlayerHearts();
-            saveSession();
-            if (playerState.lives === 0) {
-                document.getElementById('gameOverOverlay').classList.remove('hidden');
-            }
+        playerState.lives--;
+        updatePlayerHearts();
+        saveSession();
+        
+        if (playerState.lives === 0) {
+            const gameOverOverlay = document.getElementById('gameOverOverlay');
+            if (gameOverOverlay) gameOverOverlay.classList.remove('hidden');
         }
     }
 }
 
 function updateProblemDisplay(problem) {
-    document.getElementById('currentTermDisplay').textContent = problem.term;
+    const display = document.getElementById('currentTermDisplay');
+    if (display) {
+        display.textContent = problem ? problem.term : "Warte auf Host...";
+    }
 }
 
 function updatePlayerHearts() {
     const container = document.getElementById('heartsContainer');
+    if (!container) return;
     let html = '';
     for(let i=0; i<3; i++) {
         html += i < playerState.lives ? '❤' : '<span style="opacity:0.3">❤</span>';
@@ -601,25 +719,31 @@ function updatePlayerHearts() {
 
 function generateProblemPool(settings) {
     const pool = [];
-    const seen = new Set();
+    const seenResults = new Set();
     const max = settings.range === '1x1' ? 10 : parseInt(settings.range);
     
-    while (pool.length < 60) {
+    while (pool.length < 80) {
         let a, b, op, res, term;
         const ops = settings.opType === 'mixed' ? ['+','-','*','/'] : [settings.opType.replace('add','+').replace('sub','-').replace('mul','*').replace('div','/')];
         op = ops[Math.floor(Math.random() * ops.length)];
 
-        if (settings.range === '1x1') { a=rand(1,10); b=rand(1,10); op='*'; } 
-        else if (op==='+') { a=rand(1,max-5); b=rand(1,max-a); }
-        else if (op==='-') { a=rand(5,max); b=rand(1,a); }
-        else if (op==='*') { a=rand(1,10); b=rand(1,max/a); }
-        else { b=rand(2,10); res=rand(1,max/2); a=b*res; }
+        if (settings.range === '1x1') { 
+            a=rand(1,10); b=rand(1,10); op='*'; 
+        } else if (op==='+') { 
+            a=rand(1,max-5); b=rand(1,max-a); 
+        } else if (op==='-') { 
+            a=rand(5,max); b=rand(1,a); 
+        } else if (op==='*') { 
+            a=rand(1,10); b=rand(1, Math.floor(max/a) || 1); 
+        } else { 
+            b=rand(2,10); res=rand(1, Math.floor(max/b) || 1); a=b*res; 
+        }
 
         res = op==='+'?a+b : op==='-'?a-b : op==='*'?a*b : a/b;
         term = `${a} ${op.replace('*','×').replace('/','÷')} ${b}`;
         
-        if (res > 0 && !seen.has(res)) {
-            seen.add(res);
+        if (res > 0 && !seenResults.has(res)) {
+            seenResults.add(res);
             pool.push({ term, result: res, drawn: false });
         }
     }
@@ -627,17 +751,82 @@ function generateProblemPool(settings) {
 }
 
 function generateLottoCard(pool) {
-    const selected = pool.map(p => p.result).sort(() => 0.5 - Math.random()).slice(0, 15).sort((a,b) => a-b);
-    const card = [Array(9).fill(null), Array(9).fill(null), Array(9).fill(null)];
-    const cols = Array.from({length:9}, () => []);
-    selected.forEach(n => { let c = Math.min(Math.floor(n/10), 8); cols[c].push(n); });
+    const allResults = pool.map(p => p.result);
+    const columnBins = Array.from({ length: 9 }, () => []);
     
-    cols.forEach((nums, c) => {
-        nums.forEach(n => {
-            const r = [0,1,2].sort(() => 0.5-Math.random()).find(row => card[row].filter(v=>v!==null).length < 5 && card[row][c]===null);
-            if (r !== undefined) card[r][c] = n;
-        });
+    allResults.forEach(res => {
+        let col = Math.floor(res / 10);
+        if (col > 8) col = 8;
+        columnBins[col].push(res);
     });
+    columnBins.forEach(bin => bin.sort(() => Math.random() - 0.5));
+
+    let card;
+    let valid = false;
+    let attempts = 0;
+
+    // Check for "Zerstreuung": max 2 adjacent empty cells in a row
+    function isWellDispersed(row) {
+        let currentEmpty = 0;
+        for (let cell of row) {
+            if (cell === null) {
+                currentEmpty++;
+                if (currentEmpty > 2) return false;
+            } else {
+                currentEmpty = 0;
+            }
+        }
+        return true;
+    }
+
+    while (!valid && attempts < 2000) {
+        attempts++;
+        card = Array.from({ length: 3 }, () => Array(9).fill(null));
+        let rowCounts = [0, 0, 0];
+        let colCounts = Array(9).fill(0);
+
+        // 1. Mandatory: Each column must have 1-2 numbers for perfect dispersal
+        // Target: 6 columns with 2 numbers, 3 columns with 1 number = 15 total
+        let colTargets = [1,1,1,2,2,2,2,2,2].sort(() => Math.random() - 0.5);
+
+        // 2. Try to fill according to targets and row constraints
+        let success = true;
+        for (let c = 0; c < 9; c++) {
+            let target = colTargets[c];
+            let placed = 0;
+            let rowIndices = [0, 1, 2].sort(() => Math.random() - 0.5);
+            
+            for (let r of rowIndices) {
+                if (placed < target && rowCounts[r] < 5) {
+                    card[r][c] = true;
+                    rowCounts[r]++;
+                    colCounts[c]++;
+                    placed++;
+                }
+            }
+            if (placed < target) { success = false; break; }
+        }
+
+        if (success && rowCounts.every(count => count === 5)) {
+            // Check horizontal dispersal
+            if (card.every(row => isWellDispersed(row))) {
+                valid = true;
+            }
+        }
+    }
+
+    // Replace placeholders with real values
+    for (let r = 0; r < 3; r++) {
+        for (let c = 0; c < 9; c++) {
+            if (card[r][c] === true) {
+                if (columnBins[c].length > 0) {
+                    card[r][c] = columnBins[c].pop();
+                } else {
+                    card[r][c] = rand(c * 10, (c * 10) + 9) || 1;
+                }
+            }
+        }
+    }
     return card;
 }
 

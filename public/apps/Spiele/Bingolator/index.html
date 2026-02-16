@@ -176,30 +176,49 @@
 
     <!-- VIEW 3: GAME SCREEN -->
     <section id="game-view" class="view">
-        <!-- Stats Header (Top) -->
-        <div class="game-top-bar">
-             <div class="hearts" id="heartsContainer">❤❤❤</div>
-             <div id="activeProblem" class="active-problem-mini">
-                 <span id="currentTermDisplay">Warte...</span>
-             </div>
-             <div class="streak-counter" id="streakContainer">🔥 <span id="streakValue">0</span></div>
-        </div>
+        <!-- Player View (Default) -->
+        <div id="player-game-container" class="player-game-container">
+            <div class="game-top-bar">
+                 <div class="top-bar-left">
+                     <div class="hearts" id="heartsContainer">❤❤❤</div>
+                 </div>
+                 <div class="top-bar-center">
+                     <div id="activeProblem" class="active-problem-mini">
+                         <span id="currentTermDisplay">Warte...</span>
+                     </div>
+                 </div>
+                 <div class="top-bar-right">
+                     <div class="streak-counter" id="streakContainer">🔥 <span id="streakValue">0</span></div>
+                     <button class="btn-icon-leave-mini" onclick="confirmLeaveGame()" title="Spiel verlassen" style="margin-left: 15px;">
+                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                     </button>
+                 </div>
+            </div>
 
-        <div class="game-main-layout">
-            <!-- Left/Center: Bingo Card -->
             <div class="bingo-container">
                 <div class="bingo-card" id="bingoCard"></div>
             </div>
+        </div>
 
-            <!-- Right: Host Dashboard (Only visible for Host) -->
-            <div id="host-dashboard" class="host-dashboard hidden">
-                <h3>Host-Steuerung</h3>
-                <div class="current-draw-box">
-                    <div id="host-current-result">--</div>
-                    <small id="host-current-term">--</small>
+        <!-- Host Dashboard (Overlay or Side Panel) -->
+        <div id="host-dashboard" class="host-dashboard hidden">
+            <div class="host-main">
+                <h1 class="host-title">BINGOLATOR</h1>
+                <div class="host-current-draw">
+                    <div id="host-current-term" class="big-term">--</div>
+                    <div id="host-current-result" class="huge-result">--</div>
                 </div>
-                <button class="btn btn-primary" id="btn-host-draw">Zahl ziehen</button>
-                <div class="history-list" id="host-history"></div>
+                <button class="btn-primary btn-draw-large" id="btn-host-draw">Zahl ziehen</button>
+            </div>
+            
+            <div class="host-sidebar">
+                <h3>Verlauf</h3>
+                <div class="history-list" id="host-history">
+                    <!-- History items injected here -->
+                </div>
+                <div class="host-controls">
+                    <button class="btn-secondary" onclick="executeLeaveGame()" style="width: 100%;">Spiel beenden</button>
+                </div>
             </div>
         </div>
     </section>
