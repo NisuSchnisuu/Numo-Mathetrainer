@@ -18,6 +18,8 @@ let playerId = null;
 let currentView = "lobby-view";
 let currentGameData = null;
 let playerToKickId = null; // Temp storage for kick modal
+let customProblems = []; // Storage for custom problems
+let customMode = 'auto'; // 'auto' or 'manual'
 let playerState = {
     lives: 3,
     streak: 0,
@@ -29,6 +31,42 @@ let isLeaving = false; // Flag to prevent 'kicked' modal during voluntary exit
 let html5QrScanner = null;
 
 // --- Helper Functions ---
+
+function switchCustomTab(mode) {
+    customMode = mode;
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    const activeTab = document.getElementById(`tab-${mode}`);
+    if (activeTab) activeTab.classList.add('active');
+    
+    const title = document.getElementById('custom-modal-title');
+    const desc = document.getElementById('custom-modal-desc');
+    const importArea = document.getElementById('json-import-area');
+    const guideAuto = document.getElementById('guide-container-auto');
+    const guideManual = document.getElementById('guide-container-manual');
+    
+    if (mode === 'auto') {
+        if (title) title.textContent = "Eigene Mathe-Aufgaben";
+        if (desc) desc.textContent = "Ergebnisse werden automatisch berechnet (1-90).";
+        if (importArea) importArea.placeholder = '[{"term":"12+8"}, {"term":"5·3"}]';
+        if (guideAuto) guideAuto.classList.remove('hidden');
+        if (guideManual) guideManual.classList.add('hidden');
+    } else {
+        if (title) title.textContent = "Quiz & Text-Aufgaben";
+        if (desc) desc.textContent = "Gib Frage und Antwort manuell ein (Text möglich).";
+        if (importArea) importArea.placeholder = '[{"term":"Frage", "result":"Antwort"}]';
+        if (guideAuto) guideAuto.classList.add('hidden');
+        if (guideManual) guideManual.classList.remove('hidden');
+    }
+    
+    // Clear and reset list for the new mode
+    const list = document.getElementById('custom-problems-list');
+    if (list) {
+        list.innerHTML = '';
+        for(let i=0; i<15; i++) addCustomRow();
+    }
+    updateCustomCount();
+}
+window.switchCustomTab = switchCustomTab;
 
 function leaveGame() {
     isLeaving = true;
@@ -282,7 +320,58 @@ function bindEvents() {
     
     const btnConfirmCreate = document.getElementById('btn-create-confirm');
     if (btnConfirmCreate) btnConfirmCreate.onclick = createNewGame;
-    
+
+    const btnOpenCustom = document.getElementById('btn-open-custom-modal');
+    if (btnOpenCustom) btnOpenCustom.onclick = openCustomModal;
+
+    const btnCloseCustom = document.getElementById('btn-close-custom-modal');
+    if (btnCloseCustom) btnCloseCustom.onclick = () => hideModal('custom-problems-modal');
+
+    const btnAddCustomRow = document.getElementById('btn-add-custom-row');
+    if (btnAddCustomRow) btnAddCustomRow.onclick = addCustomRow;
+
+    const btnSaveCustom = document.getElementById('btn-save-custom-problems');
+    if (btnSaveCustom) btnSaveCustom.onclick = saveAndCreateCustomGame;
+
+    const btnOpenImport = document.getElementById('btn-open-import-modal');
+    if (btnOpenImport) btnOpenImport.onclick = () => showModal('import-json-modal');
+
+    const btnCloseImport = document.getElementById('btn-close-import-modal');
+    if (btnCloseImport) btnCloseImport.onclick = () => hideModal('import-json-modal');
+
+    const btnExportJson = document.getElementById('btn-export-json');
+    if (btnExportJson) btnExportJson.onclick = exportToJSON;
+
+    const btnImportPaste = document.getElementById('btn-import-paste');
+    if (btnImportPaste) btnImportPaste.onclick = importFromPaste;
+
+    const btnUploadTrigger = document.getElementById('btn-upload-json');
+    const fileInput = document.getElementById('json-file-input');
+    if (btnUploadTrigger && fileInput) {
+        btnUploadTrigger.onclick = () => fileInput.click();
+        fileInput.onchange = handleFileUpload;
+    }
+
+    const btnDownloadGuide = document.getElementById('btn-download-guide');
+    if (btnDownloadGuide) {
+        btnDownloadGuide.onclick = () => {
+            const a = document.createElement('a');
+            a.href = 'BINGOLATOR_PROMPT.md';
+            a.download = 'BINGOLATOR_PROMPT.md';
+            a.click();
+        };
+    }
+
+    const btnDownloadTextGuide = document.getElementById('btn-download-text-guide');
+    if (btnDownloadTextGuide) {
+        btnDownloadTextGuide.onclick = () => {
+            const a = document.createElement('a');
+            a.href = 'BINGOLATOR_TEXT_PROMPT.md';
+            a.download = 'BINGOLATOR_TEXT_PROMPT.md';
+            a.click();
+        };
+    }
+
     const btnEnter = document.getElementById('btn-enter');
     if (btnEnter) btnEnter.onclick = joinGameByCode;
     
@@ -447,6 +536,392 @@ async function createNewGame() {
         console.error("Host error:", err);
         alert("Fehler: " + err.message);
     }
+}
+
+/**
+ * Custom Problems Logic
+ */
+function openCustomModal() {
+    hideModal('create-game-modal');
+    showModal('custom-problems-modal');
+    customProblems = [];
+    const list = document.getElementById('custom-problems-list');
+    if (list) list.innerHTML = '';
+    for(let i=0; i<15; i++) addCustomRow();
+}
+
+function addCustomRow() {
+    const list = document.getElementById('custom-problems-list');
+    if (!list) return;
+
+    const rowId = Date.now() + Math.random();
+    const row = document.createElement('div');
+    row.className = 'custom-problem-row';
+    row.id = `row-${rowId}`;
+    row.style = 'display: flex; gap: 10px; align-items: center; margin-bottom: 10px; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; animation: slideIn 0.2s ease-out;';
+    
+    if (customMode === 'auto') {
+        row.innerHTML = `
+            <input type="text" class="custom-term-input" placeholder="z.B. 12 + 8" style="flex: 2; padding: 8px;">
+            <div class="custom-result-display" style="flex: 1; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 6px; text-align: center; font-weight: 700; color: var(--secondary-color); min-height: 40px; display: flex; align-items: center; justify-content: center;">-</div>
+            <button class="btn-kick-player" style="position: static; width: 32px; height: 32px;" onclick="removeCustomRow('${rowId}')">×</button>
+        `;
+    } else {
+        // Manual Mode: Input for Result instead of Display
+        row.innerHTML = `
+            <input type="text" class="custom-term-input" placeholder="Frage / Begriff" style="flex: 2; padding: 8px;">
+            <input type="text" class="custom-manual-result-input" placeholder="Antwort" style="flex: 1; padding: 8px; font-weight:700; color:var(--secondary-color); text-align:center;">
+            <button class="btn-kick-player" style="position: static; width: 32px; height: 32px;" onclick="removeCustomRow('${rowId}')">×</button>
+            <div class="custom-result-display hidden"></div> <!-- Hidden sync target -->
+        `;
+    }
+
+    list.appendChild(row);
+
+    const inputs = row.querySelectorAll('input');
+    inputs.forEach(input => {
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                handleCustomInput(input, row);
+                input.blur();
+            }
+        });
+        input.addEventListener('blur', (e) => {
+            handleCustomInput(input, row);
+        });
+    });
+}
+
+function removeCustomRow(id) {
+    const row = document.getElementById(`row-${id}`);
+    if (row) row.remove();
+    updateCustomCount();
+}
+
+function handleCustomInput(input, row) {
+    let term = row.querySelector('.custom-term-input').value.trim();
+    const resultDisplay = row.querySelector('.custom-result-display');
+    const manualResultInput = row.querySelector('.custom-manual-result-input');
+    
+    if (customMode === 'auto') {
+        // Prettify input: replace * with · and / with :
+        term = term.replace(/\*/g, '·').replace(/\//g, ':');
+        row.querySelector('.custom-term-input').value = term;
+
+        row.querySelector('.custom-term-input').style.borderColor = '';
+        resultDisplay.style.color = 'var(--secondary-color)';
+
+        if (!term) {
+            resultDisplay.textContent = '-';
+            updateCustomCount();
+            return;
+        }
+
+        try {
+            const sanitizedTerm = term.replace(/·/g, '*').replace(/:/g, '/').replace(/×/g, '*').replace(/÷/g, '/');
+            if (/[^0-9+\-*/().\s]/.test(sanitizedTerm)) throw new Error();
+            const result = eval(sanitizedTerm);
+
+            if (isNaN(result) || !isFinite(result)) throw new Error();
+
+            resultDisplay.textContent = result;
+
+            if (result < 1 || result > 90) {
+                resultDisplay.textContent = 'Range!';
+                resultDisplay.style.color = 'var(--danger)';
+                row.querySelector('.custom-term-input').style.borderColor = 'var(--danger)';
+            }
+
+            const allResults = Array.from(document.querySelectorAll('.custom-result-display'))
+                .map(el => el.textContent)
+                .filter(t => t !== '-' && t !== 'Range!' && t !== 'Double!' && t !== '?');
+            
+            const count = allResults.filter(r => r === result.toString()).length;
+            if (count > 1) {
+                resultDisplay.textContent = 'Double!';
+                resultDisplay.style.color = 'var(--danger)';
+                row.querySelector('.custom-term-input').style.borderColor = 'var(--danger)';
+            }
+            sortCustomRows();
+        } catch (e) {
+            resultDisplay.textContent = '?';
+            resultDisplay.style.color = 'var(--text-muted)';
+        }
+    } else {
+        // MANUAL MODE
+        const result = manualResultInput.value.trim();
+        resultDisplay.textContent = result || '-'; // Sync display for counting logic
+        
+        manualResultInput.style.borderColor = '';
+        if (result) {
+            // Check for duplicates in manual results
+            const allResults = Array.from(document.querySelectorAll('.custom-manual-result-input'))
+                .map(el => el.value.trim())
+                .filter(t => t !== "");
+            
+            const count = allResults.filter(r => r.toLowerCase() === result.toLowerCase()).length;
+            if (count > 1) {
+                manualResultInput.style.borderColor = 'var(--danger)';
+            }
+        }
+    }
+
+    updateCustomCount();
+}
+
+function sortCustomRows() {
+    if (customMode !== 'auto') return; // Only sort automatically calculated math
+
+    const list = document.getElementById('custom-problems-list');
+    const rows = Array.from(list.querySelectorAll('.custom-problem-row'));
+    
+    rows.sort((a, b) => {
+        const resA = parseFloat(a.querySelector('.custom-result-display').textContent) || 999;
+        const resB = parseFloat(b.querySelector('.custom-result-display').textContent) || 999;
+        return resA - resB;
+    });
+
+    rows.forEach(row => list.appendChild(row));
+}
+
+function updateCustomCount() {
+    let validCount = 0;
+    if (customMode === 'auto') {
+        validCount = Array.from(document.querySelectorAll('.custom-result-display'))
+            .filter(el => {
+                const val = parseFloat(el.textContent);
+                return !isNaN(val) && val >= 1 && val <= 90;
+            }).length;
+    } else {
+        validCount = Array.from(document.querySelectorAll('.custom-manual-result-input'))
+            .filter(el => el.value.trim() !== "").length;
+    }
+    
+    const countEl = document.getElementById('custom-count');
+    if (countEl) {
+        countEl.textContent = validCount;
+        countEl.style.color = validCount >= 15 ? 'var(--success)' : 'var(--primary-color)';
+    }
+}
+
+async function saveAndCreateCustomGame() {
+    const rows = Array.from(document.querySelectorAll('.custom-problem-row'));
+    const pool = [];
+    let hasError = false;
+
+    rows.forEach(row => {
+        const term = row.querySelector('.custom-term-input').value.trim();
+        let result;
+
+        if (customMode === 'auto') {
+            const resultText = row.querySelector('.custom-result-display').textContent;
+            result = parseFloat(resultText);
+            if (term && (isNaN(result) || result < 1 || result > 90 || resultText === 'Double!')) {
+                hasError = true;
+            }
+        } else {
+            result = row.querySelector('.custom-manual-result-input').value.trim();
+            if (term && !result) hasError = true;
+        }
+
+        if (term && result) {
+            pool.push({ term, result, drawn: false });
+        }
+    });
+
+    if (hasError) return alert("Einige Aufgaben haben Fehler oder fehlende Antworten.");
+    if (pool.length < 15) return alert("Bitte erstelle mindestens 15 gültige Aufgaben.");
+
+    // Start Game as Host
+    clearSession();
+    isHost = true;
+    const nameInput = document.getElementById('player-name');
+    playerName = (nameInput ? nameInput.value : "") || "Host";
+    localStorage.setItem('bingolator_player_name', playerName);
+    gameId = Math.random().toString(36).substring(2, 6).toUpperCase();
+    
+    const settings = {
+        opType: 'custom',
+        range: customMode === 'auto' ? 'custom' : 'text'
+    };
+
+    try {
+        const gameRef = database.ref('games/' + gameId);
+        await gameRef.set({
+            status: 'WAITING',
+            hostName: playerName,
+            settings: settings,
+            pool: pool,
+            players: {},
+            createdAt: firebase.database.ServerValue.TIMESTAMP
+        });
+        
+        gameRef.onDisconnect().remove();
+        hideModal('custom-problems-modal');
+        setupLobbyListener();
+        switchView('waiting-room-view');
+        updateLobbyUI();
+        saveSession();
+    } catch (err) {
+        console.error("Custom Host error:", err);
+        alert("Fehler: " + err.message);
+    }
+}
+
+window.removeCustomRow = removeCustomRow;
+
+async function exportToJSON() {
+    const rows = Array.from(document.querySelectorAll('.custom-problem-row'));
+    const data = rows.map(row => {
+        const term = row.querySelector('.custom-term-input').value.trim();
+        let result;
+        if (customMode === 'auto') {
+            result = row.querySelector('.custom-result-display').textContent;
+            if (result === '-' || result === '?' || result === 'Range!' || result === 'Double!') result = undefined;
+        } else {
+            result = row.querySelector('.custom-manual-result-input').value.trim();
+        }
+        return { term, result };
+    }).filter(item => item.term !== "");
+
+    if (data.length === 0) return alert("Keine Aufgaben zum Exportieren vorhanden.");
+    // ... rest of exportToJSON ...
+
+    const jsonContent = JSON.stringify(data, null, 2);
+
+    // Try to use the modern File System Access API for "Save As" dialog
+    if ('showSaveFilePicker' in window) {
+        try {
+            const handle = await window.showSaveFilePicker({
+                suggestedName: 'bingolator_aufgaben.json',
+                types: [{
+                    description: 'JSON File',
+                    accept: { 'application/json': ['.json'] },
+                }],
+            });
+            const writable = await handle.createWritable();
+            await writable.write(jsonContent);
+            await writable.close();
+        } catch (err) {
+            console.error("Save cancelled or failed", err);
+        }
+    } else {
+        // Fallback for older browsers
+        const blob = new Blob([jsonContent], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'bingolator_aufgaben.json';
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+}
+
+function importFromPaste() {
+    const area = document.getElementById('json-import-area');
+    if (!area || !area.value.trim()) return alert("Bitte füge zuerst JSON-Code ein.");
+
+    try {
+        const data = JSON.parse(area.value);
+        if (!Array.isArray(data)) throw new Error("JSON muss ein Array sein.");
+        
+        loadProblemsIntoUI(data);
+        hideModal('import-json-modal');
+        area.value = '';
+    } catch (e) {
+        alert("Fehler beim Parsen des JSON: " + e.message);
+    }
+}
+
+function handleFileUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const data = JSON.parse(e.target.result);
+            if (!Array.isArray(data)) throw new Error("JSON muss ein Array sein.");
+            
+            loadProblemsIntoUI(data);
+            hideModal('import-json-modal');
+            event.target.value = ''; // Reset input
+        } catch (err) {
+            alert("Fehler beim Lesen der Datei: " + err.message);
+        }
+    };
+    reader.readAsText(file);
+}
+
+function loadProblemsIntoUI(data) {
+    const list = document.getElementById('custom-problems-list');
+    if (!list) return;
+
+    // Clear and fill
+    list.innerHTML = '';
+    data.forEach(item => {
+        if (item && typeof item.term === 'string') {
+            const rowId = Date.now() + Math.random();
+            const row = document.createElement('div');
+            row.className = 'custom-problem-row';
+            row.id = `row-${rowId}`;
+            row.style = 'display: flex; gap: 10px; align-items: center; margin-bottom: 10px; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; animation: slideIn 0.2s ease-out;';
+            
+            if (customMode === 'auto') {
+                row.innerHTML = `
+                    <input type="text" class="custom-term-input" placeholder="z.B. 12 + 8" style="flex: 2; padding: 8px;" value="${item.term}">
+                    <div class="custom-result-display" style="flex: 1; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 6px; text-align: center; font-weight: 700; color: var(--secondary-color); min-height: 40px; display: flex; align-items: center; justify-content: center;">-</div>
+                    <button class="btn-kick-player" style="position: static; width: 32px; height: 32px;" onclick="removeCustomRow('${rowId}')">×</button>
+                `;
+            } else {
+                row.innerHTML = `
+                    <input type="text" class="custom-term-input" placeholder="Frage / Begriff" style="flex: 2; padding: 8px;" value="${item.term}">
+                    <input type="text" class="custom-manual-result-input" placeholder="Antwort" style="flex: 1; padding: 8px; font-weight:700; color:var(--secondary-color); text-align:center;" value="${item.result || ''}">
+                    <button class="btn-kick-player" style="position: static; width: 32px; height: 32px;" onclick="removeCustomRow('${rowId}')">×</button>
+                    <div class="custom-result-display hidden"></div>
+                `;
+            }
+
+            list.appendChild(row);
+
+            // Add Listeners
+            const termInput = row.querySelector('.custom-term-input');
+            if (termInput) {
+                 termInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        handleCustomInput(termInput, row);
+                        termInput.blur();
+                    }
+                });
+                 termInput.addEventListener('blur', () => handleCustomInput(termInput, row));
+            }
+            
+            if (customMode !== 'auto') {
+                const manualInput = row.querySelector('.custom-manual-result-input');
+                if (manualInput) {
+                    manualInput.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') {
+                            handleCustomInput(manualInput, row);
+                            manualInput.blur();
+                        }
+                    });
+                    manualInput.addEventListener('blur', () => handleCustomInput(manualInput, row));
+                }
+            }
+
+            // Initial calculation/validation for each row
+            if (termInput) handleCustomInput(termInput, row);
+        }
+    });
+
+    // Add empty rows if less than 15
+    const currentCount = list.querySelectorAll('.custom-problem-row').length;
+    for(let i=currentCount; i<15; i++) {
+        addCustomRow();
+    }
+    
+    updateCustomCount();
+    if (customMode === 'auto') sortCustomRows();
 }
 
 /**
@@ -630,6 +1105,8 @@ function initGameScreen(data) {
         if (resEl) {
             resEl.textContent = "Bereit?";
             resEl.className = 'huge-term-display ready-state';
+            resEl.style.fontSize = ""; // Reset custom size
+            resEl.style.color = "";    // Reset custom color
         }
         
         const termEl = document.getElementById('host-current-term');
@@ -670,7 +1147,17 @@ function initGameScreen(data) {
 
 async function hostDrawNext() {
     const available = currentGameData.pool.filter(p => !p.drawn);
-    if (available.length === 0) return alert("Alle Zahlen gezogen!");
+    if (available.length === 0) {
+        const resEl = document.getElementById('host-current-result');
+        const termEl = document.getElementById('host-current-term');
+        if (resEl) {
+            resEl.textContent = "ALLE GEZOGEN";
+            resEl.style.fontSize = "8vh";
+            resEl.style.color = "var(--warning)";
+        }
+        if (termEl) termEl.textContent = "Spiel beendet";
+        return;
+    }
 
     const problem = available[Math.floor(Math.random() * available.length)];
     const poolIndex = currentGameData.pool.findIndex(p => p.term === problem.term);
@@ -739,7 +1226,51 @@ function renderBingoCard(card) {
             grid.appendChild(cell);
         });
     });
+    
+    // Adjust font sizes after render
+    setTimeout(resizeBingoText, 0);
 }
+
+function resizeBingoText() {
+    const cells = document.querySelectorAll('.bingo-cell:not(.empty)');
+    if (cells.length === 0) return;
+
+    cells.forEach(cell => {
+        // 1. Start very small
+        let size = 10;
+        cell.style.fontSize = size + 'px';
+        
+        // 2. Measure max available space (safe zone)
+        // Leave a small buffer (e.g. 4px padding total)
+        const maxWidth = cell.clientWidth - 4;
+        const maxHeight = cell.clientHeight - 4;
+        
+        if (maxWidth <= 0 || maxHeight <= 0) return; // Not visible yet
+
+        // 3. Grow Loop: Increase size until it ALMOST fills the box
+        // Limit max size to prevent massive single digits (e.g. 60px cap)
+        const maxFontSize = Math.min(maxHeight * 0.7, 80); 
+
+        while (size < maxFontSize) {
+            // Tentatively increase
+            cell.style.fontSize = (size + 1) + 'px';
+            
+            // Check if it overflowed
+            if (cell.scrollHeight > maxHeight || cell.scrollWidth > maxWidth) {
+                // Revert to last safe size and stop
+                cell.style.fontSize = size + 'px';
+                break;
+            }
+            
+            size++;
+        }
+    });
+}
+
+window.addEventListener('resize', () => {
+    resizeBingoText();
+    // Orientation check is separate
+});
 
 function handleCellClick(value, cell, r, c) {
     if (playerState.lives <= 0) return;
@@ -810,7 +1341,7 @@ function generateProblemPool(settings) {
         }
 
         res = op==='+'?a+b : op==='-'?a-b : op==='*'?a*b : a/b;
-        term = `${a} ${op.replace('*','×').replace('/','÷')} ${b}`;
+        term = `${a} ${op.replace('*','·').replace('/',':')} ${b}`;
         
         if (res > 0 && !seenResults.has(res)) {
             seenResults.add(res);
@@ -821,82 +1352,152 @@ function generateProblemPool(settings) {
 }
 
 function generateLottoCard(pool) {
-    const allResults = pool.map(p => p.result);
+    // 1. Get unique results from the pool
+    let uniquePoolResults = [...new Set(pool.map(p => p.result))];
+    
+    // Check if results are primarily numbers
+    const isNumeric = uniquePoolResults.every(r => !isNaN(parseFloat(r)) && isFinite(r));
+    
+    if (isNumeric) {
+        uniquePoolResults = uniquePoolResults.map(r => parseFloat(r)).sort((a, b) => a - b);
+    } else {
+        // Text mode: just shuffle or keep as is, order doesn't matter for picking
+        uniquePoolResults.sort(() => Math.random() - 0.5);
+    }
+    
+    if (uniquePoolResults.length < 15) {
+        console.error("Not enough unique results in pool to generate a card.");
+        return Array.from({ length: 3 }, () => Array(9).fill(null));
+    }
+
+    // 2. Pick 15 unique results for this card (shuffled copy)
+    const selectedResults = [...uniquePoolResults]
+        .sort(() => Math.random() - 0.5)
+        .slice(0, 15);
+        
+    if (isNumeric) {
+        selectedResults.sort((a, b) => a - b);
+    } 
+    // For text, we do NOT sort selectedResults alphabetically if we want random distribution
+
+    // 3. Group selected results into 9 column bins dynamically
     const columnBins = Array.from({ length: 9 }, () => []);
     
-    allResults.forEach(res => {
-        let col = Math.floor(res / 10);
-        if (col > 8) col = 8;
-        columnBins[col].push(res);
-    });
-    columnBins.forEach(bin => bin.sort(() => Math.random() - 0.5));
+    if (isNumeric) {
+        const minVal = uniquePoolResults[0];
+        const maxVal = uniquePoolResults[uniquePoolResults.length - 1];
+        const totalRange = maxVal - minVal;
+
+        selectedResults.forEach(res => {
+            let col;
+            if (totalRange >= 80) {
+                col = Math.floor(res / 10);
+            } else {
+                col = totalRange === 0 ? 0 : Math.floor(((res - minVal) / (totalRange + 1)) * 9);
+            }
+            col = Math.max(0, Math.min(8, col));
+            columnBins[col].push(res);
+        });
+    } else {
+        // Text-based: Distribute RANDOMLY across 9 columns to ensure variety
+        // But ensure we don't overfill columns immediately
+        // Simple approach: Round-robin or random pick
+        const indices = [0,1,2,3,4,5,6,7,8, 0,1,2,3,4,5,6,7,8].slice(0, 15); // 15 slots
+        indices.sort(() => Math.random() - 0.5); // Shuffle slots
+        
+        selectedResults.forEach((res, i) => {
+            const col = indices[i];
+            columnBins[col].push(res);
+        });
+    }
+
+    // 4. Balance the bins
+    let unbalanced = true;
+    while(unbalanced) {
+        unbalanced = false;
+        for (let i = 0; i < 9; i++) {
+            while (columnBins[i].length > 3) {
+                const val = columnBins[i].pop();
+                // Find a column with space (<3)
+                // Prefer random distribution
+                const candidates = [0,1,2,3,4,5,6,7,8].filter(c => columnBins[c].length < 3);
+                
+                if (candidates.length > 0) {
+                    const target = candidates[Math.floor(Math.random() * candidates.length)];
+                    columnBins[target].push(val);
+                } else {
+                    // Critical failure (should not happen with 15 items and 9x3 slots)
+                    columnBins[i].push(val); // Put back to avoid data loss
+                    unbalanced = false; // Force break to avoid infinite loop
+                    break; 
+                }
+                unbalanced = true; // Re-check all columns
+            }
+        }
+    }
+    
+    if (isNumeric) {
+        columnBins.forEach(bin => bin.sort((a, b) => a - b));
+    } else {
+        // For text, no sorting within column needed, but maybe looks nicer? 
+        // Let's keep them random or sorted by length? Let's keep random.
+    }
 
     let card;
     let valid = false;
     let attempts = 0;
 
-    // Check for "Zerstreuung": max 2 adjacent empty cells in a row
-    function isWellDispersed(row) {
-        let currentEmpty = 0;
-        for (let cell of row) {
-            if (cell === null) {
-                currentEmpty++;
-                if (currentEmpty > 2) return false;
-            } else {
-                currentEmpty = 0;
-            }
-        }
-        return true;
-    }
-
+    // 5. Grid arrangement (3 rows, 9 columns, 5 per row)
     while (!valid && attempts < 2000) {
         attempts++;
         card = Array.from({ length: 3 }, () => Array(9).fill(null));
         let rowCounts = [0, 0, 0];
-        let colCounts = Array(9).fill(0);
-
-        // 1. Mandatory: Each column must have 1-2 numbers for perfect dispersal
-        // Target: 6 columns with 2 numbers, 3 columns with 1 number = 15 total
-        let colTargets = [1,1,1,2,2,2,2,2,2].sort(() => Math.random() - 0.5);
-
-        // 2. Try to fill according to targets and row constraints
         let success = true;
+
         for (let c = 0; c < 9; c++) {
-            let target = colTargets[c];
-            let placed = 0;
-            let rowIndices = [0, 1, 2].sort(() => Math.random() - 0.5);
-            
-            for (let r of rowIndices) {
-                if (placed < target && rowCounts[r] < 5) {
-                    card[r][c] = true;
+            const bin = columnBins[c];
+            if (bin.length === 0) continue;
+
+            const availableRows = [0, 1, 2].sort(() => Math.random() - 0.5);
+            let placedInCol = 0;
+            for (const r of availableRows) {
+                if (placedInCol < bin.length && rowCounts[r] < 5) {
+                    card[r][c] = true; 
                     rowCounts[r]++;
-                    colCounts[c]++;
-                    placed++;
+                    placedInCol++;
                 }
             }
-            if (placed < target) { success = false; break; }
+            if (placedInCol < bin.length) {
+                success = false;
+                break;
+            }
         }
 
         if (success && rowCounts.every(count => count === 5)) {
-            // Check horizontal dispersal
-            if (card.every(row => isWellDispersed(row))) {
-                valid = true;
-            }
+            valid = true;
         }
     }
 
-    // Replace placeholders with real values
-    for (let r = 0; r < 3; r++) {
+    if (valid) {
         for (let c = 0; c < 9; c++) {
-            if (card[r][c] === true) {
-                if (columnBins[c].length > 0) {
-                    card[r][c] = columnBins[c].pop();
-                } else {
-                    card[r][c] = rand(c * 10, (c * 10) + 9) || 1;
-                }
+            const bin = columnBins[c];
+            const activeRows = [];
+            for (let r = 0; r < 3; r++) {
+                if (card[r][c] === true) activeRows.push(r);
             }
+            activeRows.sort((a, b) => a - b);
+            activeRows.forEach((r, i) => {
+                card[r][c] = bin[i];
+            });
         }
+    } else {
+        // Fallback
+        card = Array.from({ length: 3 }, () => Array(9).fill(null));
+        selectedResults.forEach((val, i) => {
+            card[Math.floor(i/5)][i%9] = val;
+        });
     }
+
     return card;
 }
 

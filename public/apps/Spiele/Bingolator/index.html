@@ -120,12 +120,53 @@
                         <option value="1x1">Kleines Einmaleins</option>
                     </select>
                 </div>
+                <div class="setting-card" style="grid-column: span 2; display: flex; align-items: center; justify-content: center; background: rgba(16, 185, 129, 0.1);">
+                    <button class="btn-text" id="btn-open-custom-modal" style="color: var(--primary-color); font-weight: 700; text-decoration: none; width: 100%; height: 100%;">
+                        ➕ EIGENE AUFGABEN ERSTELLEN
+                    </button>
+                </div>
             </div>
 
             <div style="text-align: center; margin-top: 15px;">
                 <button class="btn-primary" id="btn-create-confirm" style="background: var(--success); width: 100%; border-radius: 50px;">
                     LOBBY ERSTELLEN
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CUSTOM PROBLEMS MODAL -->
+    <div id="custom-problems-modal" class="modal-overlay">
+        <div class="modal-content" style="width: 95%; max-width: 900px; height: 90vh; display: flex; flex-direction: column; padding-top: 20px;">
+            <button id="btn-close-custom-modal" class="btn-icon-close" style="top: 10px; right: 10px;">&times;</button>
+            
+            <!-- Tabs -->
+            <div class="modal-tabs" style="display: flex; gap: 5px; margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;">
+                <button class="tab-btn active" id="tab-auto" onclick="switchCustomTab('auto')">Auto-Mathe</button>
+                <button class="tab-btn" id="tab-manual" onclick="switchCustomTab('manual')">Manuelle Antworten</button>
+            </div>
+
+            <div style="text-align: center; margin-bottom: 15px;">
+                <h2 id="custom-modal-title" style="margin: 0; font-size: 1.5rem;">Eigene Mathe-Aufgaben</h2>
+                <p id="custom-modal-desc" style="color: var(--text-muted); font-size: 0.85rem;">Ergebnisse werden automatisch berechnet (1-90).</p>
+                
+                <div style="margin-top: 10px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                    <button class="btn-secondary" id="btn-open-import-modal" style="padding: 6px 12px; font-size: 0.8rem;">📥 Import</button>
+                    <button class="btn-secondary" id="btn-export-json" style="padding: 6px 12px; font-size: 0.8rem;">📤 Export</button>
+                </div>
+            </div>
+
+            <!-- List Area -->
+            <div id="custom-problems-list" style="flex: 1; overflow-y: auto; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 12px; margin-bottom: 15px;">
+                <!-- Rows injected here -->
+            </div>
+
+            <div style="display: flex; gap: 10px; justify-content: space-between; align-items: center; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1);">
+                <button class="btn-secondary" id="btn-add-custom-row" style="padding: 10px 20px;">+ Zeile</button>
+                <div style="color: var(--text-muted); font-size: 0.9rem;">
+                    Gültig: <span id="custom-count" style="color: var(--primary-color); font-weight: 700;">0</span> / 15+
+                </div>
+                <button class="btn-primary" id="btn-save-custom-problems" style="background: var(--success); padding: 10px 30px;">SPIEL STARTEN</button>
             </div>
         </div>
     </div>
@@ -389,6 +430,41 @@
             <div class="refresh-hint-box" style="margin-top: 25px; padding: 12px; background: rgba(16, 185, 129, 0.1); border-radius: 10px; display: inline-block; border: 1px solid rgba(16, 185, 129, 0.2);">
                 <p style="color: var(--success); font-weight: 500; margin: 0;">App bereits installiert? Schliesse diesen Tab und öffne die App!</p>
             </div>
+        </div>
+    </div>
+
+    <!-- JSON IMPORT MODAL -->
+    <div id="import-json-modal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 500px; width: 95%; text-align: center;">
+            <button id="btn-close-import-modal" class="btn-icon-close">&times;</button>
+            <h2 style="margin-bottom: 10px;">Aufgaben importieren</h2>
+            <p style="color: var(--text-muted); margin-bottom: 20px; font-size: 0.9rem;">Füge JSON-Code ein oder lade eine Datei hoch.</p>
+            
+            <div style="display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 20px;">
+                <div id="guide-container-auto" style="background: rgba(59, 130, 246, 0.1); padding: 12px; border-radius: 12px; border: 1px solid rgba(59, 130, 246, 0.2); text-align: left;">
+                    <p style="font-size: 0.75rem; margin-bottom: 8px; color: #e2e8f0;"><strong>Mathe-Guide:</strong> Für autom. Rechnungen (1-90).</p>
+                    <button class="btn-primary" id="btn-download-guide" style="width: 100%; font-size: 0.75rem; background: var(--accent-color); padding: 8px;">
+                        📖 Mathe-Anleitung herunterladen
+                    </button>
+                </div>
+                <div id="guide-container-manual" class="hidden" style="background: rgba(16, 185, 129, 0.1); padding: 12px; border-radius: 12px; border: 1px solid rgba(16, 185, 129, 0.2); text-align: left;">
+                    <p style="font-size: 0.75rem; margin-bottom: 8px; color: #e2e8f0;"><strong>Text-Guide:</strong> Für Quiz & Textantworten.</p>
+                    <button class="btn-primary" id="btn-download-text-guide" style="width: 100%; font-size: 0.75rem; background: var(--success); padding: 8px;">
+                        📖 Text-Anleitung herunterladen
+                    </button>
+                </div>
+            </div>
+
+            <textarea id="json-import-area" placeholder='[{"term":"Frage", "result":"Antwort"}]' 
+                style="width: 100%; height: 180px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 15px; font-family: monospace; border-radius: 12px; margin-bottom: 20px; resize: none; outline: none;"></textarea>
+            
+            <div style="display: flex; gap: 10px;">
+                <button class="btn-primary" id="btn-import-paste" style="flex: 2;">Text importieren</button>
+                <button class="btn-secondary" id="btn-upload-json" style="flex: 1; padding: 0; display: flex; align-items: center; justify-content: center;" title="Datei hochladen">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                </button>
+            </div>
+            <input type="file" id="json-file-input" accept=".json" style="display: none;">
         </div>
     </div>
 
