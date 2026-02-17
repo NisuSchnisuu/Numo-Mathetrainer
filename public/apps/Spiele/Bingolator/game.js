@@ -706,7 +706,9 @@ function startQrScanner() {
 
             if (code) {
                 stopQrScanner();
-                window.location.href = window.location.pathname + `?join=${code}`;
+                const currentUrl = new URL(window.location.href);
+                currentUrl.searchParams.set('join', code);
+                window.location.href = currentUrl.toString();
             } else {
                 alert("Ungültiger QR-Code");
             }

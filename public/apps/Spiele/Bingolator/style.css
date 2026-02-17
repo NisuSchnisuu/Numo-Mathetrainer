@@ -257,19 +257,9 @@ body {
 }
 
 /* --- QUICK JOIN MODE ("Join Only" Page) --- */
-.quick-join-mode .lobby-container {
-    flex-direction: column;
-    gap: 30px;
-    max-width: 500px;
-    padding: 40px;
-    text-align: center;
-}
+/* Removed .quick-join-mode .lobby-container overrides */
 
-.quick-join-mode .lobby-left {
-    align-items: center;
-    text-align: center;
-    margin-bottom: 0;
-}
+/* Removed .quick-join-mode .lobby-left overrides */
 
 /* Hide specific elements in Quick Join */
 .quick-join-mode #btn-open-create-modal,
@@ -303,14 +293,9 @@ body {
     padding: 16px;
 }
 
-.quick-join-mode .input-group {
-    width: 100% !important;
-    text-align: center !important;
-}
+/* Removed .quick-join-mode .input-group overrides */
 
-.quick-join-mode input {
-    text-align: center;
-}
+/* Removed .quick-join-mode input overrides */
 
 /* Button Styles */
 .btn-text {
