@@ -356,23 +356,27 @@ function initApp() {
 
     if (params.has('join')) {
         const code = params.get('join').toUpperCase();
-        const joinCodeInput = document.getElementById('join-code');
-        if (joinCodeInput) {
-            joinCodeInput.value = code;
-            joinCodeInput.disabled = true;
-        }
-        document.body.classList.add('quick-join-active');
-        const lobbyView = document.getElementById('lobby-view');
-        if (lobbyView) lobbyView.classList.add('quick-join-mode');
-
-        const btnEnter = document.getElementById('btn-enter');
-        if (btnEnter) btnEnter.textContent = `Beitreten`;
-
-        setTimeout(() => {
-            const pNameInput = document.getElementById('player-name');
-            if (pNameInput) pNameInput.focus();
-        }, 100);
+        enterJoinMode(code);
     }
+}
+
+function enterJoinMode(code) {
+    const joinCodeInput = document.getElementById('join-code');
+    if (joinCodeInput) {
+        joinCodeInput.value = code;
+        joinCodeInput.disabled = true;
+    }
+    document.body.classList.add('quick-join-active');
+    const lobbyView = document.getElementById('lobby-view');
+    if (lobbyView) lobbyView.classList.add('quick-join-mode');
+
+    const btnEnter = document.getElementById('btn-enter');
+    if (btnEnter) btnEnter.textContent = `Beitreten`;
+
+    setTimeout(() => {
+        const pNameInput = document.getElementById('player-name');
+        if (pNameInput) pNameInput.focus();
+    }, 100);
 }
 
 function bindEvents() {
@@ -706,9 +710,13 @@ function startQrScanner() {
 
             if (code) {
                 stopQrScanner();
+                // Update URL without reload
                 const currentUrl = new URL(window.location.href);
                 currentUrl.searchParams.set('join', code);
-                window.location.href = currentUrl.toString();
+                window.history.pushState({}, '', currentUrl);
+
+                // Trigger Join Mode manually
+                enterJoinMode(code);
             } else {
                 alert("Ungültiger QR-Code");
             }
