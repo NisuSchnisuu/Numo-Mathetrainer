@@ -46,6 +46,7 @@ Die Ausgabe muss ein gültiges JSON-Array von Objekten sein.
 1.  **Ergebnisbereich:** 1 bis 90 (Ganze Zahlen).
 2.  **Einzigartigkeit:** Jedes **Ergebnis** darf nur **einmal** vorkommen (z.B. nicht zweimal `20` als Ergebnis).
 3.  **Symbole:** Nutze `+`, `-`, `·` (oder `*`), `:` (oder `/`).
+49: 4.  **Brüche:** Formatiere Brüche als `x/y` (z.B. `1/4`). Das Frontend rendert diese automatisch **vertikal** mit Bruchstrich.
 
 ### Für Text/Quiz-Modus:
 1.  **Kurze Antworten:** Das `"result"` sollte sehr kurz sein (1-2 Wörter), damit es in die Bingo-Kachel passt.

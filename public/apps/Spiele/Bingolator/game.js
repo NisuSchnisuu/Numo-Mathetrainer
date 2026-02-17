@@ -87,6 +87,24 @@ async function getSavedGame(name) {
 
 // --- Helper Functions ---
 
+function formatTerm(term) {
+    if (!term) return "";
+    // Regex for basic fraction:  number / number  (allowing optional spaces)
+    // Matches:  1/2,  12 / 4, etc.
+    // Does NOT match:  1/2/3, text/text (unless digits)
+    // We want to be careful not to break date-like strings if they appear in text mode, but for math mode it's safe.
+    // Let's assume a fraction is strictly Digits / Digits for now.
+
+    const fractionRegex = /(\d+)\s*\/\s*(\d+)/g;
+
+    if (fractionRegex.test(term)) {
+        return term.replace(fractionRegex, (match, num, den) => {
+            return `<span class="fraction"><span class="numerator">${num}</span><span class="denominator">${den}</span></span>`;
+        });
+    }
+    return term;
+}
+
 function leaveGame() {
     isLeaving = true;
     window.location.href = window.location.pathname;
@@ -1665,7 +1683,7 @@ function updateHostDashboard(data) {
     const btnDraw = document.getElementById('btn-host-draw');
 
     if (resEl && problem) {
-        resEl.textContent = problem.term;
+        resEl.innerHTML = formatTerm(problem.term);
         resEl.className = 'huge-term-display';
         resizeHostTerm();
     } else if (resEl) {
@@ -1684,7 +1702,7 @@ function updateHostDashboard(data) {
             // Add 'active' class if this is the currently displayed problem
             const isActive = problem && item.id === problem.id;
             div.className = 'history-item clickable' + (isActive ? ' active-history' : '');
-            div.innerHTML = `<span class="h-term-only">${item.term}</span>`;
+            div.innerHTML = `<span class="h-term-only">${formatTerm(item.term)}</span>`;
 
             div.onclick = () => hostJumpToHistory(item);
 
@@ -2045,7 +2063,7 @@ function continueGame() {
 function updateProblemDisplay(problem) {
     const display = document.getElementById('currentTermDisplay');
     if (display) {
-        display.textContent = problem ? problem.term : "Warte auf Host...";
+        display.innerHTML = problem ? formatTerm(problem.term) : "Warte auf Host...";
     }
 }
 
