@@ -886,10 +886,17 @@ function addCustomRow(data = null) {
     });
 
     resultInput.addEventListener('input', () => {
-        // If user manually types, allow it. If valid math result was there, it's now considered "manual override"
+        // Just update count, DO NOT sort while typing
         updateCustomCount();
-        validateAndSortRows();
     });
+
+    resultInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            handleCustomInput(row, true); // skip auto-calc, just validate
+            resultInput.blur();
+        }
+    });
+
     resultInput.addEventListener('blur', () => {
         // Optional: Check if duplicate manual entry?
         handleCustomInput(row, true); // True = skip auto-calc, just validate
