@@ -121,6 +121,7 @@ function clearSession() {
         lives: 3,
         streak: 0,
         markedCount: 0,
+        wonRows: [], // Track completed rows
         card: null
     };
 }
@@ -145,6 +146,7 @@ function checkSession() {
         playerState.card = session.card;
         playerState.markedCount = session.markedCount || 0;
         playerState.lives = session.lives !== undefined ? session.lives : 3;
+        playerState.wonRows = session.wonRows || []; // Restore wonRows
         
         console.log("Restoring session:", gameId);
         
@@ -428,6 +430,9 @@ function bindEvents() {
     
     const btnCloseQr = document.getElementById('btn-close-qr');
     if (btnCloseQr) btnCloseQr.onclick = stopQrScanner;
+
+    const btnWinnerContinue = document.getElementById('btn-winner-continue');
+    if (btnWinnerContinue) btnWinnerContinue.onclick = continueGame;
 
     document.querySelectorAll('.modal-overlay').forEach(overlay => {
         overlay.onclick = (e) => {
@@ -1005,6 +1010,17 @@ function setupLobbyListener() {
         }
 
         updateProblemDisplay(data.currentProblem);
+
+        if (isHost && data.status === 'PLAYING') {
+            updateHostDashboard(data);
+        }
+
+        // WINNER LOGIC
+        if (data.winners) {
+            updateWinnerModal(data.winners);
+        } else {
+            hideModal('winner-modal');
+        }
     });
 }
 
@@ -1130,6 +1146,7 @@ function initGameScreen(data) {
             // New Game: Explicitly reset state
             playerState.lives = 3;
             playerState.markedCount = 0;
+            playerState.wonRows = []; // Reset wonRows
             playerState.card = generateLottoCard(data.pool);
             saveSession();
         }
@@ -1146,6 +1163,12 @@ function initGameScreen(data) {
 }
 
 async function hostDrawNext() {
+    // Safety check: only draw if we are at the latest state
+    const lastHistoryItem = currentGameData.history ? currentGameData.history[currentGameData.history.length - 1] : null;
+    const isLatest = !currentGameData.currentProblem || !lastHistoryItem || currentGameData.currentProblem.id === lastHistoryItem.id;
+
+    if (!isLatest) return; // Prevent drawing if viewing history
+
     const available = currentGameData.pool.filter(p => !p.drawn);
     if (available.length === 0) {
         const resEl = document.getElementById('host-current-result');
@@ -1173,31 +1196,69 @@ async function hostDrawNext() {
         history: history,
         pool: currentGameData.pool
     });
-
-    updateHostDrawDisplay(problem, history);
 }
 
-function updateHostDrawDisplay(problem, history) {
+function updateHostDashboard(data) {
+    const problem = data.currentProblem;
+    const history = data.history || [];
+    
     const resEl = document.getElementById('host-current-result');
     const termEl = document.getElementById('host-current-term');
+    const btnDraw = document.getElementById('btn-host-draw');
     
-    if (resEl) {
+    if (resEl && problem) {
         resEl.textContent = problem.term;
         resEl.className = 'huge-term-display';
         resizeHostTerm();
+    } else if (resEl) {
+        // Initial state
+        resEl.textContent = "Bereit?";
+        resEl.className = 'huge-term-display ready-state';
     }
-    if (termEl) termEl.textContent = "Aktuelle Aufgabe:";
+
+    if (termEl) termEl.textContent = problem ? "Aktuelle Aufgabe:" : "Klicke 'Zahl ziehen'";
 
     const historyEl = document.getElementById('host-history');
     if (historyEl) {
         historyEl.innerHTML = '';
         [...history].reverse().forEach(item => {
             const div = document.createElement('div');
-            div.className = 'history-item';
+            // Add 'active' class if this is the currently displayed problem
+            const isActive = problem && item.id === problem.id;
+            div.className = 'history-item clickable' + (isActive ? ' active-history' : ''); 
             div.innerHTML = `<span class="h-term-only">${item.term}</span>`;
+            
+            div.onclick = () => hostJumpToHistory(item);
+            
             historyEl.appendChild(div);
         });
     }
+
+    // Logic to Disable Draw Button if not at latest
+    if (btnDraw) {
+        const lastItem = history.length > 0 ? history[history.length - 1] : null;
+        const isAtHead = !problem || !lastItem || problem.id === lastItem.id;
+
+        if (isAtHead) {
+            btnDraw.disabled = false;
+            btnDraw.style.opacity = "1";
+            btnDraw.style.cursor = "pointer";
+            btnDraw.textContent = "Zahl ziehen";
+        } else {
+            btnDraw.disabled = true;
+            btnDraw.style.opacity = "0.5";
+            btnDraw.style.cursor = "not-allowed";
+            btnDraw.textContent = "Im Verlauf...";
+        }
+    }
+}
+
+async function hostJumpToHistory(problem) {
+    if (!isHost) return;
+    // No confirmation needed
+    await database.ref('games/' + gameId).update({
+        currentProblem: problem
+    });
 }
 
 function renderBingoCard(card) {
@@ -1303,9 +1364,12 @@ function handleCellClick(value, cell, r, c) {
         playerState.card[r][c] = { val: value, marked: true };
         saveSession();
 
+        checkForWins();
+        
+        // Optional: Keep full card win check if desired, but Row Win is now primary
         if (playerState.markedCount === 15) {
-            const winOverlay = document.getElementById('winOverlay');
-            if (winOverlay) winOverlay.classList.remove('hidden');
+             const winOverlay = document.getElementById('winOverlay');
+             if (winOverlay) winOverlay.classList.remove('hidden');
         }
     } else {
         cell.classList.add('error-shake');
@@ -1321,6 +1385,145 @@ function handleCellClick(value, cell, r, c) {
         }
     }
 }
+
+function checkForWins() {
+    if (!playerState.card) return;
+    
+    const card = playerState.card;
+    const newlyWonRows = [];
+
+    // Check each row (0, 1, 2)
+    for (let r = 0; r < 3; r++) {
+        // Skip if already won
+        if (playerState.wonRows.includes(r)) continue;
+
+        let filledCount = 0;
+        let slotCount = 0;
+
+        for (let c = 0; c < 9; c++) {
+            const cell = card[r][c];
+            if (cell !== null) {
+                slotCount++;
+                if (typeof cell === 'object' && cell.marked) {
+                    filledCount++;
+                }
+            }
+        }
+
+        // A row is won if all slots (5) are marked
+        if (slotCount > 0 && filledCount === slotCount) {
+            newlyWonRows.push(r);
+        }
+    }
+
+    if (newlyWonRows.length > 0) {
+        // Update local state
+        playerState.wonRows.push(...newlyWonRows);
+        saveSession();
+
+        // Push to Firebase
+        database.ref('games/' + gameId + '/winners/' + playerId).set({
+            name: playerName,
+            card: playerState.card,
+            rows: playerState.wonRows, // Send all won rows
+            timestamp: firebase.database.ServerValue.TIMESTAMP
+        });
+    }
+}
+
+function updateWinnerModal(winners) {
+    const modal = document.getElementById('winner-modal');
+    const list = document.getElementById('winner-list');
+    const previewContainer = document.getElementById('winner-card-preview');
+    const btnContinue = document.getElementById('btn-winner-continue');
+    const waitMsg = document.getElementById('winner-wait-msg');
+    
+    if (!modal || !list) return;
+
+    list.innerHTML = '';
+    
+    // Sort winners by timestamp
+    const sortedWinners = Object.values(winners).sort((a,b) => (a.timestamp || 0) - (b.timestamp || 0));
+
+    sortedWinners.forEach(winner => {
+        const chip = document.createElement('div');
+        chip.className = 'winner-chip';
+        chip.innerHTML = `<span>🏆</span> ${winner.name}`;
+        
+        if (isHost) {
+            chip.onclick = () => {
+                // Highlight selected
+                document.querySelectorAll('.winner-chip').forEach(c => c.classList.remove('selected'));
+                chip.classList.add('selected');
+                
+                // Show card
+                if (previewContainer) {
+                    previewContainer.style.display = 'block';
+                    document.getElementById('preview-player-name').textContent = winner.name;
+                    renderPreviewCard(winner.card, winner.rows);
+                }
+            };
+        }
+        
+        list.appendChild(chip);
+    });
+
+    if (isHost) {
+        if (btnContinue) btnContinue.classList.remove('hidden');
+        if (waitMsg) waitMsg.classList.add('hidden');
+    } else {
+        if (btnContinue) btnContinue.classList.add('hidden');
+        if (waitMsg) waitMsg.classList.remove('hidden');
+    }
+
+    showModal('winner-modal');
+}
+
+function renderPreviewCard(card, winningRows) {
+    const grid = document.getElementById('preview-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+
+    // Handle potential Firebase object-instead-of-array structure
+    // We assume 3 rows, 9 columns fixed.
+    for (let r = 0; r < 3; r++) {
+        const row = card && card[r] ? card[r] : {}; // Handle missing rows
+        
+        for (let c = 0; c < 9; c++) {
+            let cellData = row[c]; // Might be undefined if null in Firebase
+            
+            let val = null;
+            let isMarked = false;
+
+            if (cellData !== undefined && cellData !== null) {
+                if (typeof cellData === 'object') {
+                    val = cellData.val;
+                    isMarked = cellData.marked;
+                } else {
+                    val = cellData;
+                }
+            }
+
+            const cell = document.createElement('div');
+            cell.className = 'bingo-cell-preview' + (val === null ? ' empty' : '') + (isMarked ? ' marked' : '');
+            
+            // Highlight winning row cells
+            if (winningRows && winningRows.includes(r) && val !== null) {
+                cell.style.borderColor = '#fff';
+                cell.style.boxShadow = '0 0 10px #fff';
+            }
+
+            if (val !== null) cell.textContent = val;
+            grid.appendChild(cell);
+        }
+    }
+}
+
+function continueGame() {
+    if (!isHost) return;
+    database.ref('games/' + gameId + '/winners').remove();
+}
+
 
 function updateProblemDisplay(problem) {
     const display = document.getElementById('currentTermDisplay');
