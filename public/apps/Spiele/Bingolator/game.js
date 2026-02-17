@@ -1184,6 +1184,7 @@ function updateHostDrawDisplay(problem, history) {
     if (resEl) {
         resEl.textContent = problem.term;
         resEl.className = 'huge-term-display';
+        resizeHostTerm();
     }
     if (termEl) termEl.textContent = "Aktuelle Aufgabe:";
 
@@ -1227,8 +1228,8 @@ function renderBingoCard(card) {
         });
     });
     
-    // Adjust font sizes after render
-    setTimeout(resizeBingoText, 0);
+    // Adjust font sizes after render (robust sequence)
+    triggerResizeSequence();
 }
 
 function resizeBingoText() {
@@ -1236,41 +1237,61 @@ function resizeBingoText() {
     if (cells.length === 0) return;
 
     cells.forEach(cell => {
-        // 1. Start very small
-        let size = 10;
+        cell.style.whiteSpace = 'nowrap'; // Ensure single line
+        cell.style.fontSize = '10px'; // Reset to measure bounds
+        
+        const w = cell.clientWidth - 10; // Safety buffer
+        const h = cell.clientHeight - 4;
+        
+        if (w <= 0 || h <= 0) return;
+
+        // Start at height-based max (e.g. 70% of tile height)
+        let size = Math.floor(h * 0.7); 
         cell.style.fontSize = size + 'px';
-        
-        // 2. Measure max available space (safe zone)
-        // Leave a small buffer (e.g. 4px padding total)
-        const maxWidth = cell.clientWidth - 4;
-        const maxHeight = cell.clientHeight - 4;
-        
-        if (maxWidth <= 0 || maxHeight <= 0) return; // Not visible yet
 
-        // 3. Grow Loop: Increase size until it ALMOST fills the box
-        // Limit max size to prevent massive single digits (e.g. 60px cap)
-        const maxFontSize = Math.min(maxHeight * 0.7, 80); 
-
-        while (size < maxFontSize) {
-            // Tentatively increase
-            cell.style.fontSize = (size + 1) + 'px';
-            
-            // Check if it overflowed
-            if (cell.scrollHeight > maxHeight || cell.scrollWidth > maxWidth) {
-                // Revert to last safe size and stop
-                cell.style.fontSize = size + 'px';
-                break;
-            }
-            
-            size++;
+        // Shrink if overflowing
+        while ((cell.scrollWidth > w || cell.scrollHeight > h) && size > 8) {
+            size--;
+            cell.style.fontSize = size + 'px';
         }
     });
 }
 
-window.addEventListener('resize', () => {
+// Trigger resize multiple times to catch layout settle
+function triggerResizeSequence() {
     resizeBingoText();
-    // Orientation check is separate
-});
+    resizeHostTerm();
+    setTimeout(() => { resizeBingoText(); resizeHostTerm(); }, 50);
+    setTimeout(() => { resizeBingoText(); resizeHostTerm(); }, 200);
+    setTimeout(() => { resizeBingoText(); resizeHostTerm(); }, 500);
+}
+
+function resizeHostTerm() {
+    const el = document.getElementById('host-current-result');
+    if (!el) return;
+    
+    // Skip if in ready state (Keep default CSS size)
+    if (el.classList.contains('ready-state')) return;
+    
+    const parent = el.parentElement;
+    if (!parent) return;
+
+    // Reset to base max size to measure
+    el.style.fontSize = '18vh';
+    el.style.whiteSpace = 'nowrap';
+    
+    // Get constraints
+    const maxWidth = parent.clientWidth * 0.90; // Leave 10% buffer
+    let currentSize = parseFloat(window.getComputedStyle(el).fontSize);
+
+    // Iteratively shrink until it fits
+    while (el.scrollWidth > maxWidth && currentSize > 20) {
+        currentSize *= 0.9; // Reduce by 10%
+        el.style.fontSize = `${currentSize}px`;
+    }
+}
+
+window.addEventListener('resize', triggerResizeSequence);
 
 function handleCellClick(value, cell, r, c) {
     if (playerState.lives <= 0) return;
@@ -1370,15 +1391,72 @@ function generateLottoCard(pool) {
         return Array.from({ length: 3 }, () => Array(9).fill(null));
     }
 
-    // 2. Pick 15 unique results for this card (shuffled copy)
-    const selectedResults = [...uniquePoolResults]
-        .sort(() => Math.random() - 0.5)
-        .slice(0, 15);
-        
+    // 2. Pick 15 unique results for this card
+    const selectedResults = [];
+
     if (isNumeric) {
+        // STRICT MODE for Numbers: Max 2 per column bin
+        // First, group ALL unique results into potential bins
+        const allBins = Array.from({ length: 9 }, () => []);
+        const minVal = uniquePoolResults[0];
+        const maxVal = uniquePoolResults[uniquePoolResults.length - 1];
+        const totalRange = maxVal - minVal;
+
+        uniquePoolResults.forEach(res => {
+            let col;
+            if (totalRange >= 80) {
+                // Classic Bingo: 0-9, 10-19, ..., 80-90
+                col = Math.floor(res / 10);
+                if (col > 8) col = 8;
+            } else {
+                // Dynamic Bins for smaller ranges (e.g. 1-20)
+                col = totalRange === 0 ? 0 : Math.floor(((res - minVal) / (totalRange + 1)) * 9);
+            }
+            col = Math.max(0, Math.min(8, col));
+            allBins[col].push(res);
+        });
+
+        // Now pick up to 2 from each bin until we have 15
+        const binIndices = [0,1,2,3,4,5,6,7,8];
+        const pickedPerBin = Array(9).fill(0);
+        
+        // Pass 1: Try to get at least 1 from as many bins as possible first
+        // Shuffle bin order for randomness
+        let shuffledBins = [...binIndices].sort(() => Math.random() - 0.5);
+        
+        // Try to pick 15 numbers total
+        let count = 0;
+        
+        // Loop until we have 15 or run out of options
+        while (count < 15) {
+            // Find bins that have items left AND count < 2 (strict)
+            let candidates = shuffledBins.filter(i => allBins[i].length > 0 && pickedPerBin[i] < 2);
+            
+            if (candidates.length === 0) {
+                // Relax rule: allow > 2 if strict fails (rare fallback)
+                candidates = shuffledBins.filter(i => allBins[i].length > 0);
+                if (candidates.length === 0) break; // Total exhaustion
+            }
+            
+            // Pick a random bin from candidates
+            const target = candidates[Math.floor(Math.random() * candidates.length)];
+            const valIndex = Math.floor(Math.random() * allBins[target].length);
+            const val = allBins[target].splice(valIndex, 1)[0];
+            
+            selectedResults.push(val);
+            pickedPerBin[target]++;
+            count++;
+        }
+        
         selectedResults.sort((a, b) => a - b);
-    } 
-    // For text, we do NOT sort selectedResults alphabetically if we want random distribution
+
+    } else {
+        // Text Mode: Simple random pick
+        const shuffled = [...uniquePoolResults].sort(() => Math.random() - 0.5);
+        selectedResults.push(...shuffled.slice(0, 15));
+    }
+
+    // 3. Group selected results into 9 column bins dynamically
 
     // 3. Group selected results into 9 column bins dynamically
     const columnBins = Array.from({ length: 9 }, () => []);

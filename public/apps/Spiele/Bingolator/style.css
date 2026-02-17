@@ -679,14 +679,12 @@ body {
     border: 1px solid rgba(255, 255, 255, 0.1);
     box-shadow: 0 4px 10px rgba(0,0,0,0.3);
     overflow: hidden;
-    padding: 2px 4px; /* Minimal vertical padding, small horizontal buffer */
-    word-wrap: break-word;
-    word-break: break-word; 
-    hyphens: auto;
-    line-height: 1.1;
+    padding: 0 4px; 
+    white-space: nowrap; /* STRICTLY SINGLE LINE */
+    line-height: 1;
     width: 100%;
     height: 100%;
-    box-sizing: border-box; /* IMPORTANT for JS sizing */
+    box-sizing: border-box; 
 }
 
 .bingo-cell:hover:not(.empty):not(.marked) {
@@ -753,6 +751,9 @@ body {
     justify-content: center;
     padding: 5vh;
     background: #020617;
+    overflow: hidden; /* Force containment */
+    max-width: 100%;
+    position: relative; /* Anchor for absolute children */
 }
 
 .host-title {
@@ -768,8 +769,13 @@ body {
 
 .host-current-draw {
     text-align: center;
-    margin-bottom: 6vh;
+    /* margin-bottom removed to prevent push */
     width: 100%;
+    max-width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow: hidden; 
 }
 
 .big-term {
@@ -785,10 +791,12 @@ body {
     font-size: 18vh; 
     font-weight: 900;
     color: #f8fafc;
-    line-height: 1;
+    line-height: 1.25; /* Increased from 1 */
     text-shadow: 0 0 40px rgba(255, 255, 255, 0.1);
     word-break: break-word;
-    padding: 0 5vw;
+    padding: 0 5vw 2vh 5vw; /* Added bottom padding */
+    max-width: 100%;
+    white-space: nowrap;
 }
 
 .huge-term-display.ready-state {
@@ -797,6 +805,8 @@ body {
 }
 
 .btn-draw-large {
+    position: absolute;
+    bottom: 8vh;
     font-size: 3vh;
     padding: 3vh 12vw !important;
     border-radius: 100px !important;
