@@ -147,6 +147,8 @@ function saveSession() {
         card: playerState.card,
         markedCount: playerState.markedCount,
         lives: playerState.lives,
+        wonRows: playerState.wonRows,
+        wrongAnswers: playerState.wrongAnswers,
         lastActive: Date.now()
     };
     localStorage.setItem('bingolator_session', JSON.stringify(session));
@@ -159,7 +161,8 @@ function clearSession() {
         streak: 0,
         markedCount: 0,
         wonRows: [], // Track completed rows
-        card: null
+        card: null,
+        wrongAnswers: []
     };
 }
 
@@ -184,6 +187,7 @@ function checkSession() {
         playerState.markedCount = session.markedCount || 0;
         playerState.lives = session.lives !== undefined ? session.lives : 3;
         playerState.wonRows = session.wonRows || []; // Restore wonRows
+        playerState.wrongAnswers = session.wrongAnswers || [];
 
         console.log("Restoring session:", gameId);
 
@@ -192,6 +196,13 @@ function checkSession() {
 
         // Re-connect to game
         setupLobbyListener();
+
+        // Check if we need to show Redemption Modal
+        if (playerState.lives <= 0) {
+            setTimeout(() => {
+                initRedemptionModal();
+            }, 500);
+        }
 
         return true;
     } catch (e) {
@@ -1418,7 +1429,11 @@ async function rejoinGame() {
         if (playerData.lives !== undefined) playerState.lives = playerData.lives;
         if (playerData.markedCount !== undefined) playerState.markedCount = playerData.markedCount;
         if (playerData.streak !== undefined) playerState.streak = playerData.streak;
+        if (playerData.markedCount !== undefined) playerState.markedCount = playerData.markedCount;
+        if (playerData.streak !== undefined) playerState.streak = playerData.streak;
         if (playerData.wonRows) playerState.wonRows = playerData.wonRows || [];
+        // NEW: Restore wrongAnswers if they were synced (we need to sync them first!)
+        if (playerData.wrongAnswers) playerState.wrongAnswers = playerData.wrongAnswers || [];
 
         console.log("Restored player:", playerName);
 
@@ -1480,6 +1495,7 @@ function setupLobbyListener() {
 
         const players = data.players || {};
         updatePlayerList(players);
+        checkAndShowHostToasts(players); // NEW: Check for notifications
 
         const statusText = document.getElementById('lobby-status-text');
         if (statusText) {
@@ -1732,38 +1748,64 @@ function updateHostDashboard(data) {
     const termEl = document.getElementById('host-current-term');
     const btnDraw = document.getElementById('btn-host-draw');
 
-    if (resEl && problem) {
-        resEl.innerHTML = formatTerm(problem.term);
-        resEl.className = 'huge-term-display';
-        resizeHostTerm();
-    } else if (resEl) {
-        // Initial state
-        resEl.textContent = "Bereit?";
-        resEl.className = 'huge-term-display ready-state';
+    if (resEl) {
+        const currentId = problem ? problem.id : 'ready';
+        const prevId = resEl.dataset.lastId;
+
+        // ONLY Update if the problem ID has changed
+        if (currentId !== prevId) {
+            if (problem) {
+                resEl.innerHTML = formatTerm(problem.term);
+                resEl.className = 'huge-term-display';
+                // Slight delay to ensure DOM render before measuring
+                requestAnimationFrame(() => resizeHostTerm());
+            } else {
+                resEl.textContent = "Bereit?";
+                resEl.className = 'huge-term-display ready-state';
+            }
+            resEl.dataset.lastId = currentId;
+        }
     }
 
     if (termEl) termEl.textContent = problem ? "Aktuelle Aufgabe:" : "Klicke 'Zahl ziehen'";
 
     const historyEl = document.getElementById('host-history');
     if (historyEl) {
-        historyEl.innerHTML = '';
-        [...history].reverse().forEach(item => {
-            const div = document.createElement('div');
-            // Add 'active' class if this is the currently displayed problem
-            const isActive = problem && item.id === problem.id;
-            div.className = 'history-item clickable' + (isActive ? ' active-history' : '');
-            div.innerHTML = `<span class="h-term-only">${formatTerm(item.term)}</span>`;
+        // Detect if history content actually changed to prevent flickering
+        // We use a simple JSON string comparison for now, or just length + last ID
+        const currentHistoryIds = history.map(h => h.id).join(',');
 
-            div.onclick = () => hostJumpToHistory(item);
+        // Also check if the "active" item changed (based on current problem ID)
+        // FORCE STRING COMPARISON: Dataset values are always strings
+        const currentProblemId = (problem && problem.id !== undefined) ? String(problem.id) : '';
+        const prevHistoryIds = historyEl.dataset.historyIds || '';
+        const prevProblemId = historyEl.dataset.problemId || '';
 
-            historyEl.appendChild(div);
-        });
+        if (currentHistoryIds !== prevHistoryIds || currentProblemId !== prevProblemId) {
+            historyEl.innerHTML = '';
+            [...history].reverse().forEach(item => {
+                const div = document.createElement('div');
+                // Add 'active' class if this is the currently displayed problem
+                const isActive = problem && String(item.id) === currentProblemId;
+                div.className = 'history-item clickable' + (isActive ? ' active-history' : '');
+                div.innerHTML = `<span class="h-term-only">${formatTerm(item.term)}</span>`;
+
+                div.onclick = () => hostJumpToHistory(item);
+
+                historyEl.appendChild(div);
+            });
+
+            // Update markers
+            historyEl.dataset.historyIds = currentHistoryIds;
+            historyEl.dataset.problemId = currentProblemId;
+        }
     }
 
     // Logic to Disable Draw Button if not at latest
     if (btnDraw) {
         const lastItem = history.length > 0 ? history[history.length - 1] : null;
-        const isAtHead = !problem || !lastItem || problem.id === lastItem.id;
+        // String conversion for safe comparison
+        const isAtHead = !problem || !lastItem || String(problem.id) === String(lastItem.id);
 
         if (isAtHead) {
             btnDraw.disabled = false;
@@ -1916,7 +1958,10 @@ function resizeHostTerm() {
 window.addEventListener('resize', triggerResizeSequence);
 
 function handleCellClick(value, cell, r, c) {
-    if (playerState.lives <= 0) return;
+    if (playerState.lives <= 0) {
+        initRedemptionModal();
+        return;
+    }
     if (!currentGameData || !currentGameData.currentProblem || cell.classList.contains('marked')) return;
 
     let updated = false;
@@ -1945,12 +1990,28 @@ function handleCellClick(value, cell, r, c) {
         playerState.streak = 0; // Reset Streak
         updated = true;
 
+        // TRACK WRONG ANSWER
+        if (!playerState.wrongAnswers) playerState.wrongAnswers = [];
+
+        // Avoid duplicates if clicked multiple times
+        const currentProblem = currentGameData.currentProblem;
+        const exists = playerState.wrongAnswers.find(w => w.id === currentProblem.id);
+
+        if (!exists) {
+            playerState.wrongAnswers.push({
+                id: currentProblem.id,
+                term: currentProblem.term,
+                correctResult: currentProblem.result
+            });
+        }
+
         updatePlayerHearts();
         updatePlayerStreak(); // Update UI
         saveSession();
 
         if (playerState.lives === 0) {
-            showModal('gameOverOverlay');
+            // showModal('gameOverOverlay'); // OLD way
+            initRedemptionModal(); // NEW way
         }
     }
 
@@ -1961,7 +2022,9 @@ function handleCellClick(value, cell, r, c) {
             lives: playerState.lives,
             streak: playerState.streak,
             markedCount: playerState.markedCount,
-            wonRows: playerState.wonRows || []
+            wonRows: playerState.wonRows || [],
+            almostBingo: playerState.almostBingo || null,
+            wrongAnswers: playerState.wrongAnswers || [] // SYNC THIS
         });
     }
 }
@@ -2014,6 +2077,119 @@ function checkForWins() {
             showModal('rowOverlay');
         }
     }
+
+    // CHECK FOR "ALMOST THERE" (1 away)
+    const almostStatus = checkAlmostThere();
+    if (almostStatus) {
+        // We found a line with 1 missing.
+        // Sync this to Firebase so Host knows.
+        // We add a timestamp so the host can distinct new events if needed, 
+        // though strictly we just need the current state.
+        playerState.almostBingo = almostStatus;
+    } else {
+        playerState.almostBingo = null;
+    }
+}
+
+function checkAlmostThere() {
+    if (!playerState.card) return null;
+    const card = playerState.card;
+
+    // 1. Check Rows
+    for (let r = 0; r < 3; r++) {
+        if (playerState.wonRows.includes(r)) continue; // Already won
+
+        let blocked = false;
+        let missing = [];
+
+        for (let c = 0; c < 9; c++) {
+            const cell = card[r][c];
+            if (cell !== null) {
+                // If it's a number slot
+                if (typeof cell === 'object' && cell.marked) {
+                    // Marked, good.
+                } else {
+                    // Not marked.
+                    let val = (typeof cell === 'object') ? cell.val : cell;
+                    missing.push(val);
+                }
+            }
+        }
+
+        // If exactly 1 missing, return it
+        if (missing.length === 1) {
+            return { type: 'ROW', row: r, missing: missing[0] };
+        }
+    }
+
+    // 2. Check Full House (Super Bingo)
+    // Distance to 15
+    if (playerState.markedCount === 14) {
+        // Find the single missing number on the whole card
+        for (let r = 0; r < 3; r++) {
+            for (let c = 0; c < 9; c++) {
+                const cell = card[r][c];
+                if (cell !== null) {
+                    const isMarked = (typeof cell === 'object' && cell.marked);
+                    if (!isMarked) {
+                        let val = (typeof cell === 'object') ? cell.val : cell;
+                        return { type: 'FULL', missing: val };
+                    }
+                }
+            }
+        }
+    }
+
+    return null;
+}
+
+// --- HOST TOASTS ---
+const shownToasts = new Set(); // Track "PlayerID-MissingNum" to avoid spam
+
+function checkAndShowHostToasts(players) {
+    if (!isHost) return;
+
+    Object.entries(players).forEach(([pid, p]) => {
+        if (p.almostBingo) {
+            const signature = `${pid}-${p.almostBingo.missing}`;
+
+            if (!shownToasts.has(signature)) {
+                // Show it
+                showHostToast(p.name, p.almostBingo.missing, p.almostBingo.type === 'FULL');
+                shownToasts.add(signature);
+
+                // Cleanup old signatures (optional, simple cache)
+                if (shownToasts.size > 50) shownToasts.clear();
+            }
+        }
+    });
+}
+
+function showHostToast(playerName, missingNum, isSuper) {
+    const container = document.getElementById('host-notification-container');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    toast.className = 'host-toast' + (isSuper ? ' super-bingo' : '');
+
+    // Icon
+    const icon = isSuper ? '🏆' : '🔥';
+    const msg = isSuper
+        ? `<strong>${playerName}</strong> braucht noch <strong style="font-size:1.2em; border:1px solid white; padding:0 4px; border-radius:4px;">${missingNum}</strong> für SUPERBINGO!`
+        : `<strong>${playerName}</strong> braucht noch <strong style="font-size:1.2em; border:1px solid white; padding:0 4px; border-radius:4px;">${missingNum}</strong> für eine Reihe!`;
+
+    toast.innerHTML = `<span style="font-size: 1.5rem;">${icon}</span> <span>${msg}</span>`;
+
+    container.appendChild(toast);
+
+    // Sound effect (subtle)
+    // const audio = new Audio('assets/notification.mp3'); audio.play().catch(e=>{});
+
+    // Remove after 5 seconds
+    setTimeout(() => {
+        toast.style.animation = 'fadeOutRight 0.5s ease-in forwards';
+        setTimeout(() => toast.remove(), 500);
+    }, 5000);
 }
 
 function updateWinnerModal(winners) {
@@ -2437,3 +2613,222 @@ document.addEventListener('DOMContentLoaded', () => {
 
     initApp();
 });
+
+// --- REDEMPTION LOGIC ---
+
+function initRedemptionModal() {
+    const list = document.getElementById('redemption-tasks-container');
+    if (!list) return;
+    list.innerHTML = '';
+
+    // Safety check: if no wrong answers tracked (legacy/error), give 3 random math tasks
+    let tasks = playerState.wrongAnswers || [];
+    if (tasks.length === 0) {
+        // Fallback: This shouldn't happen normally if logic works
+        tasks = [
+            { term: '1 + 1', correctResult: '? (2)' },
+            { term: '2 + 2', correctResult: '? (4)' },
+            { term: '3 + 3', correctResult: '? (6)' }
+        ];
+    }
+
+    // Render Tasks
+    tasks.forEach((task, index) => {
+        const card = document.createElement('div');
+        card.className = 'redemption-task-card';
+        card.dataset.index = index;
+
+        // Determine mode based on correctResult type
+        // If it's a number, use number input. If string, use dropdown.
+        const correctVal = task.correctResult;
+        const isTextMode = isNaN(parseFloat(correctVal)); // More robust check
+
+        let contextHtml = '';
+
+        if (isTextMode) {
+            // Dropdown for text answers
+            // Get unique answers from current game pool
+            // Ensure pool exists, otherwise fallback
+            const pool = currentGameData && currentGameData.pool ? currentGameData.pool : [];
+            const allAnswers = [...new Set(pool.map(p => p.result))].sort();
+
+            let optionsHtml = allAnswers.map(ans =>
+                `<div class="redemption-option" onclick="selectRedemptionOption('${index}', '${ans.replace(/'/g, "\\'")}')">${ans}</div>`
+            ).join('');
+
+            contextHtml = `
+                <div class="redemption-input-group">
+                    <input type="text" 
+                           class="redemption-input filter-input" 
+                           placeholder="Antwort suchen..." 
+                           oninput="filterRedemptionDropdown('${index}', this.value)"
+                           onfocus="toggleRedemptionDropdown('${index}', true)"
+                           autocomplete="off">
+                    <div id="dropdown-${index}" class="redemption-dropdown">
+                        ${optionsHtml}
+                    </div>
+                    <input type="hidden" id="answer-${index}" class="final-answer">
+                </div>
+             `;
+        } else {
+            // Simple Math Input
+            contextHtml = `
+                <div class="redemption-input-group">
+                    <input type="number" id="answer-${index}" class="redemption-input final-answer" placeholder="Ergebnis?">
+                </div>
+            `;
+        }
+
+        card.innerHTML = `
+            <span class="redemption-term">${formatTerm(task.term)}</span>
+            ${contextHtml}
+        `;
+
+        list.appendChild(card);
+    });
+
+    // Bind global click to close dropdowns
+    // Use a named function to avoid duplicates if possible, or just rely on new listener
+    window.removeEventListener('click', closeRedemptionDropdowns); // Cleanup old if any
+    window.addEventListener('click', closeRedemptionDropdowns);
+
+    // Bind Check Button
+    const checkBtn = document.getElementById('btn-check-redemption');
+    if (checkBtn) checkBtn.onclick = checkRedemptionAnswers;
+
+    showModal('redemption-modal');
+}
+
+function closeRedemptionDropdowns(event) {
+    if (!event.target.matches('.filter-input')) {
+        document.querySelectorAll('.redemption-dropdown').forEach(d => d.classList.remove('visible'));
+        // Remove high z-index from all cards
+        document.querySelectorAll('.redemption-task-card').forEach(c => c.classList.remove('active-z'));
+    }
+}
+
+function toggleRedemptionDropdown(index, forceShow = false) {
+    const dropdown = document.getElementById(`dropdown-${index}`);
+    if (!dropdown) return;
+
+    // Hide others and reset z-index
+    document.querySelectorAll('.redemption-dropdown').forEach(d => {
+        if (d !== dropdown) d.classList.remove('visible');
+    });
+    document.querySelectorAll('.redemption-task-card').forEach(c => c.classList.remove('active-z'));
+
+    // Toggle current
+    const card = document.querySelector(`.redemption-task-card[data-index="${index}"]`);
+
+    if (forceShow) {
+        dropdown.classList.add('visible');
+        if (card) card.classList.add('active-z');
+
+        // If input is empty, ensure all options are visible
+        const input = card.querySelector('.filter-input');
+        if (input && input.value === '') {
+            filterRedemptionDropdown(index, '');
+        }
+    } else {
+        dropdown.classList.toggle('visible');
+        if (dropdown.classList.contains('visible')) {
+            if (card) card.classList.add('active-z');
+        } else {
+            if (card) card.classList.remove('active-z');
+        }
+    }
+}
+
+function selectRedemptionOption(index, value) {
+    const input = document.querySelector(`.redemption-task-card[data-index="${index}"] .filter-input`);
+    const hidden = document.getElementById(`answer-${index}`);
+    const dropdown = document.getElementById(`dropdown-${index}`);
+    const card = document.querySelector(`.redemption-task-card[data-index="${index}"]`);
+
+    if (input) input.value = value;
+    if (hidden) hidden.value = value;
+    if (dropdown) dropdown.classList.remove('visible');
+    if (card) card.classList.remove('active-z');
+}
+
+function filterRedemptionDropdown(index, text) {
+    const dropdown = document.getElementById(`dropdown-${index}`);
+    if (!dropdown) return;
+
+    dropdown.classList.add('visible');
+    // Ensure z-index is active
+    const card = document.querySelector(`.redemption-task-card[data-index="${index}"]`);
+    if (card) card.classList.add('active-z');
+
+    const options = dropdown.querySelectorAll('.redemption-option');
+    const filter = text.toLowerCase();
+
+    let hasMatch = false;
+    options.forEach(opt => {
+        const txt = opt.textContent.toLowerCase();
+        if (filter === '' || txt.includes(filter)) {
+            opt.style.display = "block";
+            hasMatch = true;
+        } else {
+            opt.style.display = "none";
+        }
+    });
+}
+
+function checkRedemptionAnswers() {
+    const list = document.getElementById('redemption-tasks-container');
+    const cards = list.querySelectorAll('.redemption-task-card'); let allCorrect = true;
+
+    const tasks = playerState.wrongAnswers || [];
+
+    cards.forEach((card, i) => {
+        const task = tasks[i];
+
+        // Get value
+        let val = '';
+        const simpleInput = card.querySelector('input[type="number"]');
+        if (simpleInput) {
+            val = simpleInput.value.trim();
+        } else {
+            const hidden = card.querySelector('.final-answer');
+            val = hidden ? hidden.value.trim() : '';
+        }
+
+        // Compare (permissive)
+        const isMatch = (val.toString().toLowerCase() === task.correctResult.toString().toLowerCase());
+
+        if (isMatch) {
+            card.classList.remove('wrong');
+            card.classList.add('correct');
+        } else {
+            card.classList.remove('correct');
+            card.classList.add('wrong');
+            allCorrect = false;
+        }
+    });
+
+    if (allCorrect) {
+        // Success!
+        setTimeout(() => {
+            playerState.lives = 3;
+            playerState.wrongAnswers = []; // Clear debt
+
+            // Sync
+            if (playerId && gameId) {
+                database.ref(`games/${gameId}/players/${playerId}`).update({
+                    lives: 3
+                });
+            }
+            saveSession();
+
+            hideModal('redemption-modal');
+            updatePlayerHearts();
+            showModal('redemption-success-modal');
+        }, 800);
+    } else {
+        // Shake anim
+        const btn = document.getElementById('btn-check-redemption');
+        btn.classList.add('error-shake');
+        setTimeout(() => btn.classList.remove('error-shake'), 500);
+    }
+}
