@@ -90,7 +90,8 @@ async function getSavedGame(name) {
 
 function switchCustomTab(mode) {
     customMode = mode;
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    // Remove active class from all tabs (both compact and standard if any exist)
+    document.querySelectorAll('.tab-btn, .tab-btn-compact').forEach(b => b.classList.remove('active'));
     const activeTab = document.getElementById(`tab-${mode}`);
     if (activeTab) activeTab.classList.add('active');
 
@@ -585,10 +586,11 @@ async function saveCurrentCustomGame() {
 
     try {
         await saveGameToDB(name, data, customMode);
-        alert("Spiel '" + name + "' gespeichert!");
+        // Custom Success Modal
         hideModal('save-game-name-modal');
         nameInput.value = "";
         refreshSavedGamesUI();
+        showModal('save-success-modal');
     } catch (e) {
         console.error("DB Error", e);
         alert("Fehler beim Speichern: " + e.message);
@@ -649,65 +651,75 @@ async function loadSelectedSavedGame() {
         const game = await getSavedGame(name);
         if (!game) return;
 
-        // Switch to Custom Modal Logic
-        // We are currently in "Create Game" modal, we want to load this into the "Custom Problems" modal
-        // But checking flow: The user selects here, then clicks "NEUE AUFGABEN ERSTELLEN" (which is actually 'Edit/View Custom')?
-        // OR: Should we load it directly into the "Create Game" context?
-
-        // Current flow seems to be: 
-        // 1. User sets up game in "Create Game Modal"
-        // 2. Either chooses standard range OR custom
-        // 3. If custom, goes to "Custom Problems Modal"
-
-        // Let's pre-fill the custom problems array so when they open the modal, it's there.
         customProblems = game.problems || [];
-        customMode = game.mode || 'auto'; // Default to auto if missing
+        customMode = game.mode || 'auto';
 
-        // Update the "Edit" button text to show loaded state?
+        // Update the "Edit" button text to show loaded state
         const btnCustom = document.getElementById('btn-open-custom-modal');
         if (btnCustom) {
-            btnCustom.textContent = `BEARBEITEN: ${game.name}`;
-            btnCustom.style.background = "rgba(16, 185, 129, 0.2)";
-            btnCustom.style.border = "1px solid var(--success)";
+            // Update the span inside or text directly?
+            // We replaced text with structure, so we need to find the span
+            const span = btnCustom.querySelector('span');
+            if (span) {
+                span.textContent = `BEARBEITEN: ${game.name}`;
+            } else {
+                // Fallback if structure changed unexpectedly
+                btnCustom.textContent = `BEARBEITEN: ${game.name}`;
+            }
+            // Add subtle active indicator styles if needed, though class handles most
+            btnCustom.style.borderColor = "var(--primary-color)";
+            btnCustom.style.background = "rgba(16, 185, 129, 0.1)";
         }
-
-        // We also need to PREPARE the custom modal so when opened it renders correct data
-        // We will interact with openCustomModal logic.
-        // openCustomModal currently resets `customProblems = []`. We should change that.
 
     } catch (e) {
         console.error("Error loading game", e);
     }
 }
 
+let gameToDelete = null;
+
 async function deleteSelectedSavedGame() {
     const select = document.getElementById('my-saved-games');
     const name = select.value;
     if (!name) return;
 
-    if (confirm(`Möchtest du "${name}" wirklich löschen?`)) {
-        try {
-            const db = await initDB();
-            const tx = db.transaction(STORE_NAME, 'readwrite');
-            const store = tx.objectStore(STORE_NAME);
-            store.delete(name);
+    // Show Custom Confirm Modal
+    gameToDelete = name;
+    document.getElementById('delete-game-name').textContent = name;
+    showModal('delete-confirm-modal');
 
-            tx.oncomplete = () => {
-                refreshSavedGamesUI();
-                alert("Gelöscht.");
+    // Bind confirmation click (once)
+    const confirmBtn = document.getElementById('btn-confirm-delete-action');
+    confirmBtn.onclick = executeDelete;
+}
 
-                // Reset Edit button
-                const btnCustom = document.getElementById('btn-open-custom-modal');
-                if (btnCustom) {
-                    btnCustom.textContent = "NEUE AUFGABEN ERSTELLEN";
-                    btnCustom.style.background = "";
-                    btnCustom.style.border = "";
-                }
-                customProblems = [];
-            };
-        } catch (e) {
-            console.error("Delete error", e);
-        }
+async function executeDelete() {
+    if (!gameToDelete) return;
+
+    try {
+        const db = await initDB();
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        store.delete(gameToDelete);
+
+        tx.oncomplete = () => {
+            hideModal('delete-confirm-modal');
+            refreshSavedGamesUI();
+
+            // Reset Edit button
+            const btnCustom = document.getElementById('btn-open-custom-modal');
+            if (btnCustom) {
+                const span = btnCustom.querySelector('span');
+                if (span) span.textContent = "EIGENE AUFGABEN ERSTELLEN";
+
+                btnCustom.style.borderColor = "";
+                btnCustom.style.background = "";
+            }
+            customProblems = [];
+            gameToDelete = null;
+        };
+    } catch (e) {
+        console.error("Delete error", e);
     }
 }
 
