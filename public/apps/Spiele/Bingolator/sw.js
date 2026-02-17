@@ -1,11 +1,12 @@
-const CACHE_NAME = 'bingolator-v1';
+const CACHE_NAME = 'bingolator-v2';
 const ASSETS = [
     './',
     './index.html',
     './style.css',
     './game.js',
     './assets/bingo_logo-192x192.png',
-    './assets/bingo_logo-512x512.png'
+    './assets/bingo_logo-512x512.png',
+    './assets/Numo-logo-192x192.png'
 ];
 
 // Install Event
