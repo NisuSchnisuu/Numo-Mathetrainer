@@ -279,8 +279,33 @@ function initApp() {
     // Bind UI Events
     bindEvents();
 
-    // Check for active session
+    // Check for active session (Player)
     if (checkSession()) return;
+
+    // CHECK FOR ACTIVE HOST SESSION
+    const savedHostGame = localStorage.getItem('bingolator_host_game_id');
+    if (savedHostGame) {
+        // Verify existence
+        database.ref('games/' + savedHostGame).once('value').then(snapshot => {
+            if (snapshot.exists()) {
+                // Show Rejoin UI
+                const btnCreate = document.getElementById('btn-open-create-modal');
+                if (btnCreate) btnCreate.classList.add('hidden');
+                
+                const rejoinContainer = document.getElementById('host-rejoin-container');
+                if (rejoinContainer) rejoinContainer.classList.remove('hidden');
+                
+                // Add Listeners
+                const btnRejoin = document.getElementById('btn-host-rejoin');
+                if (btnRejoin) btnRejoin.onclick = () => hostRejoinGame(savedHostGame);
+                
+                const btnDelete = document.getElementById('btn-host-delete');
+                if (btnDelete) btnDelete.onclick = () => hostDeleteGame(savedHostGame);
+            } else {
+                localStorage.removeItem('bingolator_host_game_id');
+            }
+        });
+    }
 
     // 4. Auto-Show Install Modal if requested via URL
     const params = new URLSearchParams(window.location.search);
@@ -536,8 +561,10 @@ async function createNewGame() {
             createdAt: firebase.database.ServerValue.TIMESTAMP
         });
 
-        // Auto-cleanup if Host disconnects
-        gameRef.onDisconnect().remove();
+        // Persistent Game: Do NOT remove on disconnect
+        // gameRef.onDisconnect().remove();
+        
+        localStorage.setItem('bingolator_host_game_id', gameId);
 
         hideModal('create-game-modal');
         setupLobbyListener();
@@ -548,6 +575,41 @@ async function createNewGame() {
         console.error("Host error:", err);
         alert("Fehler: " + err.message);
     }
+}
+
+async function hostRejoinGame(savedId) {
+    clearSession();
+    gameId = savedId;
+    isHost = true;
+    playerName = localStorage.getItem('bingolator_player_name') || "Host";
+
+    const snapshot = await database.ref('games/' + gameId).once('value');
+    if (!snapshot.exists()) {
+        alert("Spiel nicht mehr vorhanden.");
+        localStorage.removeItem('bingolator_host_game_id');
+        location.reload();
+        return;
+    }
+
+    setupLobbyListener();
+    
+    const data = snapshot.val();
+    if (data.status === 'PLAYING') {
+        switchView('game-view');
+        initGameScreen(data);
+    } else {
+        switchView('waiting-room-view');
+    }
+    updateLobbyUI();
+    saveSession();
+}
+
+async function hostDeleteGame(savedId) {
+    if (!confirm("Möchtest du das laufende Spiel wirklich löschen?")) return;
+    
+    await database.ref('games/' + savedId).remove();
+    localStorage.removeItem('bingolator_host_game_id');
+    location.reload();
 }
 
 /**
