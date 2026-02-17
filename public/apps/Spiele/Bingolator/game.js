@@ -750,13 +750,46 @@ async function createNewGame() {
     localStorage.setItem('bingolator_player_name', playerName);
     gameId = Math.random().toString(36).substring(2, 6).toUpperCase();
 
-    const settings = {
-        opType: document.getElementById('opType').value,
-        range: document.getElementById('range').value
-    };
-    localStorage.setItem('bingolator_settings', JSON.stringify(settings));
+    // CHECK FOR CUSTOM SAVED GAME SELECTION
+    const savedGameSelect = document.getElementById('my-saved-games');
+    const selectedGameName = savedGameSelect ? savedGameSelect.value : "";
 
-    const pool = generateProblemPool(settings);
+    let pool = [];
+    let settings = {};
+
+    if (selectedGameName) {
+        try {
+            const game = await getSavedGame(selectedGameName);
+            if (game && game.problems && game.problems.length > 0) {
+                // Map stored problems to pool format
+                pool = game.problems.map(p => ({
+                    term: p.term,
+                    result: p.result, // Keep original (number or string)
+                    drawn: false
+                }));
+                settings = {
+                    opType: 'custom',
+                    range: 'custom',
+                    gameName: selectedGameName
+                };
+            } else {
+                alert("Fehler: Ausgewähltes Spiel scheint leer zu sein.");
+                return;
+            }
+        } catch (e) {
+            console.error("Error loading custom game", e);
+            alert("Fehler beim Laden des Spiels.");
+            return;
+        }
+    } else {
+        // STANDARD GENERATION
+        settings = {
+            opType: document.getElementById('opType').value,
+            range: document.getElementById('range').value
+        };
+        localStorage.setItem('bingolator_settings', JSON.stringify(settings));
+        pool = generateProblemPool(settings);
+    }
 
     try {
         const gameRef = database.ref('games/' + gameId);
@@ -2143,205 +2176,237 @@ function generateProblemPool(settings) {
 
 function generateLottoCard(pool) {
     // 1. Get unique results from the pool
+    // Handle both object {result: ...} and raw values if ever mixed (should be uniform though)
     let uniquePoolResults = [...new Set(pool.map(p => p.result))];
 
-    // Check if results are primarily numbers
+    // Check if numeric
     const isNumeric = uniquePoolResults.every(r => !isNaN(parseFloat(r)) && isFinite(r));
-
-    if (isNumeric) {
-        uniquePoolResults = uniquePoolResults.map(r => parseFloat(r)).sort((a, b) => a - b);
-    } else {
-        // Text mode: just shuffle or keep as is, order doesn't matter for picking
-        uniquePoolResults.sort(() => Math.random() - 0.5);
-    }
 
     if (uniquePoolResults.length < 15) {
         console.error("Not enough unique results in pool to generate a card.");
         return Array.from({ length: 3 }, () => Array(9).fill(null));
     }
 
-    // 2. Pick 15 unique results for this card
-    const selectedResults = [];
-
     if (isNumeric) {
-        // STRICT MODE for Numbers: Max 2 per column bin
-        // First, group ALL unique results into potential bins
-        const allBins = Array.from({ length: 9 }, () => []);
-        const minVal = uniquePoolResults[0];
-        const maxVal = uniquePoolResults[uniquePoolResults.length - 1];
-        const totalRange = maxVal - minVal;
-
-        uniquePoolResults.forEach(res => {
-            let col;
-            if (totalRange >= 80) {
-                // Classic Bingo: 0-9, 10-19, ..., 80-90
-                col = Math.floor(res / 10);
-                if (col > 8) col = 8;
-            } else {
-                // Dynamic Bins for smaller ranges (e.g. 1-20)
-                col = totalRange === 0 ? 0 : Math.floor(((res - minVal) / (totalRange + 1)) * 9);
-            }
-            col = Math.max(0, Math.min(8, col));
-            allBins[col].push(res);
-        });
-
-        // Now pick up to 2 from each bin until we have 15
-        const binIndices = [0, 1, 2, 3, 4, 5, 6, 7, 8];
-        const pickedPerBin = Array(9).fill(0);
-
-        // Pass 1: Try to get at least 1 from as many bins as possible first
-        // Shuffle bin order for randomness
-        let shuffledBins = [...binIndices].sort(() => Math.random() - 0.5);
-
-        // Try to pick 15 numbers total
-        let count = 0;
-
-        // Loop until we have 15 or run out of options
-        while (count < 15) {
-            // Find bins that have items left AND count < 2 (strict)
-            let candidates = shuffledBins.filter(i => allBins[i].length > 0 && pickedPerBin[i] < 2);
-
-            if (candidates.length === 0) {
-                // Relax rule: allow > 2 if strict fails (rare fallback)
-                candidates = shuffledBins.filter(i => allBins[i].length > 0);
-                if (candidates.length === 0) break; // Total exhaustion
-            }
-
-            // Pick a random bin from candidates
-            const target = candidates[Math.floor(Math.random() * candidates.length)];
-            const valIndex = Math.floor(Math.random() * allBins[target].length);
-            const val = allBins[target].splice(valIndex, 1)[0];
-
-            selectedResults.push(val);
-            pickedPerBin[target]++;
-            count++;
-        }
-
-        selectedResults.sort((a, b) => a - b);
-
+        uniquePoolResults = uniquePoolResults.map(r => parseFloat(r)).sort((a, b) => a - b);
     } else {
-        // Text Mode: Simple random pick
-        const shuffled = [...uniquePoolResults].sort(() => Math.random() - 0.5);
-        selectedResults.push(...shuffled.slice(0, 15));
+        // Text mode: shuffle to allow random selection
+        uniquePoolResults.sort(() => Math.random() - 0.5);
     }
 
-    // 3. Group selected results into 9 column bins dynamically
+    // 2. Determine Columns Distribution (Min 1, Max 2 per column) => 6 cols with 2, 3 cols with 1
+    const colCounts = Array(9).fill(1); // Start with 1 everywhere
+    // Add 6 more items randomly to 6 distinct columns
+    const indicesForExtras = [0, 1, 2, 3, 4, 5, 6, 7, 8].sort(() => Math.random() - 0.5).slice(0, 6);
+    indicesForExtras.forEach(i => colCounts[i]++);
 
-    // 3. Group selected results into 9 column bins dynamically
+    // Total items needed: 15
+    const finalItems = [];
     const columnBins = Array.from({ length: 9 }, () => []);
 
-    if (isNumeric) {
-        const minVal = uniquePoolResults[0];
-        const maxVal = uniquePoolResults[uniquePoolResults.length - 1];
-        const totalRange = maxVal - minVal;
+    if (!isNumeric || uniquePoolResults.length < 40) {
+        // SMALL POOL or TEXT: Use Quantile/Random Distribution
+        // If numeric small pool (e.g. custom 15 items), we can't strict-bin by 1-10, 11-20 etc.
+        // Instead, just distribute the AVAILABLE numbers into columns evenly.
 
-        selectedResults.forEach(res => {
-            let col;
-            if (totalRange >= 80) {
-                col = Math.floor(res / 10);
-            } else {
-                col = totalRange === 0 ? 0 : Math.floor(((res - minVal) / (totalRange + 1)) * 9);
-            }
-            col = Math.max(0, Math.min(8, col));
-            columnBins[col].push(res);
-        });
-    } else {
-        // Text-based: Distribute RANDOMLY across 9 columns to ensure variety
-        // But ensure we don't overfill columns immediately
-        // Simple approach: Round-robin or random pick
-        const indices = [0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8].slice(0, 15); // 15 slots
-        indices.sort(() => Math.random() - 0.5); // Shuffle slots
+        let available = [...uniquePoolResults];
 
-        selectedResults.forEach((res, i) => {
-            const col = indices[i];
-            columnBins[col].push(res);
-        });
-    }
+        if (isNumeric) {
+            // Sort available, and split into 9 chunks?
+            // Or better: Assign specific picked numbers later?
+            // Strategy: Pick 15 numbers first? 
+            // If we have exactly 15, we must use all. 
+            // If we have 20, we pick 15.
 
-    // 4. Balance the bins
-    let unbalanced = true;
-    while (unbalanced) {
-        unbalanced = false;
-        for (let i = 0; i < 9; i++) {
-            while (columnBins[i].length > 3) {
-                const val = columnBins[i].pop();
-                // Find a column with space (<3)
-                // Prefer random distribution
-                const candidates = [0, 1, 2, 3, 4, 5, 6, 7, 8].filter(c => columnBins[c].length < 3);
+            // To maintain numeric order in columns:
+            // 1. Pick 15 items (randomly or uniformly?)
+            // If custom game < 40 items, assume we use all or most.
+            // Let's Just Pick 15 unique items first.
 
-                if (candidates.length > 0) {
-                    const target = candidates[Math.floor(Math.random() * candidates.length)];
-                    columnBins[target].push(val);
-                } else {
-                    // Critical failure (should not happen with 15 items and 9x3 slots)
-                    columnBins[i].push(val); // Put back to avoid data loss
-                    unbalanced = false; // Force break to avoid infinite loop
-                    break;
+            // If we have exactly 15, use them all.
+            // If > 15, pick 15 random ones? No, for "Bingo" feel, range spread is better.
+            // But for small custom sets, random is safer.
+
+            // Let's shuffle available and pick 15, then SORT them.
+            const picked = available.sort(() => Math.random() - 0.5).slice(0, 15);
+            if (isNumeric) picked.sort((a, b) => a - b);
+
+            // Now distribute 'picked' into the 9 columns according to colCounts
+            // colCounts is e.g. [2, 1, 2, 2, 1, ...] sum=15
+            // picked is sorted [1, 5, 8, 12, ... 90]
+
+            let currentIdx = 0;
+            for (let c = 0; c < 9; c++) {
+                const count = colCounts[c];
+                for (let k = 0; k < count; k++) {
+                    columnBins[c].push(picked[currentIdx++]);
                 }
-                unbalanced = true; // Re-check all columns
+            }
+        } else {
+            // Text: Just fill bins randomly based on counts
+            const availableShuffled = available.sort(() => Math.random() - 0.5);
+            let current = 0;
+            for (let c = 0; c < 9; c++) {
+                const count = colCounts[c];
+                for (let k = 0; k < count; k++) {
+                    if (current < availableShuffled.length) {
+                        columnBins[c].push(availableShuffled[current++]);
+                    }
+                }
+            }
+        }
+    } else {
+        // LARGE NUMERIC POOL (Standard 1x1 or large custom) -> Use Classic Ranges
+        // Goal: Pick items such that they fit the colCounts distribution.
+
+        // Define standard ranges
+        const getCol = (val) => {
+            // 1-9, 10-19, ..., 80+
+            if (val === 0) return 0; // standard 1x1 can have results like 4
+            let c = Math.floor(val / 10);
+            // Adjust: 1-10 goes to col 0? Usually 1-9 col0, 10-19 col1.
+            // Bingo logic: Col 0 (B) = 1-15... wait standard US bingo is 5x5.
+            // European 90-ball: 9 cols.
+            // Col 0: 1-9, Col 1: 10-19 ... Col 8: 80-90.
+            if (val >= 90) return 8; // Catch max
+            // If result is e.g. 100 (from 10x10), put in last col?
+            // Or scale based on max?
+            return Math.min(8, Math.floor((val - 1) / 10)); // 1-10 -> 0? No, 1-9->0.
+            // Let's stick to the previous range logic if possible, or dynamic.
+            // Previous logic: col = Math.floor(res/10).
+        };
+
+        // Group ALL available results into buckets
+        const allBuckets = Array.from({ length: 9 }, () => []);
+        const maxVal = uniquePoolResults[uniquePoolResults.length - 1];
+
+        uniquePoolResults.forEach(val => {
+            let c;
+            if (maxVal <= 90) {
+                c = val === 0 ? 0 : Math.floor(val / 10);
+                if (val === 90) c = 8; // 90 in last col
+            } else {
+                // Scale to 9 cols
+                c = Math.floor((val / (maxVal + 1)) * 9);
+            }
+            c = Math.max(0, Math.min(8, c));
+            allBuckets[c].push(val);
+        });
+
+        // Try to fulfill validCounts from these buckets
+        // bucket[i] needs colCounts[i] items.
+        // If not enough items in a bucket, we have a problem -> Fallback to Quantile method.
+
+        const possible = colCounts.every((req, i) => allBuckets[i].length >= req);
+
+        if (possible) {
+            // Great! Pick random items for each col
+            for (let c = 0; c < 9; c++) {
+                const bucket = allBuckets[c];
+                // Shuffle bucket
+                const shuffled = bucket.sort(() => Math.random() - 0.5);
+                const picked = shuffled.slice(0, colCounts[c]);
+                // Sort within column? Yes usually strict order in column
+                picked.sort((a, b) => a - b);
+                columnBins[c] = picked;
+            }
+        } else {
+            // Fallback: Quantile method (same as small pool)
+            console.log("Standard binning failed (buckets too empty), using quantile fallback.");
+            const picked = uniquePoolResults.sort(() => Math.random() - 0.5).slice(0, 15).sort((a, b) => a - b);
+            let currentIdx = 0;
+            for (let c = 0; c < 9; c++) {
+                for (let k = 0; k < colCounts[c]; k++) {
+                    columnBins[c].push(picked[currentIdx++]);
+                }
             }
         }
     }
 
-    if (isNumeric) {
-        columnBins.forEach(bin => bin.sort((a, b) => a - b));
-    } else {
-        // For text, no sorting within column needed, but maybe looks nicer? 
-        // Let's keep them random or sorted by length? Let's keep random.
-    }
+    // 3. Grid Construction
+    // We have columnBins filled with correct counts (sum 15).
+    // Now place them into the 3x9 grid (card).
+    // Rule: Max 5 items per row. (Implied by total 15, 3 rows? No, 5 per row is strict).
+    // We need to decide for each column WHICH rows get the cells.
+    // e.g. Col 0 has 2 items -> needs 2 rows. Col 1 has 1 item -> needs 1 row.
+    // Constraint: Sum of items in Row 0 must be 5. Row 1 must be 5. Row 2 must be 5.
 
-    let card;
-    let valid = false;
+    // Algorithm to assign rows:
+    // We have 9 cols. 
+    // cols with 2 items: 6 cols.
+    // cols with 1 item: 3 cols.
+    // Total cells = 6*2 + 3*1 = 15.
+    // Target row sums: 5, 5, 5.
+
+    // Let's assign row indices for each column.
+    // For a "2-item" column, we need 2 distinct rows (e.g. [0,1], [0,2], [1,2]).
+    // For a "1-item" column, we need 1 row (e.g. [0], [1], [2]).
+
+    // We can solve this randomly:
+    // Create a pool of row slots: 5x Row0, 5x Row1, 5x Row2. Total 15 slots.
+    // We iterate through columns 0..8.
+    // If col needs 2 items, we pick 2 distinct available row slots.
+    // If col needs 1 item, we pick 1 available row slot.
+    // Backtracking or randomized retry might be needed if we corner ourselves.
+
+    let card = null;
     let attempts = 0;
 
-    // 5. Grid arrangement (3 rows, 9 columns, 5 per row)
-    while (!valid && attempts < 2000) {
+    while (!card && attempts < 500) {
         attempts++;
-        card = Array.from({ length: 3 }, () => Array(9).fill(null));
-        let rowCounts = [0, 0, 0];
+        const tempCard = Array.from({ length: 3 }, () => Array(9).fill(null));
+        const rowSlots = [5, 5, 5]; // Remaining capacity
         let success = true;
 
-        for (let c = 0; c < 9; c++) {
-            const bin = columnBins[c];
-            if (bin.length === 0) continue;
+        // Shuffle column processing order to avoid bias
+        const colOrder = [0, 1, 2, 3, 4, 5, 6, 7, 8].sort(() => Math.random() - 0.5);
 
-            const availableRows = [0, 1, 2].sort(() => Math.random() - 0.5);
-            let placedInCol = 0;
-            for (const r of availableRows) {
-                if (placedInCol < bin.length && rowCounts[r] < 5) {
-                    card[r][c] = true;
-                    rowCounts[r]++;
-                    placedInCol++;
-                }
-            }
-            if (placedInCol < bin.length) {
+        for (const c of colOrder) {
+            const count = columnBins[c].length; // 1 or 2
+
+            // Available rows for this column (must have capacity > 0)
+            const validRows = [0, 1, 2].filter(r => rowSlots[r] > 0);
+
+            if (validRows.length < count) {
                 success = false;
                 break;
             }
+
+            // Pick 'count' rows randomly from validRows
+            const pickedRows = validRows.sort(() => Math.random() - 0.5).slice(0, count);
+
+            // Mark them
+            pickedRows.forEach(r => {
+                tempCard[r][c] = true; // Placeholder
+                rowSlots[r]--;
+            });
         }
 
-        if (success && rowCounts.every(count => count === 5)) {
-            valid = true;
+        if (success) {
+            // Final verification
+            if (rowSlots.every(s => s === 0)) {
+                card = tempCard;
+            }
         }
     }
 
-    if (valid) {
-        for (let c = 0; c < 9; c++) {
-            const bin = columnBins[c];
-            const activeRows = [];
-            for (let r = 0; r < 3; r++) {
-                if (card[r][c] === true) activeRows.push(r);
-            }
-            activeRows.sort((a, b) => a - b);
-            activeRows.forEach((r, i) => {
-                card[r][c] = bin[i];
-            });
+    if (!card) {
+        console.error("Failed to generate valid grid layout after attempts.");
+        return Array.from({ length: 3 }, () => Array(9).fill(null)); // Should not happen often
+    }
+
+    // 4. Fill values into the determined slots
+    for (let c = 0; c < 9; c++) {
+        const bin = columnBins[c]; // 1 or 2 values (sorted usually)
+        // Find which rows are active in this col
+        const activeRows = [];
+        for (let r = 0; r < 3; r++) {
+            if (card[r][c] === true) activeRows.push(r);
         }
-    } else {
-        // Fallback
-        card = Array.from({ length: 3 }, () => Array(9).fill(null));
-        selectedResults.forEach((val, i) => {
-            card[Math.floor(i / 5)][i % 9] = val;
+        // activeRows is sorted 0..2. bin is sorted value-wise.
+        // Assign sequentially
+        activeRows.forEach((r, i) => {
+            card[r][c] = bin[i];
         });
     }
 
