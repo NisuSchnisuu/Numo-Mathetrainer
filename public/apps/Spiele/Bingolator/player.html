@@ -8,15 +8,23 @@
 </head>
 <body>
     <!-- Overlays -->
-    <div id="gameOverOverlay" class="overlay hidden">
+    <div id="gameOverOverlay" class="modal-overlay">
         <h2 style="color: var(--danger);">AUSGESCHIEDEN</h2>
         <p class="description">Du hast keine Leben mehr. Du kannst aber noch zusehen!</p>
         <button class="btn btn-primary" onclick="location.reload()">Neustart</button>
     </div>
 
-    <div id="winOverlay" class="overlay hidden">
-        <h2 style="color: var(--success);">BINGO!</h2>
-        <p class="description">Du hast alle Zahlen auf deiner Karte gefunden!</p>
+
+
+    <div id="rowOverlay" class="modal-overlay">
+        <h2 style="color: var(--secondary-color);">REIHE VOLL!</h2>
+        <p class="description">Du hast eine Reihe geschafft!</p>
+        <button class="btn btn-primary" onclick="hideModal('rowOverlay')">Weiter spielen</button>
+    </div>
+
+    <div id="fullHouseOverlay" class="modal-overlay">
+        <h2 style="color: var(--success);">SUPER BINGO!</h2>
+        <p class="description">Du hast die ganze Karte voll!</p>
         <button class="btn btn-primary" onclick="location.reload()">Nochmal spielen</button>
     </div>
 
@@ -61,63 +69,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
     <script src="game.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const params = new URLSearchParams(window.location.search);
-            const gameId = params.get('id');
-            if (gameId) {
-                document.getElementById('gameCodeDisplay').textContent = "Spiel-Code: " + gameId;
-                playerJoinGame(gameId);
-            }
-        });
 
-        function showPlayerGameView(card) {
-            document.getElementById('waitingScreen').classList.add('hidden');
-            document.getElementById('gameScreen').classList.remove('hidden');
-            renderBingoCard(card);
-        }
-
-        function renderBingoCard(card) {
-            const grid = document.getElementById('bingoCard');
-            grid.innerHTML = '';
-            for (let r = 0; r < 3; r++) {
-                for (let c = 0; c < 9; c++) {
-                    const value = card[r][c];
-                    const cell = document.createElement('div');
-                    cell.className = 'bingo-cell' + (value === null ? ' empty' : '');
-                    if (value !== null) {
-                        cell.textContent = value;
-                        cell.addEventListener('click', () => handleCellClick(value, cell));
-                    }
-                    grid.appendChild(cell);
-                }
-            }
-        }
-
-        function updatePlayerProblem(term) {
-            document.getElementById('currentTermDisplay').textContent = term;
-        }
-
-        function updatePlayerHearts() {
-            const container = document.getElementById('heartsContainer');
-            container.innerHTML = '';
-            for (let i = 0; i < 3; i++) {
-                const heart = document.createElement('span');
-                heart.className = 'heart' + (i >= playerState.lives ? ' empty' : '');
-                heart.textContent = '❤';
-                container.appendChild(heart);
-            }
-        }
-
-        function updatePlayerStreak() {
-            document.getElementById('streakValue').textContent = playerState.streak;
-            const container = document.getElementById('streakContainer');
-            if (playerState.streak >= 3) {
-                container.style.animation = 'pulse 1s infinite';
-            } else {
-                container.style.animation = 'none';
-            }
-        }
-    </script>
 </body>
 </html>

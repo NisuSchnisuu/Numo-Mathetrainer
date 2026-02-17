@@ -281,6 +281,18 @@
 
     <!-- OVERLAYS / MODALS -->
     
+    <div id="rowOverlay" class="modal-overlay">
+        <h2 style="color: var(--secondary-color);">REIHE VOLL!</h2>
+        <p class="description">Du hast eine Reihe geschafft!</p>
+        <button class="btn btn-primary" onclick="hideModal('rowOverlay')">Weiter spielen</button>
+    </div>
+
+    <div id="fullHouseOverlay" class="modal-overlay">
+        <h2 style="color: var(--success);">SUPER BINGO!</h2>
+        <p class="description">Du hast die ganze Karte voll!</p>
+        <button class="btn btn-primary" onclick="hideModal('fullHouseOverlay')">Weiter</button>
+    </div>
+
     <!-- Confirm Leave Modal -->
     <div id="leave-confirm-modal" class="modal-overlay">
         <div class="modal-content" style="max-width: 400px; text-align: center;">
@@ -324,7 +336,7 @@
     </div>
 
     <!-- Game Over Modal (Player Lost) -->
-    <div id="gameOverOverlay" class="overlay hidden">
+    <div id="gameOverOverlay" class="modal-overlay">
         <h2 style="color: var(--danger);">AUSGESCHIEDEN</h2>
         <button class="btn btn-primary" onclick="location.reload()">Neustart</button>
     </div>

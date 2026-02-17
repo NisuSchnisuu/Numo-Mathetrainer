@@ -37,13 +37,13 @@ function switchCustomTab(mode) {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     const activeTab = document.getElementById(`tab-${mode}`);
     if (activeTab) activeTab.classList.add('active');
-    
+
     const title = document.getElementById('custom-modal-title');
     const desc = document.getElementById('custom-modal-desc');
     const importArea = document.getElementById('json-import-area');
     const guideAuto = document.getElementById('guide-container-auto');
     const guideManual = document.getElementById('guide-container-manual');
-    
+
     if (mode === 'auto') {
         if (title) title.textContent = "Eigene Mathe-Aufgaben";
         if (desc) desc.textContent = "Ergebnisse werden automatisch berechnet (1-90).";
@@ -57,12 +57,12 @@ function switchCustomTab(mode) {
         if (guideAuto) guideAuto.classList.add('hidden');
         if (guideManual) guideManual.classList.remove('hidden');
     }
-    
+
     // Clear and reset list for the new mode
     const list = document.getElementById('custom-problems-list');
     if (list) {
         list.innerHTML = '';
-        for(let i=0; i<15; i++) addCustomRow();
+        for (let i = 0; i < 15; i++) addCustomRow();
     }
     updateCustomCount();
 }
@@ -70,7 +70,7 @@ window.switchCustomTab = switchCustomTab;
 
 function leaveGame() {
     isLeaving = true;
-    window.location.href = window.location.pathname; 
+    window.location.href = window.location.pathname;
 }
 
 function showModal(modalId) {
@@ -147,15 +147,15 @@ function checkSession() {
         playerState.markedCount = session.markedCount || 0;
         playerState.lives = session.lives !== undefined ? session.lives : 3;
         playerState.wonRows = session.wonRows || []; // Restore wonRows
-        
+
         console.log("Restoring session:", gameId);
-        
+
         // Ensure UI is ready
         bindEvents();
 
         // Re-connect to game
         setupLobbyListener();
-        
+
         return true;
     } catch (e) {
         console.error("Session restore error", e);
@@ -176,15 +176,15 @@ window.addEventListener('beforeinstallprompt', (e) => {
 // IMPROVED Standalone Check
 function isStandaloneMode() {
     return window.matchMedia('(display-mode: standalone)').matches ||
-           window.matchMedia('(display-mode: minimal-ui)').matches ||
-           window.matchMedia('(display-mode: fullscreen)').matches ||
-           (window.navigator.standalone === true);
+        window.matchMedia('(display-mode: minimal-ui)').matches ||
+        window.matchMedia('(display-mode: fullscreen)').matches ||
+        (window.navigator.standalone === true);
 }
 
 function showInstallModal() {
     const modal = document.getElementById('pwa-install-modal');
     if (!modal) return;
-    
+
     modal.classList.add('active');
 
     // Detect OS logic
@@ -273,7 +273,7 @@ function initApp() {
                 const rangeEl = document.getElementById('range');
                 if (rangeEl) rangeEl.value = settings.range;
             }
-        } catch(e) { console.error("Error loading settings", e); }
+        } catch (e) { console.error("Error loading settings", e); }
     }
 
     // Bind UI Events
@@ -299,13 +299,13 @@ function initApp() {
             joinCodeInput.value = code;
             joinCodeInput.disabled = true;
         }
-        document.body.classList.add('quick-join-active'); 
+        document.body.classList.add('quick-join-active');
         const lobbyView = document.getElementById('lobby-view');
         if (lobbyView) lobbyView.classList.add('quick-join-mode');
-        
+
         const btnEnter = document.getElementById('btn-enter');
         if (btnEnter) btnEnter.textContent = `Beitreten`;
-        
+
         setTimeout(() => {
             const pNameInput = document.getElementById('player-name');
             if (pNameInput) pNameInput.focus();
@@ -316,10 +316,10 @@ function initApp() {
 function bindEvents() {
     const btnOpenCreate = document.getElementById('btn-open-create-modal');
     if (btnOpenCreate) btnOpenCreate.onclick = () => showModal('create-game-modal');
-    
+
     const btnCloseCreate = document.getElementById('btn-close-create-modal');
     if (btnCloseCreate) btnCloseCreate.onclick = () => hideModal('create-game-modal');
-    
+
     const btnConfirmCreate = document.getElementById('btn-create-confirm');
     if (btnConfirmCreate) btnConfirmCreate.onclick = createNewGame;
 
@@ -376,7 +376,7 @@ function bindEvents() {
 
     const btnEnter = document.getElementById('btn-enter');
     if (btnEnter) btnEnter.onclick = joinGameByCode;
-    
+
     const btnTriggerInstall = document.getElementById('btn-trigger-install');
     if (btnTriggerInstall) {
         btnTriggerInstall.addEventListener('click', (e) => {
@@ -391,7 +391,7 @@ function bindEvents() {
             }
         });
     }
-    
+
     const btnCloseInstall = document.getElementById('btn-close-install');
     if (btnCloseInstall) {
         btnCloseInstall.addEventListener('click', (e) => {
@@ -402,32 +402,32 @@ function bindEvents() {
     }
 
     const btnLeaveLobby = document.getElementById('btn-leave-lobby');
-    if (btnLeaveLobby) btnLeaveLobby.onclick = confirmLeaveGame; 
-    
+    if (btnLeaveLobby) btnLeaveLobby.onclick = confirmLeaveGame;
+
     const btnConfirmLeave = document.getElementById('btn-confirm-leave');
-    if (btnConfirmLeave) btnConfirmLeave.onclick = executeLeaveGame; 
-    
+    if (btnConfirmLeave) btnConfirmLeave.onclick = executeLeaveGame;
+
     const btnConfirmKick = document.getElementById('btn-confirm-kick');
     if (btnConfirmKick) btnConfirmKick.onclick = executeKickPlayer;
 
     const btnQuickBack = document.getElementById('btn-quick-back');
-    if(btnQuickBack) btnQuickBack.onclick = leaveGame;
+    if (btnQuickBack) btnQuickBack.onclick = leaveGame;
 
     const btnStartGame = document.getElementById('btn-start-game');
     if (btnStartGame) btnStartGame.onclick = startGame;
-    
+
     const btnHostDraw = document.getElementById('btn-host-draw');
     if (btnHostDraw) btnHostDraw.onclick = hostDrawNext;
-    
+
     const btnShowQr = document.getElementById('btn-show-qr-large');
     if (btnShowQr) btnShowQr.onclick = () => showModal('lobby-qr-modal');
-    
+
     const btnCloseQrLarge = document.getElementById('btn-close-qr-large');
     if (btnCloseQrLarge) btnCloseQrLarge.onclick = () => hideModal('lobby-qr-modal');
-    
+
     const btnScanQr = document.getElementById('btn-scan-qr');
     if (btnScanQr) btnScanQr.onclick = startQrScanner;
-    
+
     const btnCloseQr = document.getElementById('btn-close-qr');
     if (btnCloseQr) btnCloseQr.onclick = stopQrScanner;
 
@@ -468,12 +468,12 @@ function startQrScanner() {
                     code = url.searchParams.get('join');
                 } catch (e) {
                     const parts = decodedText.split('join=');
-                    if(parts.length > 1) code = parts[1].split('&')[0];
+                    if (parts.length > 1) code = parts[1].split('&')[0];
                 }
             } else {
-                if(decodedText.trim().length === 4) code = decodedText.trim();
+                if (decodedText.trim().length === 4) code = decodedText.trim();
             }
-            
+
             if (code) {
                 stopQrScanner();
                 window.location.href = window.location.pathname + `?join=${code}`;
@@ -509,7 +509,7 @@ async function createNewGame() {
     playerName = (nameInput ? nameInput.value : "") || "Host";
     localStorage.setItem('bingolator_player_name', playerName);
     gameId = Math.random().toString(36).substring(2, 6).toUpperCase();
-    
+
     const settings = {
         opType: document.getElementById('opType').value,
         range: document.getElementById('range').value
@@ -528,7 +528,7 @@ async function createNewGame() {
             players: {},
             createdAt: firebase.database.ServerValue.TIMESTAMP
         });
-        
+
         // Auto-cleanup if Host disconnects
         gameRef.onDisconnect().remove();
 
@@ -552,7 +552,7 @@ function openCustomModal() {
     customProblems = [];
     const list = document.getElementById('custom-problems-list');
     if (list) list.innerHTML = '';
-    for(let i=0; i<15; i++) addCustomRow();
+    for (let i = 0; i < 15; i++) addCustomRow();
 }
 
 function addCustomRow() {
@@ -564,7 +564,7 @@ function addCustomRow() {
     row.className = 'custom-problem-row';
     row.id = `row-${rowId}`;
     row.style = 'display: flex; gap: 10px; align-items: center; margin-bottom: 10px; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; animation: slideIn 0.2s ease-out;';
-    
+
     if (customMode === 'auto') {
         row.innerHTML = `
             <input type="text" class="custom-term-input" placeholder="z.B. 12 + 8" style="flex: 2; padding: 8px;">
@@ -607,7 +607,7 @@ function handleCustomInput(input, row) {
     let term = row.querySelector('.custom-term-input').value.trim();
     const resultDisplay = row.querySelector('.custom-result-display');
     const manualResultInput = row.querySelector('.custom-manual-result-input');
-    
+
     if (customMode === 'auto') {
         // Prettify input: replace * with · and / with :
         term = term.replace(/\*/g, '·').replace(/\//g, ':');
@@ -640,7 +640,7 @@ function handleCustomInput(input, row) {
             const allResults = Array.from(document.querySelectorAll('.custom-result-display'))
                 .map(el => el.textContent)
                 .filter(t => t !== '-' && t !== 'Range!' && t !== 'Double!' && t !== '?');
-            
+
             const count = allResults.filter(r => r === result.toString()).length;
             if (count > 1) {
                 resultDisplay.textContent = 'Double!';
@@ -656,14 +656,14 @@ function handleCustomInput(input, row) {
         // MANUAL MODE
         const result = manualResultInput.value.trim();
         resultDisplay.textContent = result || '-'; // Sync display for counting logic
-        
+
         manualResultInput.style.borderColor = '';
         if (result) {
             // Check for duplicates in manual results
             const allResults = Array.from(document.querySelectorAll('.custom-manual-result-input'))
                 .map(el => el.value.trim())
                 .filter(t => t !== "");
-            
+
             const count = allResults.filter(r => r.toLowerCase() === result.toLowerCase()).length;
             if (count > 1) {
                 manualResultInput.style.borderColor = 'var(--danger)';
@@ -679,7 +679,7 @@ function sortCustomRows() {
 
     const list = document.getElementById('custom-problems-list');
     const rows = Array.from(list.querySelectorAll('.custom-problem-row'));
-    
+
     rows.sort((a, b) => {
         const resA = parseFloat(a.querySelector('.custom-result-display').textContent) || 999;
         const resB = parseFloat(b.querySelector('.custom-result-display').textContent) || 999;
@@ -701,7 +701,7 @@ function updateCustomCount() {
         validCount = Array.from(document.querySelectorAll('.custom-manual-result-input'))
             .filter(el => el.value.trim() !== "").length;
     }
-    
+
     const countEl = document.getElementById('custom-count');
     if (countEl) {
         countEl.textContent = validCount;
@@ -744,7 +744,7 @@ async function saveAndCreateCustomGame() {
     playerName = (nameInput ? nameInput.value : "") || "Host";
     localStorage.setItem('bingolator_player_name', playerName);
     gameId = Math.random().toString(36).substring(2, 6).toUpperCase();
-    
+
     const settings = {
         opType: 'custom',
         range: customMode === 'auto' ? 'custom' : 'text'
@@ -760,7 +760,7 @@ async function saveAndCreateCustomGame() {
             players: {},
             createdAt: firebase.database.ServerValue.TIMESTAMP
         });
-        
+
         gameRef.onDisconnect().remove();
         hideModal('custom-problems-modal');
         setupLobbyListener();
@@ -829,7 +829,7 @@ function importFromPaste() {
     try {
         const data = JSON.parse(area.value);
         if (!Array.isArray(data)) throw new Error("JSON muss ein Array sein.");
-        
+
         loadProblemsIntoUI(data);
         hideModal('import-json-modal');
         area.value = '';
@@ -847,7 +847,7 @@ function handleFileUpload(event) {
         try {
             const data = JSON.parse(e.target.result);
             if (!Array.isArray(data)) throw new Error("JSON muss ein Array sein.");
-            
+
             loadProblemsIntoUI(data);
             hideModal('import-json-modal');
             event.target.value = ''; // Reset input
@@ -871,7 +871,7 @@ function loadProblemsIntoUI(data) {
             row.className = 'custom-problem-row';
             row.id = `row-${rowId}`;
             row.style = 'display: flex; gap: 10px; align-items: center; margin-bottom: 10px; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; animation: slideIn 0.2s ease-out;';
-            
+
             if (customMode === 'auto') {
                 row.innerHTML = `
                     <input type="text" class="custom-term-input" placeholder="z.B. 12 + 8" style="flex: 2; padding: 8px;" value="${item.term}">
@@ -892,15 +892,15 @@ function loadProblemsIntoUI(data) {
             // Add Listeners
             const termInput = row.querySelector('.custom-term-input');
             if (termInput) {
-                 termInput.addEventListener('keydown', (e) => {
+                termInput.addEventListener('keydown', (e) => {
                     if (e.key === 'Enter') {
                         handleCustomInput(termInput, row);
                         termInput.blur();
                     }
                 });
-                 termInput.addEventListener('blur', () => handleCustomInput(termInput, row));
+                termInput.addEventListener('blur', () => handleCustomInput(termInput, row));
             }
-            
+
             if (customMode !== 'auto') {
                 const manualInput = row.querySelector('.custom-manual-result-input');
                 if (manualInput) {
@@ -921,10 +921,10 @@ function loadProblemsIntoUI(data) {
 
     // Add empty rows if less than 15
     const currentCount = list.querySelectorAll('.custom-problem-row').length;
-    for(let i=currentCount; i<15; i++) {
+    for (let i = currentCount; i < 15; i++) {
         addCustomRow();
     }
-    
+
     updateCustomCount();
     if (customMode === 'auto') sortCustomRows();
 }
@@ -937,12 +937,12 @@ async function joinGameByCode() {
     const joinInput = document.getElementById('join-code');
     const code = (joinInput ? joinInput.value : "").trim().toUpperCase();
     if (code.length !== 4) return alert("Code ungültig!");
-    
+
     const nameInput = document.getElementById('player-name');
     playerName = nameInput ? nameInput.value : "";
     if (!playerName) return alert("Bitte gib deinen Namen ein!");
     localStorage.setItem('bingolator_player_name', playerName);
-    
+
     gameId = code;
     isHost = false;
 
@@ -964,12 +964,12 @@ async function joinGameByCode() {
  */
 function setupLobbyListener() {
     const gameRef = database.ref('games/' + gameId);
-    
+
     gameRef.on('value', (snapshot) => {
         if (isLeaving) return;
 
         const data = snapshot.val();
-        
+
         // 1. Host Left
         if (!data) {
             if (!isHost && currentView !== 'lobby-view') {
@@ -978,7 +978,7 @@ function setupLobbyListener() {
             }
             return;
         }
-        
+
         currentGameData = data;
 
         // 2. Player Kicked
@@ -986,7 +986,7 @@ function setupLobbyListener() {
             if (!data.players || !data.players[playerId]) {
                 showModal('player-kicked-modal');
                 // Remove listener to prevent further updates
-                gameRef.off(); 
+                gameRef.off();
                 clearSession();
                 return;
             }
@@ -1028,16 +1028,16 @@ function updatePlayerList(players) {
     const list = document.getElementById('lobby-player-slots');
     if (!list) return;
     list.innerHTML = '';
-    
+
     Object.entries(players).forEach(([pid, p]) => {
         const card = document.createElement('div');
         card.className = 'player-card-dynamic';
         let html = `<div class="avatar">${p.name[0].toUpperCase()}</div><div class="name">${p.name}</div>`;
-        
-        if (isHost) { 
-             html += `<button class="btn-kick-player" onclick="openKickModal('${pid}')" title="Spieler entfernen">×</button>`;
+
+        if (isHost) {
+            html += `<button class="btn-kick-player" onclick="openKickModal('${pid}')" title="Spieler entfernen">×</button>`;
         }
-        
+
         card.innerHTML = html;
         list.appendChild(card);
     });
@@ -1051,18 +1051,22 @@ function updatePlayerList(players) {
 function updateLobbyUI() {
     const lobbyCodeDisplay = document.getElementById('lobby-code-display');
     if (lobbyCodeDisplay) lobbyCodeDisplay.textContent = gameId;
-    
+
     const qrModalCode = document.getElementById('qr-modal-code');
     if (qrModalCode) qrModalCode.textContent = gameId;
-    
-    const baseUrl = window.location.href.split('?')[0];
-    const joinUrl = `${baseUrl}?join=${gameId}`;
-    
-    const qr = qrcode(0, 'M');
-    qr.addData(joinUrl);
-    qr.make();
+
     const qrContainer = document.getElementById('lobby-qr-large-container');
-    if (qrContainer) qrContainer.innerHTML = qr.createImgTag(8);
+    if (qrContainer && typeof qrcode === 'function') {
+        const baseUrl = window.location.href.split('?')[0];
+        const joinUrl = `${baseUrl}?join=${gameId}`;
+
+        try {
+            const qr = qrcode(0, 'M');
+            qr.addData(joinUrl);
+            qr.make();
+            qrContainer.innerHTML = qr.createImgTag(8);
+        } catch (e) { console.warn("QR Error", e); }
+    }
 }
 
 /**
@@ -1104,10 +1108,10 @@ async function executeLeaveGame() {
 async function startGame() {
     if (!isHost) return;
     // Don't draw immediately, let the host click the button
-    await database.ref('games/' + gameId).update({ 
+    await database.ref('games/' + gameId).update({
         status: 'PLAYING',
         currentProblem: null,
-        history: [] 
+        history: []
     });
 }
 
@@ -1116,7 +1120,7 @@ function initGameScreen(data) {
     if (isHost) {
         const hostDashboard = document.getElementById('host-dashboard');
         if (hostDashboard) hostDashboard.classList.remove('hidden');
-        
+
         const resEl = document.getElementById('host-current-result');
         if (resEl) {
             resEl.textContent = "Bereit?";
@@ -1124,7 +1128,7 @@ function initGameScreen(data) {
             resEl.style.fontSize = ""; // Reset custom size
             resEl.style.color = "";    // Reset custom color
         }
-        
+
         const termEl = document.getElementById('host-current-term');
         if (termEl) termEl.textContent = "Klicke 'Zahl ziehen'";
     } else {
@@ -1134,7 +1138,7 @@ function initGameScreen(data) {
         if (sessionStr) {
             try {
                 session = JSON.parse(sessionStr);
-            } catch(e) {}
+            } catch (e) { }
         }
 
         // Only restore if it's the SAME game
@@ -1153,12 +1157,14 @@ function initGameScreen(data) {
 
         renderBingoCard(playerState.card);
         updatePlayerHearts();
-        
+
         // Hide overlays
         const goOverlay = document.getElementById('gameOverOverlay');
         if (goOverlay) goOverlay.classList.add('hidden');
-        const winOverlay = document.getElementById('winOverlay');
-        if (winOverlay) winOverlay.classList.add('hidden');
+        const fhOverlay = document.getElementById('fullHouseOverlay');
+        if (fhOverlay) fhOverlay.classList.add('hidden');
+        const rowOverlay = document.getElementById('rowOverlay');
+        if (rowOverlay) rowOverlay.classList.add('hidden');
     }
 }
 
@@ -1185,7 +1191,7 @@ async function hostDrawNext() {
     const problem = available[Math.floor(Math.random() * available.length)];
     const poolIndex = currentGameData.pool.findIndex(p => p.term === problem.term);
     currentGameData.pool[poolIndex].drawn = true;
-    
+
     problem.id = Date.now();
 
     const history = currentGameData.history || [];
@@ -1201,11 +1207,11 @@ async function hostDrawNext() {
 function updateHostDashboard(data) {
     const problem = data.currentProblem;
     const history = data.history || [];
-    
+
     const resEl = document.getElementById('host-current-result');
     const termEl = document.getElementById('host-current-term');
     const btnDraw = document.getElementById('btn-host-draw');
-    
+
     if (resEl && problem) {
         resEl.textContent = problem.term;
         resEl.className = 'huge-term-display';
@@ -1225,11 +1231,11 @@ function updateHostDashboard(data) {
             const div = document.createElement('div');
             // Add 'active' class if this is the currently displayed problem
             const isActive = problem && item.id === problem.id;
-            div.className = 'history-item clickable' + (isActive ? ' active-history' : ''); 
+            div.className = 'history-item clickable' + (isActive ? ' active-history' : '');
             div.innerHTML = `<span class="h-term-only">${item.term}</span>`;
-            
+
             div.onclick = () => hostJumpToHistory(item);
-            
+
             historyEl.appendChild(div);
         });
     }
@@ -1282,13 +1288,13 @@ function renderBingoCard(card) {
             const cell = document.createElement('div');
             cell.className = 'bingo-cell' + (val === null ? ' empty' : '') + (isMarked ? ' marked' : '');
             if (val !== null) {
-                cell.textContent = val;
+                cell.innerHTML = `<span>${val}</span>`;
                 cell.onclick = () => handleCellClick(val, cell, r, c);
             }
             grid.appendChild(cell);
         });
     });
-    
+
     // Adjust font sizes after render (robust sequence)
     triggerResizeSequence();
 }
@@ -1297,23 +1303,52 @@ function resizeBingoText() {
     const cells = document.querySelectorAll('.bingo-cell:not(.empty)');
     if (cells.length === 0) return;
 
+    let globalMinSize = 1000; // Start with a large value
+
+    // Pass 1: Find the smallest fitting font size across ALL cells
     cells.forEach(cell => {
-        cell.style.whiteSpace = 'nowrap'; // Ensure single line
-        cell.style.fontSize = '10px'; // Reset to measure bounds
-        
-        const w = cell.clientWidth - 10; // Safety buffer
-        const h = cell.clientHeight - 4;
-        
+        const span = cell.querySelector('span');
+        if (!span) return;
+
+        // Reset styles for measurement
+        span.style.fontSize = '10px';
+        span.style.whiteSpace = 'nowrap';
+        span.style.display = 'inline-block';
+        span.style.lineHeight = '1';
+
+        const w = cell.clientWidth - 10; // Safer horizontal buffer (padding is 8px total)
+        const h = cell.clientHeight - 4; // Vertical buffer
+
         if (w <= 0 || h <= 0) return;
 
-        // Start at height-based max (e.g. 70% of tile height)
-        let size = Math.floor(h * 0.7); 
-        cell.style.fontSize = size + 'px';
+        // Start at a generous maximum (75% of tile height)
+        // Limits single numbers but allows them to be big enough
+        let size = Math.floor(h * 0.25);
+        if (size < 12) size = 12; // Minimum baseline
 
-        // Shrink if overflowing
-        while ((cell.scrollWidth > w || cell.scrollHeight > h) && size > 8) {
+        span.style.fontSize = size + 'px';
+
+        // Shrink this specific cell's font size until it fits
+        while ((span.offsetWidth > w || span.offsetHeight > h) && size > 8) {
             size--;
-            cell.style.fontSize = size + 'px';
+            span.style.fontSize = size + 'px';
+        }
+
+        // Track the lowest size found so far (limiting factor)
+        if (size < globalMinSize) {
+            globalMinSize = size;
+        }
+    });
+
+    // Safety fallback
+    if (globalMinSize > 1000) globalMinSize = 16;
+    if (globalMinSize < 8) globalMinSize = 8;
+
+    // Pass 2: Apply the determined global uniform size to ALL cells
+    cells.forEach(cell => {
+        const span = cell.querySelector('span');
+        if (span) {
+            span.style.fontSize = globalMinSize + 'px';
         }
     });
 }
@@ -1330,17 +1365,17 @@ function triggerResizeSequence() {
 function resizeHostTerm() {
     const el = document.getElementById('host-current-result');
     if (!el) return;
-    
+
     // Skip if in ready state (Keep default CSS size)
     if (el.classList.contains('ready-state')) return;
-    
+
     const parent = el.parentElement;
     if (!parent) return;
 
     // Reset to base max size to measure
     el.style.fontSize = '18vh';
     el.style.whiteSpace = 'nowrap';
-    
+
     // Get constraints
     const maxWidth = parent.clientWidth * 0.90; // Leave 10% buffer
     let currentSize = parseFloat(window.getComputedStyle(el).fontSize);
@@ -1357,38 +1392,42 @@ window.addEventListener('resize', triggerResizeSequence);
 function handleCellClick(value, cell, r, c) {
     if (playerState.lives <= 0) return;
     if (!currentGameData || !currentGameData.currentProblem || cell.classList.contains('marked')) return;
-    
+
     if (value === currentGameData.currentProblem.result) {
         cell.classList.add('marked');
         playerState.markedCount++;
+        playerState.streak++; // Increment Streak
         playerState.card[r][c] = { val: value, marked: true };
+
+        updatePlayerStreak(); // Update UI
         saveSession();
 
         checkForWins();
-        
+
         // Optional: Keep full card win check if desired, but Row Win is now primary
         if (playerState.markedCount === 15) {
-             const winOverlay = document.getElementById('winOverlay');
-             if (winOverlay) winOverlay.classList.remove('hidden');
+            showModal('fullHouseOverlay');
         }
     } else {
         cell.classList.add('error-shake');
         setTimeout(() => cell.classList.remove('error-shake'), 500);
-        
+
         playerState.lives--;
+        playerState.streak = 0; // Reset Streak
+
         updatePlayerHearts();
+        updatePlayerStreak(); // Update UI
         saveSession();
-        
+
         if (playerState.lives === 0) {
-            const gameOverOverlay = document.getElementById('gameOverOverlay');
-            if (gameOverOverlay) gameOverOverlay.classList.remove('hidden');
+            showModal('gameOverOverlay');
         }
     }
 }
 
 function checkForWins() {
     if (!playerState.card) return;
-    
+
     const card = playerState.card;
     const newlyWonRows = [];
 
@@ -1428,6 +1467,11 @@ function checkForWins() {
             rows: playerState.wonRows, // Send all won rows
             timestamp: firebase.database.ServerValue.TIMESTAMP
         });
+
+        // Local Row Win Modal (only if NOT full house yet)
+        if (playerState.markedCount < 15) {
+            showModal('rowOverlay');
+        }
     }
 }
 
@@ -1437,25 +1481,25 @@ function updateWinnerModal(winners) {
     const previewContainer = document.getElementById('winner-card-preview');
     const btnContinue = document.getElementById('btn-winner-continue');
     const waitMsg = document.getElementById('winner-wait-msg');
-    
+
     if (!modal || !list) return;
 
     list.innerHTML = '';
-    
+
     // Sort winners by timestamp
-    const sortedWinners = Object.values(winners).sort((a,b) => (a.timestamp || 0) - (b.timestamp || 0));
+    const sortedWinners = Object.values(winners).sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
 
     sortedWinners.forEach(winner => {
         const chip = document.createElement('div');
         chip.className = 'winner-chip';
         chip.innerHTML = `<span>🏆</span> ${winner.name}`;
-        
+
         if (isHost) {
             chip.onclick = () => {
                 // Highlight selected
                 document.querySelectorAll('.winner-chip').forEach(c => c.classList.remove('selected'));
                 chip.classList.add('selected');
-                
+
                 // Show card
                 if (previewContainer) {
                     previewContainer.style.display = 'block';
@@ -1464,7 +1508,7 @@ function updateWinnerModal(winners) {
                 }
             };
         }
-        
+
         list.appendChild(chip);
     });
 
@@ -1488,10 +1532,10 @@ function renderPreviewCard(card, winningRows) {
     // We assume 3 rows, 9 columns fixed.
     for (let r = 0; r < 3; r++) {
         const row = card && card[r] ? card[r] : {}; // Handle missing rows
-        
+
         for (let c = 0; c < 9; c++) {
             let cellData = row[c]; // Might be undefined if null in Firebase
-            
+
             let val = null;
             let isMarked = false;
 
@@ -1506,7 +1550,7 @@ function renderPreviewCard(card, winningRows) {
 
             const cell = document.createElement('div');
             cell.className = 'bingo-cell-preview' + (val === null ? ' empty' : '') + (isMarked ? ' marked' : '');
-            
+
             // Highlight winning row cells
             if (winningRows && winningRows.includes(r) && val !== null) {
                 cell.style.borderColor = '#fff';
@@ -1532,11 +1576,25 @@ function updateProblemDisplay(problem) {
     }
 }
 
+function updatePlayerStreak() {
+    const valEl = document.getElementById('streakValue');
+    const container = document.getElementById('streakContainer');
+    if (!valEl || !container) return;
+
+    valEl.textContent = playerState.streak;
+
+    if (playerState.streak >= 3) {
+        container.style.animation = 'pulse 1s infinite';
+    } else {
+        container.style.animation = 'none';
+    }
+}
+
 function updatePlayerHearts() {
     const container = document.getElementById('heartsContainer');
     if (!container) return;
     let html = '';
-    for(let i=0; i<3; i++) {
+    for (let i = 0; i < 3; i++) {
         html += i < playerState.lives ? '❤' : '<span style="opacity:0.3">❤</span>';
     }
     container.innerHTML = html;
@@ -1546,27 +1604,27 @@ function generateProblemPool(settings) {
     const pool = [];
     const seenResults = new Set();
     const max = settings.range === '1x1' ? 10 : parseInt(settings.range);
-    
+
     while (pool.length < 80) {
         let a, b, op, res, term;
-        const ops = settings.opType === 'mixed' ? ['+','-','*','/'] : [settings.opType.replace('add','+').replace('sub','-').replace('mul','*').replace('div','/')];
+        const ops = settings.opType === 'mixed' ? ['+', '-', '*', '/'] : [settings.opType.replace('add', '+').replace('sub', '-').replace('mul', '*').replace('div', '/')];
         op = ops[Math.floor(Math.random() * ops.length)];
 
-        if (settings.range === '1x1') { 
-            a=rand(1,10); b=rand(1,10); op='*'; 
-        } else if (op==='+') { 
-            a=rand(1,max-5); b=rand(1,max-a); 
-        } else if (op==='-') { 
-            a=rand(5,max); b=rand(1,a); 
-        } else if (op==='*') { 
-            a=rand(1,10); b=rand(1, Math.floor(max/a) || 1); 
-        } else { 
-            b=rand(2,10); res=rand(1, Math.floor(max/b) || 1); a=b*res; 
+        if (settings.range === '1x1') {
+            a = rand(1, 10); b = rand(1, 10); op = '*';
+        } else if (op === '+') {
+            a = rand(1, max - 5); b = rand(1, max - a);
+        } else if (op === '-') {
+            a = rand(5, max); b = rand(1, a);
+        } else if (op === '*') {
+            a = rand(1, 10); b = rand(1, Math.floor(max / a) || 1);
+        } else {
+            b = rand(2, 10); res = rand(1, Math.floor(max / b) || 1); a = b * res;
         }
 
-        res = op==='+'?a+b : op==='-'?a-b : op==='*'?a*b : a/b;
-        term = `${a} ${op.replace('*','·').replace('/',':')} ${b}`;
-        
+        res = op === '+' ? a + b : op === '-' ? a - b : op === '*' ? a * b : a / b;
+        term = `${a} ${op.replace('*', '·').replace('/', ':')} ${b}`;
+
         if (res > 0 && !seenResults.has(res)) {
             seenResults.add(res);
             pool.push({ term, result: res, drawn: false });
@@ -1578,17 +1636,17 @@ function generateProblemPool(settings) {
 function generateLottoCard(pool) {
     // 1. Get unique results from the pool
     let uniquePoolResults = [...new Set(pool.map(p => p.result))];
-    
+
     // Check if results are primarily numbers
     const isNumeric = uniquePoolResults.every(r => !isNaN(parseFloat(r)) && isFinite(r));
-    
+
     if (isNumeric) {
         uniquePoolResults = uniquePoolResults.map(r => parseFloat(r)).sort((a, b) => a - b);
     } else {
         // Text mode: just shuffle or keep as is, order doesn't matter for picking
         uniquePoolResults.sort(() => Math.random() - 0.5);
     }
-    
+
     if (uniquePoolResults.length < 15) {
         console.error("Not enough unique results in pool to generate a card.");
         return Array.from({ length: 3 }, () => Array(9).fill(null));
@@ -1620,37 +1678,37 @@ function generateLottoCard(pool) {
         });
 
         // Now pick up to 2 from each bin until we have 15
-        const binIndices = [0,1,2,3,4,5,6,7,8];
+        const binIndices = [0, 1, 2, 3, 4, 5, 6, 7, 8];
         const pickedPerBin = Array(9).fill(0);
-        
+
         // Pass 1: Try to get at least 1 from as many bins as possible first
         // Shuffle bin order for randomness
         let shuffledBins = [...binIndices].sort(() => Math.random() - 0.5);
-        
+
         // Try to pick 15 numbers total
         let count = 0;
-        
+
         // Loop until we have 15 or run out of options
         while (count < 15) {
             // Find bins that have items left AND count < 2 (strict)
             let candidates = shuffledBins.filter(i => allBins[i].length > 0 && pickedPerBin[i] < 2);
-            
+
             if (candidates.length === 0) {
                 // Relax rule: allow > 2 if strict fails (rare fallback)
                 candidates = shuffledBins.filter(i => allBins[i].length > 0);
                 if (candidates.length === 0) break; // Total exhaustion
             }
-            
+
             // Pick a random bin from candidates
             const target = candidates[Math.floor(Math.random() * candidates.length)];
             const valIndex = Math.floor(Math.random() * allBins[target].length);
             const val = allBins[target].splice(valIndex, 1)[0];
-            
+
             selectedResults.push(val);
             pickedPerBin[target]++;
             count++;
         }
-        
+
         selectedResults.sort((a, b) => a - b);
 
     } else {
@@ -1663,7 +1721,7 @@ function generateLottoCard(pool) {
 
     // 3. Group selected results into 9 column bins dynamically
     const columnBins = Array.from({ length: 9 }, () => []);
-    
+
     if (isNumeric) {
         const minVal = uniquePoolResults[0];
         const maxVal = uniquePoolResults[uniquePoolResults.length - 1];
@@ -1683,9 +1741,9 @@ function generateLottoCard(pool) {
         // Text-based: Distribute RANDOMLY across 9 columns to ensure variety
         // But ensure we don't overfill columns immediately
         // Simple approach: Round-robin or random pick
-        const indices = [0,1,2,3,4,5,6,7,8, 0,1,2,3,4,5,6,7,8].slice(0, 15); // 15 slots
+        const indices = [0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8].slice(0, 15); // 15 slots
         indices.sort(() => Math.random() - 0.5); // Shuffle slots
-        
+
         selectedResults.forEach((res, i) => {
             const col = indices[i];
             columnBins[col].push(res);
@@ -1694,15 +1752,15 @@ function generateLottoCard(pool) {
 
     // 4. Balance the bins
     let unbalanced = true;
-    while(unbalanced) {
+    while (unbalanced) {
         unbalanced = false;
         for (let i = 0; i < 9; i++) {
             while (columnBins[i].length > 3) {
                 const val = columnBins[i].pop();
                 // Find a column with space (<3)
                 // Prefer random distribution
-                const candidates = [0,1,2,3,4,5,6,7,8].filter(c => columnBins[c].length < 3);
-                
+                const candidates = [0, 1, 2, 3, 4, 5, 6, 7, 8].filter(c => columnBins[c].length < 3);
+
                 if (candidates.length > 0) {
                     const target = candidates[Math.floor(Math.random() * candidates.length)];
                     columnBins[target].push(val);
@@ -1710,13 +1768,13 @@ function generateLottoCard(pool) {
                     // Critical failure (should not happen with 15 items and 9x3 slots)
                     columnBins[i].push(val); // Put back to avoid data loss
                     unbalanced = false; // Force break to avoid infinite loop
-                    break; 
+                    break;
                 }
                 unbalanced = true; // Re-check all columns
             }
         }
     }
-    
+
     if (isNumeric) {
         columnBins.forEach(bin => bin.sort((a, b) => a - b));
     } else {
@@ -1743,7 +1801,7 @@ function generateLottoCard(pool) {
             let placedInCol = 0;
             for (const r of availableRows) {
                 if (placedInCol < bin.length && rowCounts[r] < 5) {
-                    card[r][c] = true; 
+                    card[r][c] = true;
                     rowCounts[r]++;
                     placedInCol++;
                 }
@@ -1775,7 +1833,7 @@ function generateLottoCard(pool) {
         // Fallback
         card = Array.from({ length: 3 }, () => Array(9).fill(null));
         selectedResults.forEach((val, i) => {
-            card[Math.floor(i/5)][i%9] = val;
+            card[Math.floor(i / 5)][i % 9] = val;
         });
     }
 
