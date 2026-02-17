@@ -19,20 +19,56 @@ function App() {
   const [recentApps, setRecentApps] = useState<string[]>([]);
   const [activeApp, setActiveApp] = useState<AppType | null>(null);
 
+  // Load active app from URL on mount
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const appId = params.get('app');
+    if (appId) {
+      const app = apps.find(a => a.id === appId);
+      if (app) {
+        setActiveApp(app);
+      }
+    }
+  }, []);
+
+  const handleLaunchApp = useCallback((app: AppType) => {
+    setActiveApp(app);
+    const url = new URL(window.location.href);
+    url.searchParams.set('app', app.id);
+    window.history.pushState({ appId: app.id }, '', url);
+  }, []);
+
+  const handleCloseApp = useCallback(() => {
+    setActiveApp(null);
+    const url = new URL(window.location.href);
+    url.searchParams.delete('app');
+    window.history.pushState({}, '', url);
+  }, []);
+
+  // Handle browser back/forward
+  useEffect(() => {
+    const handlePopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      const appId = params.get('app');
+
+      if (appId) {
+        const app = apps.find(a => a.id === appId);
+        if (app) setActiveApp(app);
+      } else {
+        setActiveApp(null);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   // Load recent apps on mount and when view changes to HOME
   useEffect(() => {
     if (viewMode === 'HOME') {
       setRecentApps(getRecentAppIds());
     }
   }, [viewMode]);
-
-  const handleLaunchApp = useCallback((app: AppType) => {
-    setActiveApp(app);
-  }, []);
-
-  const handleCloseApp = useCallback(() => {
-    setActiveApp(null);
-  }, []);
 
   // Listen for messages from sub-apps (e.g., to close the app)
   useEffect(() => {
@@ -277,8 +313,8 @@ function App() {
             className="fixed inset-0 z-[100] bg-slate-950 flex flex-col"
           >
             <iframe
-              src={activeApp.path.startsWith('http') 
-                ? activeApp.path 
+              src={activeApp.path.startsWith('http')
+                ? activeApp.path
                 : `${import.meta.env.DEV ? import.meta.env.BASE_URL : import.meta.env.BASE_URL.replace(/dashboard\/$/i, '')}${activeApp.path}`}
               className="w-full h-full border-none"
               title={activeApp.name}
@@ -286,22 +322,22 @@ function App() {
                 try {
                   const iframe = e.currentTarget;
                   const currentPath = iframe.contentWindow?.location.pathname;
-                  
+
                   // Normalize paths for comparison
                   const normalize = (p: string | undefined) => p?.replace(/\/+$/, '') || '';
                   const normalizedCurrent = normalize(currentPath);
                   const normalizedRoot = normalize(import.meta.env.BASE_URL);
-                  
+
                   // Only close if we are EXACTLY at root or root/index.html
                   if (normalizedCurrent === normalizedRoot || normalizedCurrent === normalizedRoot + '/index.html') {
                     // Check if it's the INITIAL load of the iframe (first time onLoad triggers)
                     // If we just launched it, normalizedCurrent might match normalizedRoot if path is empty
                     // But activeApp.path is usually "apps/..."
                     if (!activeApp.path.includes('index.html') && normalizedCurrent === normalizedRoot) {
-                       // This might be a false positive on some servers. 
-                       // Let's rely more on the postMessage for explicit "Back" clicks.
+                      // This might be a false positive on some servers. 
+                      // Let's rely more on the postMessage for explicit "Back" clicks.
                     } else if (normalizedCurrent === normalizedRoot) {
-                        handleCloseApp();
+                      handleCloseApp();
                     }
                   }
                 } catch (err) {

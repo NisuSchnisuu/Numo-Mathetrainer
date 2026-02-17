@@ -41,7 +41,10 @@ Die Kategorien sind fest im Typ-System verankert (`src/App.tsx` bzw. `src/data/a
 -   **Verfügbare Kategorien**: `Spiele`, `Üben`, `Theorie`.
 -   **Alle-Ansicht**: Zeigt alle Apps an, mit optionalen Filtern.
 -   **Kategorie-Ansicht**: Filtert die Apps basierend auf dem `category` Feld.
--   **Routing**: Das Dashboard nutzt kein komplexes Routing für die Apps selbst. Ein Klick auf eine App-Karte öffnet den Link (`path`) in einem neuen Tab oder im gleichen Fenster (je nach Konfiguration in `AppCard.tsx`, aktuell `target="_blank"`).
+-   **Routing**: Das Dashboard verwendet URL-Parameter für Deep Linking zu Apps.
+    -   Apps werden über `?app=<App-ID>` geöffnet (z.B. `/?app=bingolator`).
+    -   Beim Neuladen der Seite bleibt die aktive App erhalten.
+    -   Browser-Navigation (Vor/Zurück) wird unterstützt.
 
 ## Design System
 
