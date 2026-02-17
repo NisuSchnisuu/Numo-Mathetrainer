@@ -422,6 +422,13 @@ function bindEvents() {
     const btnShowQr = document.getElementById('btn-show-qr-large');
     if (btnShowQr) btnShowQr.onclick = () => showModal('lobby-qr-modal');
 
+    // New Host Code Modal
+    const btnShowCodes = document.getElementById('btn-show-player-codes');
+    if (btnShowCodes) btnShowCodes.onclick = () => showModal('player-codes-modal');
+
+    const btnCloseCodes = document.getElementById('btn-close-player-codes');
+    if (btnCloseCodes) btnCloseCodes.onclick = () => hideModal('player-codes-modal');
+
     const btnCloseQrLarge = document.getElementById('btn-close-qr-large');
     if (btnCloseQrLarge) btnCloseQrLarge.onclick = () => hideModal('lobby-qr-modal');
 
@@ -434,15 +441,15 @@ function bindEvents() {
     const btnWinnerContinue = document.getElementById('btn-winner-continue');
     if (btnWinnerContinue) btnWinnerContinue.onclick = continueGame;
 
-    document.querySelectorAll('.modal-overlay').forEach(overlay => {
-        overlay.onclick = (e) => {
-            const persistentModals = ['leave-confirm-modal', 'host-left-modal', 'kick-confirm-modal', 'player-kicked-modal'];
-            if (e.target === overlay && !persistentModals.includes(overlay.id)) {
-                hideModal(overlay.id);
-                if (overlay.id === 'qr-modal') stopQrScanner();
-            }
-        };
-    });
+    // REJOIN LOGIC
+    const btnOpenRejoin = document.getElementById('btn-open-rejoin-modal');
+    if (btnOpenRejoin) btnOpenRejoin.onclick = () => showModal('rejoin-modal');
+
+    const btnCloseRejoin = document.getElementById('btn-close-rejoin');
+    if (btnCloseRejoin) btnCloseRejoin.onclick = () => hideModal('rejoin-modal');
+
+    const btnConfirmRejoin = document.getElementById('btn-confirm-rejoin');
+    if (btnConfirmRejoin) btnConfirmRejoin.onclick = rejoinGame;
 
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'hidden') saveSession();
@@ -949,14 +956,98 @@ async function joinGameByCode() {
     const snapshot = await database.ref('games/' + gameId).once('value');
     if (!snapshot.exists()) return alert("Spiel nicht gefunden!");
 
+    // Generate unique recovery code
+    const recoveryCode = Math.floor(1000 + Math.random() * 9000).toString();
+
     const playerRef = database.ref('games/' + gameId + '/players').push();
     playerId = playerRef.key;
-    await playerRef.set({ name: playerName });
+    
+    await playerRef.set({ 
+        name: playerName,
+        recoveryCode: recoveryCode,
+        lives: 3,
+        streak: 0,
+        markedCount: 0
+    });
 
     setupLobbyListener();
     switchView('waiting-room-view');
     updateLobbyUI();
+    
+    // Display Recovery Code
+    const codeDisplay = document.getElementById('player-recovery-code-display');
+    if (codeDisplay) codeDisplay.textContent = recoveryCode;
+    
     saveSession();
+}
+
+async function rejoinGame() {
+    clearSession();
+    const gameIdInput = document.getElementById('rejoin-game-id');
+    const recoveryInput = document.getElementById('rejoin-recovery-code');
+    
+    if (!gameIdInput || !recoveryInput) return; // Modal not ready?
+
+    const gameCode = gameIdInput.value.trim().toUpperCase();
+    const recoveryCode = recoveryInput.value.trim();
+
+    if (gameCode.length !== 4) return alert("Bitte gib die 4-stellige GAME ID ein.");
+    if (recoveryCode.length !== 4) return alert("Bitte deinen 4-stelligen Wiederherstellungs-Code eingeben.");
+
+    gameId = gameCode;
+    isHost = false;
+
+    try {
+        const snapshot = await database.ref('games/' + gameId).once('value');
+        if (!snapshot.exists()) {
+            if (/^\d{4}$/.test(gameCode)) {
+                return alert("Spiel nicht gefunden! \nHast du vielleicht deinen Code statt der Game ID oben eingegeben?");
+            }
+            return alert("Spiel mit ID '" + gameCode + "' nicht gefunden!");
+        }
+        
+        const data = snapshot.val();
+        const players = data.players || {};
+        
+        const entry = Object.entries(players).find(([pid, p]) => p.recoveryCode == recoveryCode);
+        
+        if (!entry) return alert("Code ungültig! Kein Spieler mit diesem Code gefunden.");
+        
+        playerId = entry[0];
+        const playerData = entry[1];
+        playerName = playerData.name;
+        localStorage.setItem('bingolator_player_name', playerName);
+        
+        // Restore State
+        if (playerData.card) playerState.card = playerData.card;
+        if (playerData.lives !== undefined) playerState.lives = playerData.lives;
+        if (playerData.markedCount !== undefined) playerState.markedCount = playerData.markedCount;
+        if (playerData.streak !== undefined) playerState.streak = playerData.streak;
+        if (playerData.wonRows) playerState.wonRows = playerData.wonRows || [];
+
+        console.log("Restored player:", playerName);
+
+        hideModal('rejoin-modal'); // Close modal on success
+        setupLobbyListener();
+        
+        if (data.status === 'PLAYING') {
+             switchView('game-view');
+             initGameScreen(data);
+        } else {
+             switchView('waiting-room-view');
+        }
+        
+        updateLobbyUI();
+        
+        const codeDisplay = document.getElementById('player-recovery-code-display');
+        if (codeDisplay) codeDisplay.textContent = recoveryCode;
+
+        saveSession();
+
+    } catch (e) {
+        console.error("Rejoin error", e);
+        alert("Fehler beim Beitreten: " + e.message);
+    }
 }
 
 /**
@@ -1026,25 +1117,47 @@ function setupLobbyListener() {
 
 function updatePlayerList(players) {
     const list = document.getElementById('lobby-player-slots');
-    if (!list) return;
-    list.innerHTML = '';
+    // For Host Modal
+    const codesList = document.getElementById('player-codes-list');
+    const modalGameId = document.getElementById('codes-modal-game-id');
+    
+    if (list) list.innerHTML = '';
+    if (codesList && isHost) codesList.innerHTML = '';
+    if (modalGameId && isHost) modalGameId.textContent = gameId;
 
     Object.entries(players).forEach(([pid, p]) => {
+        // Lobby List
         const card = document.createElement('div');
         card.className = 'player-card-dynamic';
         let html = `<div class="avatar">${p.name[0].toUpperCase()}</div><div class="name">${p.name}</div>`;
 
         if (isHost) {
             html += `<button class="btn-kick-player" onclick="openKickModal('${pid}')" title="Spieler entfernen">×</button>`;
+            
+            // Add to Codes Modal List
+            if (codesList) {
+                const row = document.createElement('div');
+                row.className = 'code-row';
+                row.style = "display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.1);";
+                row.innerHTML = `<span style="font-weight:bold;">${p.name}</span> <span style="font-family:monospace; font-size:1.2rem; color:var(--secondary-color);">${p.recoveryCode || '----'}</span>`;
+                codesList.appendChild(row);
+            }
         }
 
         card.innerHTML = html;
-        list.appendChild(card);
+        if (list) list.appendChild(card);
     });
 
     if (isHost) {
         const btnStart = document.getElementById('btn-start-game');
         if (btnStart) btnStart.classList.remove('hidden');
+    }
+    
+    // Toggle Host Codes Button
+    const btnCodes = document.getElementById('btn-show-player-codes');
+    if (btnCodes) {
+        if (isHost) btnCodes.classList.remove('hidden');
+        else btnCodes.classList.add('hidden');
     }
 }
 
@@ -1133,26 +1246,38 @@ function initGameScreen(data) {
         if (termEl) termEl.textContent = "Klicke 'Zahl ziehen'";
     } else {
         // Player setup
-        const sessionStr = localStorage.getItem('bingolator_session');
-        let session = null;
-        if (sessionStr) {
-            try {
-                session = JSON.parse(sessionStr);
-            } catch (e) { }
-        }
-
-        // Only restore if it's the SAME game
-        if (session && session.card && session.gameId === gameId) {
-            playerState.card = session.card;
-            playerState.markedCount = session.markedCount || 0;
-            playerState.lives = session.lives !== undefined ? session.lives : 3;
+        // Check if we already have a restored card in playerState (from rejoin)
+        if (!playerState.card) {
+             const sessionStr = localStorage.getItem('bingolator_session');
+             let session = null;
+             if (sessionStr) {
+                 try { session = JSON.parse(sessionStr); } catch (e) { }
+             }
+             
+             if (session && session.card && session.gameId === gameId) {
+                 playerState.card = session.card;
+                 playerState.markedCount = session.markedCount || 0;
+                 playerState.lives = session.lives !== undefined ? session.lives : 3;
+             } else {
+                 // Generate NEW Card
+                 playerState.lives = 3;
+                 playerState.markedCount = 0;
+                 playerState.wonRows = [];
+                 playerState.card = generateLottoCard(data.pool);
+                 
+                 // SYNC INITIAL STATE TO FIREBASE
+                 if (playerId && gameId) {
+                     database.ref(`games/${gameId}/players/${playerId}`).update({
+                         card: playerState.card,
+                         lives: 3,
+                         markedCount: 0,
+                         wonRows: []
+                     });
+                 }
+                 saveSession();
+             }
         } else {
-            // New Game: Explicitly reset state
-            playerState.lives = 3;
-            playerState.markedCount = 0;
-            playerState.wonRows = []; // Reset wonRows
-            playerState.card = generateLottoCard(data.pool);
-            saveSession();
+            // Card exists (restored from Rejoin), just render
         }
 
         renderBingoCard(playerState.card);
@@ -1271,12 +1396,18 @@ function renderBingoCard(card) {
     const grid = document.getElementById('bingoCard');
     if (!grid) return;
     grid.innerHTML = '';
-    card.forEach((row, r) => {
-        row.forEach((cellData, c) => {
+    
+    // Ensure we handle sparse arrays from Firebase by iterating 0..8 explicitly
+    for (let r = 0; r < 3; r++) {
+        const row = card && card[r] ? card[r] : [];
+        
+        for (let c = 0; c < 9; c++) {
+            const cellData = row[c];
+            
             let val = null;
             let isMarked = false;
 
-            if (cellData !== null) {
+            if (cellData !== undefined && cellData !== null) {
                 if (typeof cellData === 'object') {
                     val = cellData.val;
                     isMarked = cellData.marked;
@@ -1292,8 +1423,8 @@ function renderBingoCard(card) {
                 cell.onclick = () => handleCellClick(val, cell, r, c);
             }
             grid.appendChild(cell);
-        });
-    });
+        }
+    }
 
     // Adjust font sizes after render (robust sequence)
     triggerResizeSequence();
@@ -1393,11 +1524,14 @@ function handleCellClick(value, cell, r, c) {
     if (playerState.lives <= 0) return;
     if (!currentGameData || !currentGameData.currentProblem || cell.classList.contains('marked')) return;
 
+    let updated = false;
+
     if (value === currentGameData.currentProblem.result) {
         cell.classList.add('marked');
         playerState.markedCount++;
-        playerState.streak++; // Increment Streak
+        playerState.streak++; 
         playerState.card[r][c] = { val: value, marked: true };
+        updated = true;
 
         updatePlayerStreak(); // Update UI
         saveSession();
@@ -1414,6 +1548,7 @@ function handleCellClick(value, cell, r, c) {
 
         playerState.lives--;
         playerState.streak = 0; // Reset Streak
+        updated = true;
 
         updatePlayerHearts();
         updatePlayerStreak(); // Update UI
@@ -1422,6 +1557,17 @@ function handleCellClick(value, cell, r, c) {
         if (playerState.lives === 0) {
             showModal('gameOverOverlay');
         }
+    }
+    
+    // SYNC UPDATE TO FIREBASE
+    if (updated && playerId && gameId) {
+        database.ref(`games/${gameId}/players/${playerId}`).update({
+             card: playerState.card,
+             lives: playerState.lives,
+             streak: playerState.streak,
+             markedCount: playerState.markedCount,
+             wonRows: playerState.wonRows || []
+        });
     }
 }
 

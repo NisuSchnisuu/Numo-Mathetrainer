@@ -88,6 +88,7 @@
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="7" y="7" width="3" height="3"/><rect x="14" y="7" width="3" height="3"/><rect x="7" y="14" width="3" height="3"/><line x1="14" y1="14" x2="14" y2="14"/></svg>
                             </button>
                         </div>
+                        <button id="btn-open-rejoin-modal" class="btn-text" style="color: var(--primary-color); margin-top: 5px; font-size: 0.85rem;">Spiel wiederherstellen</button>
                         <button id="btn-quick-back" class="btn-text hidden">Zurück zum Hauptmenü</button>
                     </div>
                 </div>
@@ -181,7 +182,11 @@
     <section id="waiting-room-view" class="view">
         <div class="full-screen-lobby">
             <div class="lobby-header-new">
-                <div class="header-left"></div>
+                <div class="header-left">
+                    <button id="btn-show-player-codes" class="btn-icon-host hidden" title="Spieler-Codes anzeigen">
+                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    </button>
+                </div>
                 <div class="header-center">
                     <div class="code-pill">
                         <span class="code-label">CODE:</span>
@@ -199,6 +204,10 @@
             </div>
 
             <div class="lobby-content-area">
+                <div style="text-align:center; margin-bottom: 10px;">
+                    <span style="font-size: 0.8rem; color: var(--text-muted); opacity: 0.7;">Dein Wiederherstellungs-Code: </span>
+                    <span id="player-recovery-code-display" style="font-family:monospace; font-weight:bold; color: var(--secondary-color);">----</span>
+                </div>
                 <p id="lobby-status-text" class="status-message">Warte auf Spieler...</p>
                 <div id="lobby-player-slots" class="player-grid-dynamic">
                     <!-- Players injected here -->
@@ -250,6 +259,9 @@
         <!-- Host Dashboard (Overlay or Side Panel) -->
         <div id="host-dashboard" class="host-dashboard hidden">
             <div class="host-main">
+                <button id="btn-show-player-codes-ingame" class="btn-secondary" style="position: absolute; top: 10px; left: 10px; padding: 5px 10px; font-size: 0.8rem;" onclick="showModal('player-codes-modal')">
+                    👥 Codes
+                </button>
                 <h1 class="host-title">BINGOLATOR</h1>
                 <div class="host-current-draw">
                     <div id="host-current-term" class="big-term">--</div>
@@ -269,6 +281,38 @@
             </div>
         </div>
     </section>
+
+    <!-- REJOIN MODAL -->
+    <div id="rejoin-modal" class="modal-overlay">
+        <div class="modal-content" style="width: 90%; max-width: 400px; padding-top: 50px;">
+            <button id="btn-close-rejoin" class="btn-icon-close">&times;</button>
+            <h2 style="margin:0; margin-bottom: 20px;">Spiel wiederherstellen</h2>
+            
+            <label style="display:block; color:var(--text-muted); margin-bottom:5px; font-size:0.9rem;">Game ID (z.B. A1B2)</label>
+            <input type="text" id="rejoin-game-id" placeholder="GAME ID" maxlength="4" style="width:100%; text-transform:uppercase; letter-spacing:2px; text-align:center; margin-bottom:15px;">
+            
+            <label style="display:block; color:var(--text-muted); margin-bottom:5px; font-size:0.9rem;">Wiederherstellungs-Code</label>
+            <input type="tel" id="rejoin-recovery-code" placeholder="4-stelliger Code" maxlength="4" style="width:100%; letter-spacing:2px; text-align:center; margin-bottom:25px;">
+            
+            <button id="btn-confirm-rejoin" class="btn-primary" style="width:100%;">Wiederherstellen</button>
+        </div>
+    </div>
+
+    <!-- PLAYER CODES MODAL (HOST ONLY) -->
+    <div id="player-codes-modal" class="modal-overlay">
+        <div class="modal-content" style="width: 90%; max-width: 500px; padding-top: 50px;">
+            <button id="btn-close-player-codes" class="btn-icon-close">&times;</button>
+            <h2 style="margin:0; margin-bottom: 10px;">Spieler-Codes</h2>
+            <div style="text-align:center; margin-bottom:20px; background:rgba(255,255,255,0.05); padding:10px; border-radius:12px;">
+                <span style="color:var(--text-muted); font-size:0.9rem;">GAME ID: </span>
+                <span id="codes-modal-game-id" style="font-weight:800; font-family:monospace; font-size:1.2rem; color:var(--primary-color);">----</span>
+            </div>
+            <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:15px;">Teile diese Codes mit Spielern, die die Verbindung verloren haben.</p>
+            <div id="player-codes-list" style="max-height: 50vh; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 8px;">
+                <!-- Codes injected here -->
+            </div>
+        </div>
+    </div>
 
     <!-- QR SCANNER MODAL -->
     <div id="qr-modal" class="modal-overlay">

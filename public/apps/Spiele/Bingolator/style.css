@@ -390,6 +390,26 @@ body {
     transform: scale(1.05);
 }
 
+.btn-icon-host {
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--accent-color);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-icon-host:hover {
+    background: var(--accent-color);
+    color: white;
+    transform: scale(1.05);
+}
+
 /* Lobby Status Text */
 .status-message {
     color: var(--primary-color);
