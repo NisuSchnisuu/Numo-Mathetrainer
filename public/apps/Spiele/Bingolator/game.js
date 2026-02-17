@@ -19,7 +19,6 @@ let currentView = "lobby-view";
 let currentGameData = null;
 let playerToKickId = null; // Temp storage for kick modal
 let customProblems = []; // Storage for custom problems
-let customMode = 'auto'; // 'auto' or 'manual'
 let playerState = {
     lives: 3,
     streak: 0,
@@ -53,12 +52,12 @@ function initDB() {
     });
 }
 
-async function saveGameToDB(name, problems, mode) {
+async function saveGameToDB(name, problems) {
     const db = await initDB();
     return new Promise((resolve, reject) => {
         const tx = db.transaction(STORE_NAME, 'readwrite');
         const store = tx.objectStore(STORE_NAME);
-        const request = store.put({ name, problems, mode, timestamp: Date.now() });
+        const request = store.put({ name, problems, timestamp: Date.now() });
         request.onsuccess = () => resolve();
         request.onerror = (e) => reject(e);
     });
@@ -87,43 +86,6 @@ async function getSavedGame(name) {
 }
 
 // --- Helper Functions ---
-
-function switchCustomTab(mode) {
-    customMode = mode;
-    // Remove active class from all tabs (both compact and standard if any exist)
-    document.querySelectorAll('.tab-btn, .tab-btn-compact').forEach(b => b.classList.remove('active'));
-    const activeTab = document.getElementById(`tab-${mode}`);
-    if (activeTab) activeTab.classList.add('active');
-
-    const title = document.getElementById('custom-modal-title');
-    const desc = document.getElementById('custom-modal-desc');
-    const importArea = document.getElementById('json-import-area');
-    const guideAuto = document.getElementById('guide-container-auto');
-    const guideManual = document.getElementById('guide-container-manual');
-
-    if (mode === 'auto') {
-        if (title) title.textContent = "Eigene Mathe-Aufgaben";
-        if (desc) desc.textContent = "Ergebnisse werden automatisch berechnet (1-90).";
-        if (importArea) importArea.placeholder = '[{"term":"12+8"}, {"term":"5·3"}]';
-        if (guideAuto) guideAuto.classList.remove('hidden');
-        if (guideManual) guideManual.classList.add('hidden');
-    } else {
-        if (title) title.textContent = "Quiz & Text-Aufgaben";
-        if (desc) desc.textContent = "Gib Frage und Antwort manuell ein (Text möglich).";
-        if (importArea) importArea.placeholder = '[{"term":"Frage", "result":"Antwort"}]';
-        if (guideAuto) guideAuto.classList.add('hidden');
-        if (guideManual) guideManual.classList.remove('hidden');
-    }
-
-    // Clear and reset list for the new mode
-    const list = document.getElementById('custom-problems-list');
-    if (list) {
-        list.innerHTML = '';
-        for (let i = 0; i < 15; i++) addCustomRow();
-    }
-    updateCustomCount();
-}
-window.switchCustomTab = switchCustomTab;
 
 function leaveGame() {
     isLeaving = true;
@@ -455,25 +417,7 @@ function bindEvents() {
         fileInput.onchange = handleFileUpload;
     }
 
-    const btnDownloadGuide = document.getElementById('btn-download-guide');
-    if (btnDownloadGuide) {
-        btnDownloadGuide.onclick = () => {
-            const a = document.createElement('a');
-            a.href = 'BINGOLATOR_PROMPT.md';
-            a.download = 'BINGOLATOR_PROMPT.md';
-            a.click();
-        };
-    }
 
-    const btnDownloadTextGuide = document.getElementById('btn-download-text-guide');
-    if (btnDownloadTextGuide) {
-        btnDownloadTextGuide.onclick = () => {
-            const a = document.createElement('a');
-            a.href = 'BINGOLATOR_TEXT_PROMPT.md';
-            a.download = 'BINGOLATOR_TEXT_PROMPT.md';
-            a.click();
-        };
-    }
 
     const btnEnter = document.getElementById('btn-enter');
     if (btnEnter) btnEnter.onclick = joinGameByCode;
@@ -572,20 +516,14 @@ async function saveCurrentCustomGame() {
     const rows = Array.from(document.querySelectorAll('.custom-problem-row'));
     const data = rows.map(row => {
         const term = row.querySelector('.custom-term-input').value.trim();
-        let result;
-        if (customMode === 'auto') {
-            result = row.querySelector('.custom-result-display').textContent;
-            if (result === '-' || result === '?' || result === 'Range!' || result === 'Double!') result = undefined;
-        } else {
-            result = row.querySelector('.custom-manual-result-input').value.trim();
-        }
+        const result = row.querySelector('.custom-result-input').value.trim();
         return { term, result };
-    }).filter(item => item.term !== "");
+    }).filter(item => item.term !== "" && item.result !== "");
 
     if (data.length === 0) return alert("Keine Aufgaben zum Speichern.");
 
     try {
-        await saveGameToDB(name, data, customMode);
+        await saveGameToDB(name, data);
         // Custom Success Modal
         hideModal('save-game-name-modal');
         nameInput.value = "";
@@ -610,7 +548,7 @@ async function refreshSavedGamesUI() {
         games.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 
         const options = games.map(g => {
-            return `<option value="${g.name}">${g.name} (${g.problems.length} Aufg.) [${g.mode === 'manual' ? 'Manuell' : 'Auto'}]</option>`;
+            return `<option value="${g.name}">${g.name} (${g.problems.length} Aufg.)</option>`;
         }).join('');
 
         select.innerHTML = defaultOption + options;
@@ -652,7 +590,7 @@ async function loadSelectedSavedGame() {
         if (!game) return;
 
         customProblems = game.problems || [];
-        customMode = game.mode || 'auto';
+        // No customMode to load anymore, validation is implicit
 
         // Update the "Edit" button text to show loaded state
         const btnCustom = document.getElementById('btn-open-custom-modal');
@@ -857,21 +795,19 @@ async function hostDeleteGame(savedId) {
 /**
  * Custom Problems Logic
  */
+/**
+ * Custom Problems Logic
+ */
 function openCustomModal() {
     hideModal('create-game-modal');
     showModal('custom-problems-modal');
 
-    // Only reset if we do NOT have loaded data (check if we just loaded something?)
-    // Actually, `customProblems` is our source of truth.
-    // If we loaded a game, `customProblems` has data.
-    // If we didn't, we might want to clear it OR keep previous work?
+    // Reset Import/Guide UI
+    const importArea = document.getElementById('json-import-area');
+    if (importArea) importArea.placeholder = '[{"term":"12+8"}, {"term":"5·3"}, {"term":"Frage?", "result":"Antwort"}]';
 
-    // For now: If empty, fill with empty rows. If has data, render data.
     const list = document.getElementById('custom-problems-list');
     if (list) list.innerHTML = '';
-
-    // Switch Tab based on customMode
-    switchCustomTab(customMode);
 
     if (customProblems && customProblems.length > 0) {
         customProblems.forEach(p => addCustomRow(p));
@@ -898,42 +834,81 @@ function addCustomRow(data = null) {
     row.id = `row-${rowId}`;
     row.style = 'display: flex; gap: 10px; align-items: center; margin-bottom: 10px; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; animation: slideIn 0.2s ease-out;';
 
-    const termVal = data ? data.term : "";
-    const resVal = data ? data.result : "";
+    const termVal = data ? (data.term || "") : "";
+    const resVal = data ? (data.result !== undefined ? data.result : "") : "";
 
-    if (customMode === 'auto') {
-        row.innerHTML = `
-            <input type="text" class="custom-term-input" placeholder="z.B. 12 + 8" value="${termVal}" style="flex: 2; padding: 8px;">
-            <div class="custom-result-display" style="flex: 1; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 6px; text-align: center; font-weight: 700; color: var(--secondary-color); min-height: 40px; display: flex; align-items: center; justify-content: center;">${resVal || '-'}</div>
-            <button class="btn-kick-player" style="position: static; width: 32px; height: 32px;" onclick="removeCustomRow('${rowId}')">×</button>
-        `;
-    } else {
-        // Manual Mode: Input for Result instead of Display
-        row.innerHTML = `
-            <input type="text" class="custom-term-input" placeholder="Frage / Begriff" value="${termVal}" style="flex: 2; padding: 8px;">
-            <input type="text" class="custom-manual-result-input" placeholder="Antwort" value="${resVal}" style="flex: 1; padding: 8px; font-weight:700; color:var(--secondary-color); text-align:center;">
-            <button class="btn-kick-player" style="position: static; width: 32px; height: 32px;" onclick="removeCustomRow('${rowId}')">×</button>
-            <div class="custom-result-display hidden">${resVal}</div>
-        `;
-    }
+    // Unified Row Structure
+    row.innerHTML = `
+        <div style="flex: 2; position: relative;">
+             <input type="text" class="custom-term-input" placeholder="Wieviel ist 5+5?" value="${termVal}" style="width: 100%; padding: 8px;">
+        </div>
+        <div style="flex: 1; position: relative; display: flex; align-items: center; gap: 5px;">
+             <input type="text" class="custom-result-input" placeholder="Antwort" value="${resVal}" style="width: 100%; padding: 8px; font-weight:700; color:var(--secondary-color); text-align:center;">
+             <button class="btn-lock-toggle" title="Sperren/Entsperren" style="background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 4px;">
+                 <svg class="icon-unlocked" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                 <svg class="icon-locked hidden" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 9.9-1"></path></svg>
+             </button>
+        </div>
+        <button class="btn-kick-player" style="position: static; width: 32px; height: 32px; margin-left: 5px;" onclick="removeCustomRow('${rowId}')">×</button>
+    `;
 
     list.appendChild(row);
 
-    const inputs = row.querySelectorAll('input');
-    inputs.forEach(input => {
-        // ... (events) ...
-        input.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                handleCustomInput(input, row);
-                input.blur();
-            }
-        });
-        input.addEventListener('blur', (e) => {
-            handleCustomInput(input, row);
-        });
-        // Trigger initial validation if data present
-        if (data) handleCustomInput(input, row);
+    const termInput = row.querySelector('.custom-term-input');
+    const resultInput = row.querySelector('.custom-result-input');
+    const lockBtn = row.querySelector('.btn-lock-toggle');
+
+    // Event Listeners
+    termInput.addEventListener('blur', () => handleCustomInput(row));
+    termInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            handleCustomInput(row);
+            termInput.blur(); // Triggers blur which runs check again
+        }
     });
+
+    resultInput.addEventListener('input', () => {
+        // If user manually types, allow it. If valid math result was there, it's now considered "manual override"
+        updateCustomCount();
+        validateAndSortRows();
+    });
+    resultInput.addEventListener('blur', () => {
+        // Optional: Check if duplicate manual entry?
+        handleCustomInput(row, true); // True = skip auto-calc, just validate
+    });
+
+
+    lockBtn.onclick = () => toggleRowLock(row);
+
+    // Initial check
+    if (data) {
+        handleCustomInput(row);
+    } else {
+        // Even empty rows need to be registered in DOM before sort can see them? 
+        // Yes, appended already.
+        // But delay sort slightly? No, can call directly if needed, but let's let user type first.
+    }
+}
+
+function toggleRowLock(row) {
+    const resInput = row.querySelector('.custom-result-input');
+    const lockBtn = row.querySelector('.btn-lock-toggle');
+    const iconUnlocked = lockBtn.querySelector('.icon-unlocked');
+    const iconLocked = lockBtn.querySelector('.icon-locked');
+
+    if (resInput.disabled) {
+        // UNLOCK
+        resInput.disabled = false;
+        resInput.classList.remove('locked-input');
+        iconUnlocked.classList.remove('hidden');
+        iconLocked.classList.add('hidden');
+    } else {
+        // LOCK (Manual)
+        resInput.disabled = true;
+        resInput.classList.add('locked-input');
+        iconUnlocked.classList.add('hidden');
+        iconLocked.classList.remove('hidden');
+    }
 }
 
 function removeCustomRow(id) {
@@ -942,109 +917,186 @@ function removeCustomRow(id) {
     updateCustomCount();
 }
 
-function handleCustomInput(input, row) {
-    let term = row.querySelector('.custom-term-input').value.trim();
-    const resultDisplay = row.querySelector('.custom-result-display');
-    const manualResultInput = row.querySelector('.custom-manual-result-input');
+function handleCustomInput(row, skipAutoCalc = false) {
+    const termInput = row.querySelector('.custom-term-input');
+    const resultInput = row.querySelector('.custom-result-input');
+    const lockBtn = row.querySelector('.btn-lock-toggle');
+    const iconUnlocked = lockBtn.querySelector('.icon-unlocked');
+    const iconLocked = lockBtn.querySelector('.icon-locked');
+    if (!termInput || !resultInput) return;
 
-    if (customMode === 'auto') {
+    let term = termInput.value.trim();
+
+    // AUTO-CALC LOGIC
+    if (!skipAutoCalc && term && !resultInput.value.trim() && !resultInput.disabled) {
+        // Only try auto-calc if result is empty OR if it was previously auto-filled (how to track? maybe just if not locked?)
+        // Simpler: If term looks like math and result is empty or we force check
+
         // Prettify input: replace * with · and / with :
-        term = term.replace(/\*/g, '·').replace(/\//g, ':');
-        row.querySelector('.custom-term-input').value = term;
-
-        row.querySelector('.custom-term-input').style.borderColor = '';
-        resultDisplay.style.color = 'var(--secondary-color)';
-
-        if (!term) {
-            resultDisplay.textContent = '-';
-            updateCustomCount();
-            return;
+        const displayTerm = term.replace(/\*/g, '·').replace(/\//g, ':');
+        if (term !== displayTerm) {
+            termInput.value = displayTerm;
+            term = displayTerm;
         }
 
         try {
-            const sanitizedTerm = term.replace(/·/g, '*').replace(/:/g, '/').replace(/×/g, '*').replace(/÷/g, '/');
-            if (/[^0-9+\-*/().\s]/.test(sanitizedTerm)) throw new Error();
-            const result = eval(sanitizedTerm);
+            const sanitizedTerm = term.replace(/·/g, '*').replace(/:/g, '/').replace(/×/g, '*').replace(/÷/g, '/').replace(/,/g, '.');
 
-            if (isNaN(result) || !isFinite(result)) throw new Error();
+            // Regex check to allow only numbers and math operators
+            if (/^[0-9+\-*/().\s]+$/.test(sanitizedTerm)) {
+                // Ensure it's not just a single number (optional, but good for "Question: 10" -> "Answer: 10").
+                // Actually eval is fine even for single numbers.
 
-            resultDisplay.textContent = result;
+                const result = eval(sanitizedTerm);
 
-            if (result < 1 || result > 90) {
-                resultDisplay.textContent = 'Range!';
-                resultDisplay.style.color = 'var(--danger)';
-                row.querySelector('.custom-term-input').style.borderColor = 'var(--danger)';
+                if (!isNaN(result) && isFinite(result)) {
+                    // VALID MATH DETECTED
+                    const finalRes = parseFloat(result.toFixed(2)); // Round to 2 decimals
+
+                    if (finalRes >= 1 && finalRes >= 1 && finalRes <= 90 && Number.isInteger(finalRes)) {
+                        resultInput.value = finalRes;
+                        // LOCK IT
+                        resultInput.disabled = true;
+                        resultInput.classList.add('locked-input');
+                        iconUnlocked.classList.add('hidden');
+                        iconLocked.classList.remove('hidden');
+                    } else {
+                        // Valid math but out of range or decimal?
+                        // User might want to input text answer instead, so don't force lock, but populate result?
+                        // If 1-90 is required for Bingo numbers, then this is "Invalid for Number Mode but Okay for Text Mode"
+                        // Let's populate it but NOT lock it, so user can edit if they want.
+                        resultInput.value = finalRes;
+                    }
+                }
             }
-
-            const allResults = Array.from(document.querySelectorAll('.custom-result-display'))
-                .map(el => el.textContent)
-                .filter(t => t !== '-' && t !== 'Range!' && t !== 'Double!' && t !== '?');
-
-            const count = allResults.filter(r => r === result.toString()).length;
-            if (count > 1) {
-                resultDisplay.textContent = 'Double!';
-                resultDisplay.style.color = 'var(--danger)';
-                row.querySelector('.custom-term-input').style.borderColor = 'var(--danger)';
-            }
-            sortCustomRows();
         } catch (e) {
-            resultDisplay.textContent = '?';
-            resultDisplay.style.color = 'var(--text-muted)';
-        }
-    } else {
-        // MANUAL MODE
-        const result = manualResultInput.value.trim();
-        resultDisplay.textContent = result || '-'; // Sync display for counting logic
-
-        manualResultInput.style.borderColor = '';
-        if (result) {
-            // Check for duplicates in manual results
-            const allResults = Array.from(document.querySelectorAll('.custom-manual-result-input'))
-                .map(el => el.value.trim())
-                .filter(t => t !== "");
-
-            const count = allResults.filter(r => r.toLowerCase() === result.toLowerCase()).length;
-            if (count > 1) {
-                manualResultInput.style.borderColor = 'var(--danger)';
-            }
+            // Not math, ignore
         }
     }
+
+    validateAndSortRows(); // Trigger sort/validation on every input/blur
+}
+
+function validateAndSortRows() {
+    const list = document.getElementById('custom-problems-list');
+    const rows = Array.from(list.querySelectorAll('.custom-problem-row'));
+
+    // 1. Snapshot Data & Classify
+    const analyzedRows = rows.map(row => {
+        const termInput = row.querySelector('.custom-term-input');
+        const resultInput = row.querySelector('.custom-result-input');
+
+        const term = termInput.value.trim();
+        const result = resultInput.value.trim();
+
+        let status = 'empty'; // Default
+        let errorType = null;
+
+        // Reset Styles
+        row.classList.remove('row-error');
+        termInput.classList.remove('input-error');
+        resultInput.classList.remove('input-error');
+
+        // Classification
+        if (term === "" && result === "") {
+            status = 'empty';
+        } else if (term !== "" && result === "") {
+            // Term but no Result -> Error (unless focused?)
+            // For strict mode requested: "if focus not in term or result"
+            // But we are sorting, which implies re-rendering, causing loss of focus if not careful.
+            // Actually, DOM sorting usually preserves focus if elements are moved, NOT re-created.
+            // We are just moving existing DOM nodes.
+
+            // Check if active element is inside this row
+            const isActive = row.contains(document.activeElement);
+
+            if (!isActive) {
+                status = 'error';
+                errorType = 'missing_result';
+                row.classList.add('row-error');
+                resultInput.classList.add('input-error');
+            } else {
+                status = 'editing'; // Treated as valid/top for now so it doesn't jump?
+            }
+        } else if (result !== "") {
+            status = 'valid';
+        }
+
+        return { row, term, result, status, errorType };
+    });
+
+    // 2. Detect Duplicates (Only among 'valid' or 'editing' rows with results)
+    const resultCounts = {};
+    analyzedRows.forEach(item => {
+        if (item.result) {
+            const key = item.result.toLowerCase();
+            resultCounts[key] = (resultCounts[key] || 0) + 1;
+        }
+    });
+
+    analyzedRows.forEach(item => {
+        if (item.result) {
+            const key = item.result.toLowerCase();
+            if (resultCounts[key] > 1) {
+                item.status = 'error'; // Downgrade to error
+                item.errorType = 'duplicate';
+                item.row.classList.add('row-error');
+                item.row.querySelector('.custom-result-input').classList.add('input-error');
+            }
+        }
+    });
+
+    // 3. Sorting Logic
+    // Groups: Error -> Valid (Sorted) -> Empty
+    // Note: 'editing' (incomplete but focused) should probably stay with 'valid' or 'error' but top?
+    // Let's group 'editing' with 'valid' to prevent jumping away while typing, 
+    // OR if user wants "Empty answer... red marked", it implies error.
+    // User said: "if focus is NOT in question or answer field, mark red".
+    // So while typing, it is NOT red.
+
+    analyzedRows.sort((a, b) => {
+        // Priority 1: Status Grouping
+        const getGroupScore = (item) => {
+            if (item.status === 'error') return 0; // Top
+            if (item.status === 'editing') return 1; // While typing
+            if (item.status === 'valid') return 2;
+            return 3; // Empty bottom
+        };
+
+        const scoreA = getGroupScore(a);
+        const scoreB = getGroupScore(b);
+
+        if (scoreA !== scoreB) return scoreA - scoreB;
+
+        // Priority 2: Sort Valid Items
+        if (a.status === 'valid' && b.status === 'valid') {
+            const isNumA = !isNaN(parseFloat(a.result));
+            const isNumB = !isNaN(parseFloat(b.result));
+
+            if (isNumA && isNumB) {
+                return parseFloat(a.result) - parseFloat(b.result);
+            } else {
+                return a.result.localeCompare(b.result);
+            }
+        }
+
+        return 0; // Output stable otherwise
+    });
+
+    // 4. Re-append in new order
+    analyzedRows.forEach(item => list.appendChild(item.row));
 
     updateCustomCount();
 }
 
-function sortCustomRows() {
-    if (customMode !== 'auto') return; // Only sort automatically calculated math
-
-    const list = document.getElementById('custom-problems-list');
-    const rows = Array.from(list.querySelectorAll('.custom-problem-row'));
-
-    rows.sort((a, b) => {
-        const resA = parseFloat(a.querySelector('.custom-result-display').textContent) || 999;
-        const resB = parseFloat(b.querySelector('.custom-result-display').textContent) || 999;
-        return resA - resB;
-    });
-
-    rows.forEach(row => list.appendChild(row));
-}
-
 function updateCustomCount() {
-    let validCount = 0;
-    if (customMode === 'auto') {
-        validCount = Array.from(document.querySelectorAll('.custom-result-display'))
-            .filter(el => {
-                const val = parseFloat(el.textContent);
-                return !isNaN(val) && val >= 1 && val <= 90;
-            }).length;
-    } else {
-        validCount = Array.from(document.querySelectorAll('.custom-manual-result-input'))
-            .filter(el => el.value.trim() !== "").length;
-    }
+    const validCount = Array.from(document.querySelectorAll('.custom-result-input'))
+        .filter(el => el.value.trim() !== "").length;
 
     const countEl = document.getElementById('custom-count');
     if (countEl) {
         countEl.textContent = validCount;
-        countEl.style.color = validCount >= 15 ? 'var(--success)' : 'var(--primary-color)';
+        countEl.style.color = validCount >= 1 ? 'var(--success)' : 'var(--primary-color)';
     }
 }
 
@@ -1055,25 +1107,22 @@ async function saveAndCreateCustomGame() {
 
     rows.forEach(row => {
         const term = row.querySelector('.custom-term-input').value.trim();
-        let result;
+        const result = row.querySelector('.custom-result-input').value.trim();
 
-        if (customMode === 'auto') {
-            const resultText = row.querySelector('.custom-result-display').textContent;
-            result = parseFloat(resultText);
-            if (term && (isNaN(result) || result < 1 || result > 90 || resultText === 'Double!')) {
-                hasError = true;
-            }
-        } else {
-            result = row.querySelector('.custom-manual-result-input').value.trim();
-            if (term && !result) hasError = true;
-        }
+        if (term && !result) {
+            hasError = true;
+            row.querySelector('.custom-result-input').style.borderColor = 'var(--danger)';
+        } else if (term && result) {
+            // Check if result is number or text
+            const num = parseFloat(result);
+            const isNum = !isNaN(num) && isFinite(num);
 
-        if (term && result) {
-            pool.push({ term, result, drawn: false });
+            // We store exactly what user typed. The mode (Numbers/Text) is determined by generateLottoCard based on content.
+            pool.push({ term, result: isNum ? num : result, drawn: false });
         }
     });
 
-    if (hasError) return alert("Einige Aufgaben haben Fehler oder fehlende Antworten.");
+    if (hasError) return alert("Einige Aufgaben haben fehlende Antworten. Bitte korrigieren.");
     if (pool.length < 15) return alert("Bitte erstelle mindestens 15 gültige Aufgaben.");
 
     // Start Game as Host
@@ -1086,7 +1135,7 @@ async function saveAndCreateCustomGame() {
 
     const settings = {
         opType: 'custom',
-        range: customMode === 'auto' ? 'custom' : 'text'
+        range: 'custom' // generateLottoCard checks context
     };
 
     try {
@@ -1118,15 +1167,9 @@ async function exportToJSON() {
     const rows = Array.from(document.querySelectorAll('.custom-problem-row'));
     const data = rows.map(row => {
         const term = row.querySelector('.custom-term-input').value.trim();
-        let result;
-        if (customMode === 'auto') {
-            result = row.querySelector('.custom-result-display').textContent;
-            if (result === '-' || result === '?' || result === 'Range!' || result === 'Double!') result = undefined;
-        } else {
-            result = row.querySelector('.custom-manual-result-input').value.trim();
-        }
+        const result = row.querySelector('.custom-result-input').value.trim();
         return { term, result };
-    }).filter(item => item.term !== "");
+    }).filter(item => item.term !== "" && item.result !== "");
 
     if (data.length === 0) return alert("Keine Aufgaben zum Exportieren vorhanden.");
     // ... rest of exportToJSON ...
@@ -1205,56 +1248,8 @@ function loadProblemsIntoUI(data) {
     list.innerHTML = '';
     data.forEach(item => {
         if (item && typeof item.term === 'string') {
-            const rowId = Date.now() + Math.random();
-            const row = document.createElement('div');
-            row.className = 'custom-problem-row';
-            row.id = `row-${rowId}`;
-            row.style = 'display: flex; gap: 10px; align-items: center; margin-bottom: 10px; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; animation: slideIn 0.2s ease-out;';
-
-            if (customMode === 'auto') {
-                row.innerHTML = `
-                    <input type="text" class="custom-term-input" placeholder="z.B. 12 + 8" style="flex: 2; padding: 8px;" value="${item.term}">
-                    <div class="custom-result-display" style="flex: 1; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 6px; text-align: center; font-weight: 700; color: var(--secondary-color); min-height: 40px; display: flex; align-items: center; justify-content: center;">-</div>
-                    <button class="btn-kick-player" style="position: static; width: 32px; height: 32px;" onclick="removeCustomRow('${rowId}')">×</button>
-                `;
-            } else {
-                row.innerHTML = `
-                    <input type="text" class="custom-term-input" placeholder="Frage / Begriff" style="flex: 2; padding: 8px;" value="${item.term}">
-                    <input type="text" class="custom-manual-result-input" placeholder="Antwort" style="flex: 1; padding: 8px; font-weight:700; color:var(--secondary-color); text-align:center;" value="${item.result || ''}">
-                    <button class="btn-kick-player" style="position: static; width: 32px; height: 32px;" onclick="removeCustomRow('${rowId}')">×</button>
-                    <div class="custom-result-display hidden"></div>
-                `;
-            }
-
-            list.appendChild(row);
-
-            // Add Listeners
-            const termInput = row.querySelector('.custom-term-input');
-            if (termInput) {
-                termInput.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter') {
-                        handleCustomInput(termInput, row);
-                        termInput.blur();
-                    }
-                });
-                termInput.addEventListener('blur', () => handleCustomInput(termInput, row));
-            }
-
-            if (customMode !== 'auto') {
-                const manualInput = row.querySelector('.custom-manual-result-input');
-                if (manualInput) {
-                    manualInput.addEventListener('keydown', (e) => {
-                        if (e.key === 'Enter') {
-                            handleCustomInput(manualInput, row);
-                            manualInput.blur();
-                        }
-                    });
-                    manualInput.addEventListener('blur', () => handleCustomInput(manualInput, row));
-                }
-            }
-
-            // Initial calculation/validation for each row
-            if (termInput) handleCustomInput(termInput, row);
+            // Use the unified addCustomRow function which handles term/result data
+            addCustomRow(item);
         }
     });
 
@@ -1265,7 +1260,7 @@ function loadProblemsIntoUI(data) {
     }
 
     updateCustomCount();
-    if (customMode === 'auto') sortCustomRows();
+    validateAndSortRows();
 }
 
 /**

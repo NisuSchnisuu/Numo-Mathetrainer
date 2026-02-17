@@ -1469,3 +1469,31 @@ input:focus, select:focus { border-color: var(--primary-color); }
     background: rgba(239, 68, 68, 0.1);
     color: var(--danger);
 }
+
+/* --- CUSTOM PROBLEM INPUTS --- */
+.locked-input {
+    background-color: rgba(0, 0, 0, 0.3) !important;
+    color: var(--secondary-color) !important;
+    font-weight: bold;
+    border-color: transparent !important;
+    cursor: default; /* Not allowed feels too harsh for something unlockable */
+    opacity: 0.9;
+}
+
+.custom-result-input:focus {
+    border-color: var(--primary-color);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.btn-lock-toggle svg {
+    transition: transform 0.2s;
+}
+
+.btn-lock-toggle:hover svg {
+    transform: scale(1.1);
+    color: var(--text-main);
+}
+
+.hidden {
+    display: none !important;
+}

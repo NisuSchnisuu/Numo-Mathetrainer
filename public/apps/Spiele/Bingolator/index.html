@@ -209,18 +209,16 @@
             style="width: 95%; max-width: 900px; height: 90vh; display: flex; flex-direction: column; padding-top: 20px;">
             <button id="btn-close-custom-modal" class="btn-icon-close" style="top: 10px; right: 10px;">&times;</button>
 
-            <!-- Tabs -->
-            <div class="modal-tabs-padded">
-                <button class="tab-btn-compact active" id="tab-auto"
-                    onclick="switchCustomTab('auto')">Auto-Mathe</button>
-                <button class="tab-btn-compact" id="tab-manual" onclick="switchCustomTab('manual')">Manuelle
-                    Antworten</button>
-            </div>
+            <!-- Tabs Removed -->
+            <div style="height: 10px;"></div>
 
             <div style="text-align: center; margin-bottom: 15px;">
-                <h2 id="custom-modal-title" style="margin: 0; font-size: 1.5rem;">Eigene Mathe-Aufgaben</h2>
-                <p id="custom-modal-desc" style="color: var(--text-muted); font-size: 0.85rem;">Ergebnisse werden
-                    automatisch berechnet (1-90).</p>
+                <h2 id="custom-modal-title" style="margin: 0; font-size: 1.5rem;">Eigene Aufgaben</h2>
+                <p id="custom-modal-desc" style="color: var(--text-muted); font-size: 0.85rem;">
+                    Rechnungen werden automatisch erkannt.<br>
+                    <span style="font-size: 0.75rem; opacity: 0.8;">(Zahlen 1-90 = Sortierte Karte | Text = Zufällige
+                        Karte)</span>
+                </p>
 
                 <div style="margin-top: 10px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
                     <button class="btn-secondary" id="btn-open-import-modal"
@@ -680,26 +678,20 @@
             <p style="color: var(--text-muted); margin-bottom: 20px; font-size: 0.9rem;">Füge JSON-Code ein oder lade
                 eine Datei hoch.</p>
 
-            <div style="display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 20px;">
-                <div id="guide-container-auto"
-                    style="background: rgba(59, 130, 246, 0.1); padding: 12px; border-radius: 12px; border: 1px solid rgba(59, 130, 246, 0.2); text-align: left;">
-                    <p style="font-size: 0.75rem; margin-bottom: 8px; color: #e2e8f0;"><strong>Mathe-Guide:</strong> Für
-                        autom. Rechnungen (1-90).</p>
-                    <button class="btn-primary" id="btn-download-guide"
-                        style="width: 100%; font-size: 0.75rem; background: var(--accent-color); padding: 8px;">
-                        📖 Mathe-Anleitung herunterladen
-                    </button>
-                </div>
-                <div id="guide-container-manual" class="hidden"
-                    style="background: rgba(16, 185, 129, 0.1); padding: 12px; border-radius: 12px; border: 1px solid rgba(16, 185, 129, 0.2); text-align: left;">
-                    <p style="font-size: 0.75rem; margin-bottom: 8px; color: #e2e8f0;"><strong>Text-Guide:</strong> Für
-                        Quiz & Textantworten.</p>
-                    <button class="btn-primary" id="btn-download-text-guide"
-                        style="width: 100%; font-size: 0.75rem; background: var(--success); padding: 8px;">
-                        📖 Text-Anleitung herunterladen
-                    </button>
-                </div>
+            <div id="guide-container"
+                style="background: rgba(59, 130, 246, 0.1); padding: 12px; border-radius: 12px; border: 1px solid rgba(59, 130, 246, 0.2); text-align: left;">
+                <p style="font-size: 0.85rem; margin-bottom: 8px; color: #e2e8f0;"><strong>KI-Guide:</strong> Erstelle
+                    JSON-Aufgaben mit KI (ChatGPT, etc.).</p>
+                <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 10px;">
+                    Der Prompt enthält Anweisungen für <strong>Mathe-Aufgaben</strong> (automatisch berechnet) und
+                    <strong>Quiz-Fragen</strong> (Text).
+                </p>
+                <a href="BINGOLATOR_MASTER_PROMPT.md" download="BINGOLATOR_PROMPT.md" class="btn-primary"
+                    style="width: 100%; font-size: 0.8rem; background: var(--accent-color); padding: 8px; display: block; text-align: center; text-decoration: none;">
+                    🤖 Master-Prompt herunterladen (.md)
+                </a>
             </div>
+
 
             <textarea id="json-import-area" placeholder='[{"term":"Frage", "result":"Antwort"}]'
                 style="width: 100%; height: 180px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 15px; font-family: monospace; border-radius: 12px; margin-bottom: 20px; resize: none; outline: none;"></textarea>
