@@ -1,10 +1,11 @@
 <!DOCTYPE html>
 <html lang="de">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Bingolator - Numo MatheTrainer</title>
-    
+
     <!-- PWA Manifest & Meta -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0f172a">
@@ -14,7 +15,8 @@
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
 
     <!-- Styles -->
     <link rel="stylesheet" href="style.css?v=1.1">
@@ -22,7 +24,7 @@
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
-    
+
     <!-- QR Scanner Library -->
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <!-- QR Code Generator (for Host) -->
@@ -39,14 +41,17 @@
         }
     </script>
 </head>
+
 <body>
     <!-- Numo Back Button -->
-    <a href="../../../" id="numo-back-link" class="numo-back-btn" 
+    <a href="../../../" id="numo-back-link" class="numo-back-btn"
         onclick="if(window.parent !== window) { window.parent.postMessage('numo-back-to-home', '*'); return false; }"
         title="Zurück zum Hauptmenü">
         <div class="numo-back-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M19 12H5" /><path d="M12 19l-7-7 7-7" />
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 12H5" />
+                <path d="M12 19l-7-7 7-7" />
             </svg>
         </div>
         <img src="assets/Numo-logo-192x192.png" alt="Numo" class="numo-logo-img">
@@ -67,21 +72,28 @@
                 </button>
 
                 <div class="input-group" style="width: 100%; text-align: left; margin: 0;">
-                    <label for="player-name" style="display:block; color:var(--text-muted); margin-bottom:10px; font-size: 0.9rem;">Dein Spielername</label>
-                    <input type="text" id="player-name" placeholder="z.B. MatheProfi" autocomplete="off" style="width: 100%; max-width: 300px;">
+                    <label for="player-name"
+                        style="display:block; color:var(--text-muted); margin-bottom:10px; font-size: 0.9rem;">Dein
+                        Spielername</label>
+                    <input type="text" id="player-name" placeholder="z.B. MatheProfi" autocomplete="off"
+                        style="width: 100%; max-width: 300px;">
                 </div>
             </div>
 
             <div class="lobby-right">
-                <button class="btn-primary" id="btn-open-create-modal" style="width:100%; background: var(--success); border-color: var(--success); padding: 18px; font-size: 1.2rem;">
+                <button class="btn-primary" id="btn-open-create-modal"
+                    style="width:100%; background: var(--success); border-color: var(--success); padding: 18px; font-size: 1.2rem;">
                     Spiel hosten
                 </button>
 
-                <div id="host-rejoin-container" class="hidden" style="width: 100%; display: flex; flex-direction: column; gap: 10px;">
-                    <button class="btn-primary" id="btn-host-rejoin" style="width:100%; background: var(--secondary-color); border-color: var(--secondary-color); padding: 18px; font-size: 1.2rem;">
+                <div id="host-rejoin-container" class="hidden"
+                    style="width: 100%; display: flex; flex-direction: column; gap: 10px;">
+                    <button class="btn-primary" id="btn-host-rejoin"
+                        style="width:100%; background: var(--secondary-color); border-color: var(--secondary-color); padding: 18px; font-size: 1.2rem;">
                         Spiel beitreten (Host)
                     </button>
-                    <button class="btn-secondary" id="btn-host-delete" style="width:100%; color: var(--danger); border-color: var(--danger); padding: 12px; font-size: 1rem;">
+                    <button class="btn-secondary" id="btn-host-delete"
+                        style="width:100%; color: var(--danger); border-color: var(--danger); padding: 12px; font-size: 1rem;">
                         Spiel löschen
                     </button>
                 </div>
@@ -89,15 +101,29 @@
                 <hr class="lobby-separator">
 
                 <div id="join-container" style="width: 100%;">
-                    <input type="text" id="join-code" placeholder="CODE" maxlength="4" style="margin-bottom: 12px; text-transform:uppercase; width: 100%; text-align: center; letter-spacing: 2px;">
+                    <input type="text" id="join-code" placeholder="CODE" maxlength="4"
+                        style="margin-bottom: 12px; text-transform:uppercase; width: 100%; text-align: center; letter-spacing: 2px;">
                     <div style="display: flex; gap: 10px; flex-direction: column;">
                         <div style="display: flex; gap: 10px;">
                             <button class="btn-primary" id="btn-enter" style="flex: 2;">Beitreten</button>
-                            <button class="btn-secondary" id="btn-scan-qr" style="flex: 1; padding: 0; display: flex; align-items: center; justify-content: center;">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="7" y="7" width="3" height="3"/><rect x="14" y="7" width="3" height="3"/><rect x="7" y="14" width="3" height="3"/><line x1="14" y1="14" x2="14" y2="14"/></svg>
+                            <button class="btn-secondary" id="btn-scan-qr"
+                                style="flex: 1; padding: 0; display: flex; align-items: center; justify-content: center;">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <path d="M3 7V5a2 2 0 0 1 2-2h2" />
+                                    <path d="M17 3h2a2 2 0 0 1 2 2v2" />
+                                    <path d="M21 17v2a2 2 0 0 1-2 2h-2" />
+                                    <path d="M7 21H5a2 2 0 0 1-2-2v-2" />
+                                    <rect x="7" y="7" width="3" height="3" />
+                                    <rect x="14" y="7" width="3" height="3" />
+                                    <rect x="7" y="14" width="3" height="3" />
+                                    <line x1="14" y1="14" x2="14" y2="14" />
+                                </svg>
                             </button>
                         </div>
-                        <button id="btn-open-rejoin-modal" class="btn-text" style="color: var(--primary-color); margin-top: 5px; font-size: 0.85rem;">Spiel wiederherstellen</button>
+                        <button id="btn-open-rejoin-modal" class="btn-text"
+                            style="color: var(--primary-color); margin-top: 5px; font-size: 0.85rem;">Spiel
+                            wiederherstellen</button>
                         <button id="btn-quick-back" class="btn-text hidden">Zurück zum Hauptmenü</button>
                     </div>
                 </div>
@@ -130,15 +156,47 @@
                         <option value="1x1">Kleines Einmaleins</option>
                     </select>
                 </div>
-                <div class="setting-card" style="grid-column: span 2; display: flex; align-items: center; justify-content: center; background: rgba(16, 185, 129, 0.1);">
-                    <button class="btn-text" id="btn-open-custom-modal" style="color: var(--primary-color); font-weight: 700; text-decoration: none; width: 100%; height: 100%;">
-                        EIGENE AUFGABEN ERSTELLEN
+
+                <!-- My Games Dropdown -->
+                <div class="setting-card" style="grid-column: span 2;">
+                    <label>Meine Spiele (Gespeichert)</label>
+                    <div style="display: flex; gap: 10px;">
+                        <select id="my-saved-games" style="flex: 1;">
+                            <option value="">-- Kein Spiel ausgewählt --</option>
+                            <!-- Options injected by JS -->
+                        </select>
+                        <button id="btn-delete-saved-game" class="btn-secondary"
+                            style="color: var(--danger); border-color: rgba(239, 68, 68, 0.3); padding: 0 15px; display: flex; align-items: center; justify-content: center;"
+                            title="Löschen">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <polyline points="3 6 5 6 21 6" />
+                                <path
+                                    d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                <line x1="10" y1="11" x2="10" y2="17" />
+                                <line x1="14" y1="11" x2="14" y2="17" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="setting-card"
+                    style="grid-column: span 2; display: flex; align-items: center; justify-content: center; padding: 0; background: transparent; border: none; height: 100px;">
+                    <button class="btn-custom-trigger" id="btn-open-custom-modal">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                        </svg>
+                        <span>Eigene Aufgaben erstellen</span>
                     </button>
                 </div>
             </div>
 
             <div style="text-align: center; margin-top: 15px;">
-                <button class="btn-primary" id="btn-create-confirm" style="background: var(--success); width: 100%; border-radius: 50px;">
+                <button class="btn-primary" id="btn-create-confirm"
+                    style="background: var(--success); width: 100%; border-radius: 50px;">
                     LOBBY ERSTELLEN
                 </button>
             </div>
@@ -147,42 +205,72 @@
 
     <!-- CUSTOM PROBLEMS MODAL -->
     <div id="custom-problems-modal" class="modal-overlay">
-        <div class="modal-content" style="width: 95%; max-width: 900px; height: 90vh; display: flex; flex-direction: column; padding-top: 20px;">
+        <div class="modal-content"
+            style="width: 95%; max-width: 900px; height: 90vh; display: flex; flex-direction: column; padding-top: 20px;">
             <button id="btn-close-custom-modal" class="btn-icon-close" style="top: 10px; right: 10px;">&times;</button>
-            
+
             <!-- Tabs -->
-            <div class="modal-tabs" style="display: flex; gap: 5px; margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;">
-                <button class="tab-btn active" id="tab-auto" onclick="switchCustomTab('auto')">Auto-Mathe</button>
-                <button class="tab-btn" id="tab-manual" onclick="switchCustomTab('manual')">Manuelle Antworten</button>
+            <div class="modal-tabs-padded">
+                <button class="tab-btn-compact active" id="tab-auto"
+                    onclick="switchCustomTab('auto')">Auto-Mathe</button>
+                <button class="tab-btn-compact" id="tab-manual" onclick="switchCustomTab('manual')">Manuelle
+                    Antworten</button>
             </div>
 
             <div style="text-align: center; margin-bottom: 15px;">
                 <h2 id="custom-modal-title" style="margin: 0; font-size: 1.5rem;">Eigene Mathe-Aufgaben</h2>
-                <p id="custom-modal-desc" style="color: var(--text-muted); font-size: 0.85rem;">Ergebnisse werden automatisch berechnet (1-90).</p>
-                
+                <p id="custom-modal-desc" style="color: var(--text-muted); font-size: 0.85rem;">Ergebnisse werden
+                    automatisch berechnet (1-90).</p>
+
                 <div style="margin-top: 10px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
-                    <button class="btn-secondary" id="btn-open-import-modal" style="padding: 8px 16px; font-size: 0.9rem; display: flex; align-items: center; gap: 8px;">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    <button class="btn-secondary" id="btn-open-import-modal"
+                        style="padding: 8px 16px; font-size: 0.9rem; display: flex; align-items: center; gap: 8px;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="17 8 12 3 7 8" />
+                            <line x1="12" y1="3" x2="12" y2="15" />
+                        </svg>
                         Import
                     </button>
-                    <button class="btn-secondary" id="btn-export-json" style="padding: 8px 16px; font-size: 0.9rem; display: flex; align-items: center; gap: 8px;">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                    <button class="btn-secondary" id="btn-export-json"
+                        style="padding: 8px 16px; font-size: 0.9rem; display: flex; align-items: center; gap: 8px;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                            <polyline points="17 21 17 13 7 13 7 21" />
+                            <polyline points="7 3 7 8 15 8" />
+                        </svg>
+                        Export
+                    </button>
+                    <button class="btn-primary" id="btn-save-local-db"
+                        style="padding: 8px 16px; font-size: 0.9rem; display: flex; align-items: center; gap: 8px; background: var(--secondary-color);">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2">
+                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                            <polyline points="17 21 17 13 7 13 7 21" />
+                            <polyline points="7 3 7 8 15 8" />
+                        </svg>
                         Speichern
                     </button>
                 </div>
             </div>
 
             <!-- List Area -->
-            <div id="custom-problems-list" style="flex: 1; overflow-y: auto; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 12px; margin-bottom: 15px;">
+            <div id="custom-problems-list"
+                style="flex: 1; overflow-y: auto; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 12px; margin-bottom: 15px;">
                 <!-- Rows injected here -->
             </div>
 
-            <div style="display: flex; gap: 10px; justify-content: space-between; align-items: center; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1);">
+            <div
+                style="display: flex; gap: 10px; justify-content: space-between; align-items: center; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1);">
                 <button class="btn-secondary" id="btn-add-custom-row" style="padding: 10px 20px;">+ Zeile</button>
                 <div style="color: var(--text-muted); font-size: 0.9rem;">
-                    Gültig: <span id="custom-count" style="color: var(--primary-color); font-weight: 700;">0</span> / 15+
+                    Gültig: <span id="custom-count" style="color: var(--primary-color); font-weight: 700;">0</span> /
+                    15+
                 </div>
-                <button class="btn-primary" id="btn-save-custom-problems" style="background: var(--success); padding: 10px 30px;">SPIEL STARTEN</button>
+                <button class="btn-primary" id="btn-save-custom-problems"
+                    style="background: var(--success); padding: 10px 30px;">SPIEL STARTEN</button>
             </div>
         </div>
     </div>
@@ -193,7 +281,13 @@
             <div class="lobby-header-new">
                 <div class="header-left">
                     <button id="btn-show-player-codes" class="btn-icon-host hidden" title="Spieler-Codes anzeigen">
-                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                            <circle cx="9" cy="7" r="4" />
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                        </svg>
                     </button>
                 </div>
                 <div class="header-center">
@@ -201,21 +295,35 @@
                         <span class="code-label">CODE:</span>
                         <span id="lobby-code-display" class="code-value">----</span>
                         <button id="btn-show-qr-large" class="qr-icon-btn" style="margin-left: 10px;">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><path d="M7 7h3v3H7z"/><path d="M14 7h3v3h-3z"/><path d="M7 14h3v3H7z"/><path d="M14 14h3v3h-3z"/></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                                <path d="M7 7h3v3H7z" />
+                                <path d="M14 7h3v3h-3z" />
+                                <path d="M7 14h3v3H7z" />
+                                <path d="M14 14h3v3h-3z" />
+                            </svg>
                         </button>
                     </div>
                 </div>
                 <div class="header-right">
                     <button id="btn-leave-lobby" class="btn-icon-leave">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2">
+                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                            <polyline points="16 17 21 12 16 7" />
+                            <line x1="21" y1="12" x2="9" y2="12" />
+                        </svg>
                     </button>
                 </div>
             </div>
 
             <div class="lobby-content-area">
                 <div style="text-align:center; margin-bottom: 10px;">
-                    <span style="font-size: 0.8rem; color: var(--text-muted); opacity: 0.7;">Dein Wiederherstellungs-Code: </span>
-                    <span id="player-recovery-code-display" style="font-family:monospace; font-weight:bold; color: var(--secondary-color);">----</span>
+                    <span style="font-size: 0.8rem; color: var(--text-muted); opacity: 0.7;">Dein
+                        Wiederherstellungs-Code: </span>
+                    <span id="player-recovery-code-display"
+                        style="font-family:monospace; font-weight:bold; color: var(--secondary-color);">----</span>
                 </div>
                 <p id="lobby-status-text" class="status-message">Warte auf Spieler...</p>
                 <div id="lobby-player-slots" class="player-grid-dynamic">
@@ -232,8 +340,10 @@
         <div id="lobby-qr-modal" class="modal-overlay">
             <div class="modal-content qr-modal-content" style="padding-top: 60px;">
                 <button id="btn-close-qr-large" class="btn-icon-close">&times;</button>
-                <h1 id="qr-modal-code" class="huge-code" style="font-size: 4rem; margin: 0; color: var(--secondary-color);">----</h1>
-                <div id="lobby-qr-large-container" class="qr-large-display" style="margin: 20px 0; border: 8px solid white; border-radius: 12px; display: inline-block;"></div>
+                <h1 id="qr-modal-code" class="huge-code"
+                    style="font-size: 4rem; margin: 0; color: var(--secondary-color);">----</h1>
+                <div id="lobby-qr-large-container" class="qr-large-display"
+                    style="margin: 20px 0; border: 8px solid white; border-radius: 12px; display: inline-block;"></div>
                 <p style="color: var(--text-muted);">Scanne diesen Code zum Beitreten</p>
             </div>
         </div>
@@ -244,20 +354,26 @@
         <!-- Player View (Default) -->
         <div id="player-game-container" class="player-game-container">
             <div class="game-top-bar">
-                 <div class="top-bar-left">
-                     <div class="hearts" id="heartsContainer">❤❤❤</div>
-                 </div>
-                 <div class="top-bar-center">
-                     <div id="activeProblem" class="active-problem-mini">
-                         <span id="currentTermDisplay">Warte...</span>
-                     </div>
-                 </div>
-                 <div class="top-bar-right">
-                     <div class="streak-counter" id="streakContainer">🔥 <span id="streakValue">0</span></div>
-                     <button class="btn-icon-leave-mini" onclick="confirmLeaveGame()" title="Spiel verlassen" style="margin-left: 15px;">
-                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-                     </button>
-                 </div>
+                <div class="top-bar-left">
+                    <div class="hearts" id="heartsContainer">❤❤❤</div>
+                </div>
+                <div class="top-bar-center">
+                    <div id="activeProblem" class="active-problem-mini">
+                        <span id="currentTermDisplay">Warte...</span>
+                    </div>
+                </div>
+                <div class="top-bar-right">
+                    <div class="streak-counter" id="streakContainer">🔥 <span id="streakValue">0</span></div>
+                    <button class="btn-icon-leave-mini" onclick="confirmLeaveGame()" title="Spiel verlassen"
+                        style="margin-left: 15px;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2.5">
+                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                            <polyline points="16 17 21 12 16 7" />
+                            <line x1="21" y1="12" x2="9" y2="12" />
+                        </svg>
+                    </button>
+                </div>
             </div>
 
             <div class="bingo-container">
@@ -268,7 +384,9 @@
         <!-- Host Dashboard (Overlay or Side Panel) -->
         <div id="host-dashboard" class="host-dashboard hidden">
             <div class="host-main">
-                <button id="btn-show-player-codes-ingame" class="btn-secondary" style="position: absolute; top: 10px; left: 10px; padding: 5px 10px; font-size: 0.8rem;" onclick="showModal('player-codes-modal')">
+                <button id="btn-show-player-codes-ingame" class="btn-secondary"
+                    style="position: absolute; top: 10px; left: 10px; padding: 5px 10px; font-size: 0.8rem;"
+                    onclick="showModal('player-codes-modal')">
                     👥 Codes
                 </button>
                 <h1 class="host-title">BINGOLATOR</h1>
@@ -278,31 +396,51 @@
                 </div>
                 <button class="btn-primary btn-draw-large" id="btn-host-draw">Zahl ziehen</button>
             </div>
-            
+
             <div class="host-sidebar">
                 <h3>Verlauf</h3>
                 <div class="history-list" id="host-history">
                     <!-- History items injected here -->
                 </div>
                 <div class="host-controls">
-                    <button class="btn-secondary" onclick="confirmLeaveGame()" style="width: 100%;">Spiel beenden</button>
+                    <button class="btn-secondary" onclick="confirmLeaveGame()" style="width: 100%;">Spiel
+                        beenden</button>
                 </div>
             </div>
         </div>
     </section>
+
+    <!-- SAVE GAME NAME MODAL -->
+    <div id="save-game-name-modal" class="modal-overlay">
+        <div class="modal-content" style="width: 90%; max-width: 400px; padding-top: 50px;">
+            <button id="btn-close-save-name" class="btn-icon-close">&times;</button>
+            <h2 style="margin:0; margin-bottom: 20px;">Spiel speichern</h2>
+
+            <label style="display:block; color:var(--text-muted); margin-bottom:5px; font-size:0.9rem;">Name des
+                Spiels</label>
+            <input type="text" id="input-save-game-name" placeholder="z.B. Mathe Test 1"
+                style="width:100%; margin-bottom:25px;">
+
+            <button id="btn-confirm-save-db" class="btn-primary" style="width:100%;">Speichern</button>
+        </div>
+    </div>
 
     <!-- REJOIN MODAL -->
     <div id="rejoin-modal" class="modal-overlay">
         <div class="modal-content" style="width: 90%; max-width: 400px; padding-top: 50px;">
             <button id="btn-close-rejoin" class="btn-icon-close">&times;</button>
             <h2 style="margin:0; margin-bottom: 20px;">Spiel wiederherstellen</h2>
-            
-            <label style="display:block; color:var(--text-muted); margin-bottom:5px; font-size:0.9rem;">Game ID (z.B. A1B2)</label>
-            <input type="text" id="rejoin-game-id" placeholder="GAME ID" maxlength="4" style="width:100%; text-transform:uppercase; letter-spacing:2px; text-align:center; margin-bottom:15px;">
-            
-            <label style="display:block; color:var(--text-muted); margin-bottom:5px; font-size:0.9rem;">Wiederherstellungs-Code</label>
-            <input type="tel" id="rejoin-recovery-code" placeholder="4-stelliger Code" maxlength="4" style="width:100%; letter-spacing:2px; text-align:center; margin-bottom:25px;">
-            
+
+            <label style="display:block; color:var(--text-muted); margin-bottom:5px; font-size:0.9rem;">Game ID (z.B.
+                A1B2)</label>
+            <input type="text" id="rejoin-game-id" placeholder="GAME ID" maxlength="4"
+                style="width:100%; text-transform:uppercase; letter-spacing:2px; text-align:center; margin-bottom:15px;">
+
+            <label
+                style="display:block; color:var(--text-muted); margin-bottom:5px; font-size:0.9rem;">Wiederherstellungs-Code</label>
+            <input type="tel" id="rejoin-recovery-code" placeholder="4-stelliger Code" maxlength="4"
+                style="width:100%; letter-spacing:2px; text-align:center; margin-bottom:25px;">
+
             <button id="btn-confirm-rejoin" class="btn-primary" style="width:100%;">Wiederherstellen</button>
         </div>
     </div>
@@ -312,12 +450,16 @@
         <div class="modal-content" style="width: 90%; max-width: 500px; padding-top: 50px;">
             <button id="btn-close-player-codes" class="btn-icon-close">&times;</button>
             <h2 style="margin:0; margin-bottom: 10px;">Spieler-Codes</h2>
-            <div style="text-align:center; margin-bottom:20px; background:rgba(255,255,255,0.05); padding:10px; border-radius:12px;">
+            <div
+                style="text-align:center; margin-bottom:20px; background:rgba(255,255,255,0.05); padding:10px; border-radius:12px;">
                 <span style="color:var(--text-muted); font-size:0.9rem;">GAME ID: </span>
-                <span id="codes-modal-game-id" style="font-weight:800; font-family:monospace; font-size:1.2rem; color:var(--primary-color);">----</span>
+                <span id="codes-modal-game-id"
+                    style="font-weight:800; font-family:monospace; font-size:1.2rem; color:var(--primary-color);">----</span>
             </div>
-            <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:15px;">Teile diese Codes mit Spielern, die die Verbindung verloren haben.</p>
-            <div id="player-codes-list" style="max-height: 50vh; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 8px;">
+            <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:15px;">Teile diese Codes mit Spielern,
+                die die Verbindung verloren haben.</p>
+            <div id="player-codes-list"
+                style="max-height: 50vh; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 8px;">
                 <!-- Codes injected here -->
             </div>
         </div>
@@ -333,7 +475,7 @@
     </div>
 
     <!-- OVERLAYS / MODALS -->
-    
+
     <div id="rowOverlay" class="modal-overlay">
         <h2 style="color: var(--secondary-color);">REIHE VOLL!</h2>
         <p class="description">Du hast eine Reihe geschafft!</p>
@@ -352,8 +494,10 @@
             <h2 style="color: var(--danger);">Verlassen?</h2>
             <p style="color: var(--text-muted); margin-bottom: 25px;">Möchtest du das Spiel wirklich verlassen?</p>
             <div style="display: flex; gap: 10px;">
-                <button class="btn-secondary" onclick="hideModal('leave-confirm-modal')" style="flex: 1;">Abbrechen</button>
-                <button class="btn-primary" id="btn-confirm-leave" style="flex: 1; background: var(--danger);">Verlassen</button>
+                <button class="btn-secondary" onclick="hideModal('leave-confirm-modal')"
+                    style="flex: 1;">Abbrechen</button>
+                <button class="btn-primary" id="btn-confirm-leave"
+                    style="flex: 1; background: var(--danger);">Verlassen</button>
             </div>
         </div>
     </div>
@@ -371,10 +515,13 @@
     <div id="kick-confirm-modal" class="modal-overlay">
         <div class="modal-content" style="max-width: 400px; text-align: center;">
             <h2 style="color: var(--danger);">Spieler entfernen?</h2>
-            <p style="color: var(--text-muted); margin-bottom: 25px;">Möchtest du diesen Spieler wirklich aus der Lobby entfernen?</p>
+            <p style="color: var(--text-muted); margin-bottom: 25px;">Möchtest du diesen Spieler wirklich aus der Lobby
+                entfernen?</p>
             <div style="display: flex; gap: 10px;">
-                <button class="btn-secondary" onclick="hideModal('kick-confirm-modal')" style="flex: 1;">Abbrechen</button>
-                <button class="btn-primary" id="btn-confirm-kick" style="flex: 1; background: var(--danger);">Entfernen</button>
+                <button class="btn-secondary" onclick="hideModal('kick-confirm-modal')"
+                    style="flex: 1;">Abbrechen</button>
+                <button class="btn-primary" id="btn-confirm-kick"
+                    style="flex: 1; background: var(--danger);">Entfernen</button>
             </div>
         </div>
     </div>
@@ -398,19 +545,22 @@
     <div id="winner-modal" class="modal-overlay">
         <div class="modal-content" style="max-width: 600px; width: 95%; text-align: center;">
             <h1 class="game-title" style="font-size: 3rem; margin-bottom: 20px;">BINGO!</h1>
-            
-            <div id="winner-list" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 15px; margin-bottom: 20px;">
+
+            <div id="winner-list"
+                style="display: flex; flex-wrap: wrap; justify-content: center; gap: 15px; margin-bottom: 20px;">
                 <!-- Winner Chips injected here -->
             </div>
 
             <!-- Host View: Card Preview -->
-            <div id="winner-card-preview" style="background: var(--background-dark); padding: 10px; border-radius: 10px; margin-bottom: 20px; display: none;">
-                <h4 style="color: var(--text-muted); margin-bottom: 10px;">Karte von <span id="preview-player-name">...</span></h4>
+            <div id="winner-card-preview"
+                style="background: var(--background-dark); padding: 10px; border-radius: 10px; margin-bottom: 20px; display: none;">
+                <h4 style="color: var(--text-muted); margin-bottom: 10px;">Karte von <span
+                        id="preview-player-name">...</span></h4>
                 <div class="bingo-card-preview" id="preview-grid"></div>
             </div>
 
             <p id="winner-wait-msg" style="color: var(--text-muted);">Warte auf Host...</p>
-            
+
             <button id="btn-winner-continue" class="btn-primary hidden" style="width: 100%;">Runde fortsetzen</button>
         </div>
     </div>
@@ -423,7 +573,8 @@
             <div class="install-header">
                 <span class="app-icon-large">✨</span>
                 <h1 class="install-title">App installieren</h1>
-                <p class="install-subtitle">Installiere <strong>BINGOLATOR</strong> für das beste Spielerlebnis (Vollbild,
+                <p class="install-subtitle">Installiere <strong>BINGOLATOR</strong> für das beste Spielerlebnis
+                    (Vollbild,
                     Offline-Support).</p>
                 <button id="btn-native-install" class="btn-primary"
                     style="display: none; margin: 20px auto; padding: 12px 24px; font-size: 1.1rem; border-radius: 50px;">Jetzt
@@ -513,8 +664,10 @@
                 </div>
             </div>
 
-            <div class="refresh-hint-box" style="margin-top: 25px; padding: 12px; background: rgba(16, 185, 129, 0.1); border-radius: 10px; display: inline-block; border: 1px solid rgba(16, 185, 129, 0.2);">
-                <p style="color: var(--success); font-weight: 500; margin: 0;">App bereits installiert? Schliesse diesen Tab und öffne die App!</p>
+            <div class="refresh-hint-box"
+                style="margin-top: 25px; padding: 12px; background: rgba(16, 185, 129, 0.1); border-radius: 10px; display: inline-block; border: 1px solid rgba(16, 185, 129, 0.2);">
+                <p style="color: var(--success); font-weight: 500; margin: 0;">App bereits installiert? Schliesse diesen
+                    Tab und öffne die App!</p>
             </div>
         </div>
     </div>
@@ -524,30 +677,43 @@
         <div class="modal-content" style="max-width: 500px; width: 95%; text-align: center;">
             <button id="btn-close-import-modal" class="btn-icon-close">&times;</button>
             <h2 style="margin-bottom: 10px;">Aufgaben importieren</h2>
-            <p style="color: var(--text-muted); margin-bottom: 20px; font-size: 0.9rem;">Füge JSON-Code ein oder lade eine Datei hoch.</p>
-            
+            <p style="color: var(--text-muted); margin-bottom: 20px; font-size: 0.9rem;">Füge JSON-Code ein oder lade
+                eine Datei hoch.</p>
+
             <div style="display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 20px;">
-                <div id="guide-container-auto" style="background: rgba(59, 130, 246, 0.1); padding: 12px; border-radius: 12px; border: 1px solid rgba(59, 130, 246, 0.2); text-align: left;">
-                    <p style="font-size: 0.75rem; margin-bottom: 8px; color: #e2e8f0;"><strong>Mathe-Guide:</strong> Für autom. Rechnungen (1-90).</p>
-                    <button class="btn-primary" id="btn-download-guide" style="width: 100%; font-size: 0.75rem; background: var(--accent-color); padding: 8px;">
+                <div id="guide-container-auto"
+                    style="background: rgba(59, 130, 246, 0.1); padding: 12px; border-radius: 12px; border: 1px solid rgba(59, 130, 246, 0.2); text-align: left;">
+                    <p style="font-size: 0.75rem; margin-bottom: 8px; color: #e2e8f0;"><strong>Mathe-Guide:</strong> Für
+                        autom. Rechnungen (1-90).</p>
+                    <button class="btn-primary" id="btn-download-guide"
+                        style="width: 100%; font-size: 0.75rem; background: var(--accent-color); padding: 8px;">
                         📖 Mathe-Anleitung herunterladen
                     </button>
                 </div>
-                <div id="guide-container-manual" class="hidden" style="background: rgba(16, 185, 129, 0.1); padding: 12px; border-radius: 12px; border: 1px solid rgba(16, 185, 129, 0.2); text-align: left;">
-                    <p style="font-size: 0.75rem; margin-bottom: 8px; color: #e2e8f0;"><strong>Text-Guide:</strong> Für Quiz & Textantworten.</p>
-                    <button class="btn-primary" id="btn-download-text-guide" style="width: 100%; font-size: 0.75rem; background: var(--success); padding: 8px;">
+                <div id="guide-container-manual" class="hidden"
+                    style="background: rgba(16, 185, 129, 0.1); padding: 12px; border-radius: 12px; border: 1px solid rgba(16, 185, 129, 0.2); text-align: left;">
+                    <p style="font-size: 0.75rem; margin-bottom: 8px; color: #e2e8f0;"><strong>Text-Guide:</strong> Für
+                        Quiz & Textantworten.</p>
+                    <button class="btn-primary" id="btn-download-text-guide"
+                        style="width: 100%; font-size: 0.75rem; background: var(--success); padding: 8px;">
                         📖 Text-Anleitung herunterladen
                     </button>
                 </div>
             </div>
 
-            <textarea id="json-import-area" placeholder='[{"term":"Frage", "result":"Antwort"}]' 
+            <textarea id="json-import-area" placeholder='[{"term":"Frage", "result":"Antwort"}]'
                 style="width: 100%; height: 180px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 15px; font-family: monospace; border-radius: 12px; margin-bottom: 20px; resize: none; outline: none;"></textarea>
-            
+
             <div style="display: flex; gap: 10px;">
                 <button class="btn-primary" id="btn-import-paste" style="flex: 2;">Text importieren</button>
-                <button class="btn-secondary" id="btn-upload-json" style="flex: 1; padding: 0; display: flex; align-items: center; justify-content: center;" title="Datei hochladen">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                <button class="btn-secondary" id="btn-upload-json"
+                    style="flex: 1; padding: 0; display: flex; align-items: center; justify-content: center;"
+                    title="Datei hochladen">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="17 8 12 3 7 8" />
+                        <line x1="12" y1="3" x2="12" y2="15" />
+                    </svg>
                 </button>
             </div>
             <input type="file" id="json-file-input" accept=".json" style="display: none;">
@@ -570,6 +736,48 @@
         </div>
     </div>
 
+    <!-- SAVE SUCCESS MODAL -->
+    <div id="save-success-modal" class="modal-overlay">
+        <div class="modal-content" style="width: 90%; max-width: 400px; text-align: center; padding: 40px;">
+            <div class="modal-message-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                </svg>
+            </div>
+            <h2 style="font-size: 1.5rem; margin-bottom: 10px; color: white;">Gespeichert!</h2>
+            <p style="color: var(--text-muted); margin-bottom: 30px;">Dein Spiel wurde erfolgreich gespeichert.</p>
+            <button class="btn-primary" onclick="hideModal('save-success-modal')"
+                style="width: 100%; border-radius: 50px;">OK</button>
+        </div>
+    </div>
+
+    <!-- DELETE CONFIRM MODAL -->
+    <div id="delete-confirm-modal" class="modal-overlay">
+        <div class="modal-content" style="width: 90%; max-width: 400px; text-align: center; padding: 40px;">
+            <div class="modal-message-icon danger">
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 6h18" />
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                    <line x1="10" y1="11" x2="10" y2="17" />
+                    <line x1="14" y1="11" x2="14" y2="17" />
+                </svg>
+            </div>
+            <h2 style="font-size: 1.5rem; margin-bottom: 10px; color: white;">Spiel löschen?</h2>
+            <p style="color: var(--text-muted); margin-bottom: 30px;">Möchtest du "<span id="delete-game-name"
+                    style="color: white; font-weight: bold;"></span>" wirklich löschen? Das kann nicht rückgängig
+                gemacht werden.</p>
+            <div style="display: flex; gap: 15px;">
+                <button class="btn-secondary" onclick="hideModal('delete-confirm-modal')"
+                    style="flex: 1; border-color: rgba(255,255,255,0.2); color: white;">Abbrechen</button>
+                <button class="btn-primary" id="btn-confirm-delete-action"
+                    style="flex: 1; background: var(--danger); box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);">Löschen</button>
+            </div>
+        </div>
+    </div>
+
     <script src="game.js"></script>
 </body>
+
 </html>

@@ -30,6 +30,62 @@ let isLeaving = false; // Flag to prevent 'kicked' modal during voluntary exit
 
 let html5QrScanner = null;
 
+// --- IndexedDB Logic ---
+const DB_NAME = 'BingolatorDB';
+const STORE_NAME = 'customGames';
+let dbInstance = null;
+
+function initDB() {
+    return new Promise((resolve, reject) => {
+        if (dbInstance) return resolve(dbInstance);
+        const request = indexedDB.open(DB_NAME, 1);
+        request.onupgradeneeded = (e) => {
+            const db = e.target.result;
+            if (!db.objectStoreNames.contains(STORE_NAME)) {
+                db.createObjectStore(STORE_NAME, { keyPath: 'name' });
+            }
+        };
+        request.onsuccess = (e) => {
+            dbInstance = e.target.result;
+            resolve(dbInstance);
+        };
+        request.onerror = (e) => reject(e);
+    });
+}
+
+async function saveGameToDB(name, problems, mode) {
+    const db = await initDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        const request = store.put({ name, problems, mode, timestamp: Date.now() });
+        request.onsuccess = () => resolve();
+        request.onerror = (e) => reject(e);
+    });
+}
+
+async function getAllSavedGames() {
+    const db = await initDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, 'readonly');
+        const store = tx.objectStore(STORE_NAME);
+        const request = store.getAll();
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = (e) => reject(e);
+    });
+}
+
+async function getSavedGame(name) {
+    const db = await initDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, 'readonly');
+        const store = tx.objectStore(STORE_NAME);
+        const request = store.get(name);
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = (e) => reject(e);
+    });
+}
+
 // --- Helper Functions ---
 
 function switchCustomTab(mode) {
@@ -291,14 +347,14 @@ function initApp() {
                 // Show Rejoin UI
                 const btnCreate = document.getElementById('btn-open-create-modal');
                 if (btnCreate) btnCreate.classList.add('hidden');
-                
+
                 const rejoinContainer = document.getElementById('host-rejoin-container');
                 if (rejoinContainer) rejoinContainer.classList.remove('hidden');
-                
+
                 // Add Listeners
                 const btnRejoin = document.getElementById('btn-host-rejoin');
                 if (btnRejoin) btnRejoin.onclick = () => hostRejoinGame(savedHostGame);
-                
+
                 const btnDelete = document.getElementById('btn-host-delete');
                 if (btnDelete) btnDelete.onclick = () => hostDeleteGame(savedHostGame);
             } else {
@@ -371,6 +427,25 @@ function bindEvents() {
 
     const btnImportPaste = document.getElementById('btn-import-paste');
     if (btnImportPaste) btnImportPaste.onclick = importFromPaste;
+
+    // SAVE GAME LOCALLY
+    const btnSaveLocal = document.getElementById('btn-save-local-db');
+    if (btnSaveLocal) btnSaveLocal.onclick = openSaveNameModal;
+
+    const btnCloseSaveName = document.getElementById('btn-close-save-name');
+    if (btnCloseSaveName) btnCloseSaveName.onclick = () => hideModal('save-game-name-modal');
+
+    const btnConfirmSaveDB = document.getElementById('btn-confirm-save-db');
+    if (btnConfirmSaveDB) btnConfirmSaveDB.onclick = saveCurrentCustomGame;
+
+    // Refresh Saved Games List
+    refreshSavedGamesUI();
+
+    const btnDeleteSaved = document.getElementById('btn-delete-saved-game');
+    if (btnDeleteSaved) btnDeleteSaved.onclick = deleteSelectedSavedGame;
+
+    const selectSaved = document.getElementById('my-saved-games');
+    if (selectSaved) selectSaved.onchange = loadSelectedSavedGame;
 
     const btnUploadTrigger = document.getElementById('btn-upload-json');
     const fileInput = document.getElementById('json-file-input');
@@ -481,6 +556,161 @@ function bindEvents() {
     });
 }
 
+// --- SAVED GAMES HELPERS ---
+
+async function openSaveNameModal() {
+    showModal('save-game-name-modal');
+}
+
+async function saveCurrentCustomGame() {
+    const nameInput = document.getElementById('input-save-game-name');
+    const name = nameInput ? nameInput.value.trim() : "";
+    if (!name) return alert("Bitte einen Namen eingeben.");
+
+    // Extract current rows
+    const rows = Array.from(document.querySelectorAll('.custom-problem-row'));
+    const data = rows.map(row => {
+        const term = row.querySelector('.custom-term-input').value.trim();
+        let result;
+        if (customMode === 'auto') {
+            result = row.querySelector('.custom-result-display').textContent;
+            if (result === '-' || result === '?' || result === 'Range!' || result === 'Double!') result = undefined;
+        } else {
+            result = row.querySelector('.custom-manual-result-input').value.trim();
+        }
+        return { term, result };
+    }).filter(item => item.term !== "");
+
+    if (data.length === 0) return alert("Keine Aufgaben zum Speichern.");
+
+    try {
+        await saveGameToDB(name, data, customMode);
+        alert("Spiel '" + name + "' gespeichert!");
+        hideModal('save-game-name-modal');
+        nameInput.value = "";
+        refreshSavedGamesUI();
+    } catch (e) {
+        console.error("DB Error", e);
+        alert("Fehler beim Speichern: " + e.message);
+    }
+}
+
+async function refreshSavedGamesUI() {
+    const select = document.getElementById('my-saved-games');
+    if (!select) return;
+
+    try {
+        const games = await getAllSavedGames();
+        // Keep the first default option
+        const defaultOption = '<option value="">-- Kein Spiel ausgewählt --</option>';
+
+        // Sort by newest first
+        games.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+        const options = games.map(g => {
+            return `<option value="${g.name}">${g.name} (${g.problems.length} Aufg.) [${g.mode === 'manual' ? 'Manuell' : 'Auto'}]</option>`;
+        }).join('');
+
+        select.innerHTML = defaultOption + options;
+
+        // Reset delete button state
+        const btnDelete = document.getElementById('btn-delete-saved-game');
+        if (btnDelete) {
+            btnDelete.disabled = true;
+            btnDelete.style.opacity = "0.5";
+            btnDelete.style.cursor = "not-allowed";
+        }
+    } catch (e) {
+        console.warn("Could not load saved games", e);
+    }
+}
+
+async function loadSelectedSavedGame() {
+    const select = document.getElementById('my-saved-games');
+    const name = select.value;
+
+    // Update delete button state
+    const btnDelete = document.getElementById('btn-delete-saved-game');
+    if (btnDelete) {
+        if (name) {
+            btnDelete.disabled = false;
+            btnDelete.style.opacity = "1";
+            btnDelete.style.cursor = "pointer";
+        } else {
+            btnDelete.disabled = true;
+            btnDelete.style.opacity = "0.5";
+            btnDelete.style.cursor = "not-allowed";
+        }
+    }
+
+    if (!name) return;
+
+    try {
+        const game = await getSavedGame(name);
+        if (!game) return;
+
+        // Switch to Custom Modal Logic
+        // We are currently in "Create Game" modal, we want to load this into the "Custom Problems" modal
+        // But checking flow: The user selects here, then clicks "NEUE AUFGABEN ERSTELLEN" (which is actually 'Edit/View Custom')?
+        // OR: Should we load it directly into the "Create Game" context?
+
+        // Current flow seems to be: 
+        // 1. User sets up game in "Create Game Modal"
+        // 2. Either chooses standard range OR custom
+        // 3. If custom, goes to "Custom Problems Modal"
+
+        // Let's pre-fill the custom problems array so when they open the modal, it's there.
+        customProblems = game.problems || [];
+        customMode = game.mode || 'auto'; // Default to auto if missing
+
+        // Update the "Edit" button text to show loaded state?
+        const btnCustom = document.getElementById('btn-open-custom-modal');
+        if (btnCustom) {
+            btnCustom.textContent = `BEARBEITEN: ${game.name}`;
+            btnCustom.style.background = "rgba(16, 185, 129, 0.2)";
+            btnCustom.style.border = "1px solid var(--success)";
+        }
+
+        // We also need to PREPARE the custom modal so when opened it renders correct data
+        // We will interact with openCustomModal logic.
+        // openCustomModal currently resets `customProblems = []`. We should change that.
+
+    } catch (e) {
+        console.error("Error loading game", e);
+    }
+}
+
+async function deleteSelectedSavedGame() {
+    const select = document.getElementById('my-saved-games');
+    const name = select.value;
+    if (!name) return;
+
+    if (confirm(`Möchtest du "${name}" wirklich löschen?`)) {
+        try {
+            const db = await initDB();
+            const tx = db.transaction(STORE_NAME, 'readwrite');
+            const store = tx.objectStore(STORE_NAME);
+            store.delete(name);
+
+            tx.oncomplete = () => {
+                refreshSavedGamesUI();
+                alert("Gelöscht.");
+
+                // Reset Edit button
+                const btnCustom = document.getElementById('btn-open-custom-modal');
+                if (btnCustom) {
+                    btnCustom.textContent = "NEUE AUFGABEN ERSTELLEN";
+                    btnCustom.style.background = "";
+                    btnCustom.style.border = "";
+                }
+                customProblems = [];
+            };
+        } catch (e) {
+            console.error("Delete error", e);
+        }
+    }
+}
+
 /**
  * QR Scanner Logic
  */
@@ -563,7 +793,7 @@ async function createNewGame() {
 
         // Persistent Game: Do NOT remove on disconnect
         // gameRef.onDisconnect().remove();
-        
+
         localStorage.setItem('bingolator_host_game_id', gameId);
 
         hideModal('create-game-modal');
@@ -592,7 +822,7 @@ async function hostRejoinGame(savedId) {
     }
 
     setupLobbyListener();
-    
+
     const data = snapshot.val();
     if (data.status === 'PLAYING') {
         switchView('game-view');
@@ -606,7 +836,7 @@ async function hostRejoinGame(savedId) {
 
 async function hostDeleteGame(savedId) {
     if (!confirm("Möchtest du das laufende Spiel wirklich löschen?")) return;
-    
+
     await database.ref('games/' + savedId).remove();
     localStorage.removeItem('bingolator_host_game_id');
     location.reload();
@@ -618,13 +848,35 @@ async function hostDeleteGame(savedId) {
 function openCustomModal() {
     hideModal('create-game-modal');
     showModal('custom-problems-modal');
-    customProblems = [];
+
+    // Only reset if we do NOT have loaded data (check if we just loaded something?)
+    // Actually, `customProblems` is our source of truth.
+    // If we loaded a game, `customProblems` has data.
+    // If we didn't, we might want to clear it OR keep previous work?
+
+    // For now: If empty, fill with empty rows. If has data, render data.
     const list = document.getElementById('custom-problems-list');
     if (list) list.innerHTML = '';
-    for (let i = 0; i < 15; i++) addCustomRow();
+
+    // Switch Tab based on customMode
+    switchCustomTab(customMode);
+
+    if (customProblems && customProblems.length > 0) {
+        customProblems.forEach(p => addCustomRow(p));
+        // Add minimal empty rows if less than 15?
+        if (customProblems.length < 15) {
+            for (let i = 0; i < (15 - customProblems.length); i++) addCustomRow();
+        }
+    } else {
+        // Reset to default
+        customProblems = [];
+        for (let i = 0; i < 15; i++) addCustomRow();
+    }
+
+    updateCustomCount();
 }
 
-function addCustomRow() {
+function addCustomRow(data = null) {
     const list = document.getElementById('custom-problems-list');
     if (!list) return;
 
@@ -634,19 +886,22 @@ function addCustomRow() {
     row.id = `row-${rowId}`;
     row.style = 'display: flex; gap: 10px; align-items: center; margin-bottom: 10px; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; animation: slideIn 0.2s ease-out;';
 
+    const termVal = data ? data.term : "";
+    const resVal = data ? data.result : "";
+
     if (customMode === 'auto') {
         row.innerHTML = `
-            <input type="text" class="custom-term-input" placeholder="z.B. 12 + 8" style="flex: 2; padding: 8px;">
-            <div class="custom-result-display" style="flex: 1; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 6px; text-align: center; font-weight: 700; color: var(--secondary-color); min-height: 40px; display: flex; align-items: center; justify-content: center;">-</div>
+            <input type="text" class="custom-term-input" placeholder="z.B. 12 + 8" value="${termVal}" style="flex: 2; padding: 8px;">
+            <div class="custom-result-display" style="flex: 1; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 6px; text-align: center; font-weight: 700; color: var(--secondary-color); min-height: 40px; display: flex; align-items: center; justify-content: center;">${resVal || '-'}</div>
             <button class="btn-kick-player" style="position: static; width: 32px; height: 32px;" onclick="removeCustomRow('${rowId}')">×</button>
         `;
     } else {
         // Manual Mode: Input for Result instead of Display
         row.innerHTML = `
-            <input type="text" class="custom-term-input" placeholder="Frage / Begriff" style="flex: 2; padding: 8px;">
-            <input type="text" class="custom-manual-result-input" placeholder="Antwort" style="flex: 1; padding: 8px; font-weight:700; color:var(--secondary-color); text-align:center;">
+            <input type="text" class="custom-term-input" placeholder="Frage / Begriff" value="${termVal}" style="flex: 2; padding: 8px;">
+            <input type="text" class="custom-manual-result-input" placeholder="Antwort" value="${resVal}" style="flex: 1; padding: 8px; font-weight:700; color:var(--secondary-color); text-align:center;">
             <button class="btn-kick-player" style="position: static; width: 32px; height: 32px;" onclick="removeCustomRow('${rowId}')">×</button>
-            <div class="custom-result-display hidden"></div> <!-- Hidden sync target -->
+            <div class="custom-result-display hidden">${resVal}</div>
         `;
     }
 
@@ -654,6 +909,7 @@ function addCustomRow() {
 
     const inputs = row.querySelectorAll('input');
     inputs.forEach(input => {
+        // ... (events) ...
         input.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 handleCustomInput(input, row);
@@ -663,6 +919,8 @@ function addCustomRow() {
         input.addEventListener('blur', (e) => {
             handleCustomInput(input, row);
         });
+        // Trigger initial validation if data present
+        if (data) handleCustomInput(input, row);
     });
 }
 
@@ -1023,8 +1281,8 @@ async function joinGameByCode() {
 
     const playerRef = database.ref('games/' + gameId + '/players').push();
     playerId = playerRef.key;
-    
-    await playerRef.set({ 
+
+    await playerRef.set({
         name: playerName,
         recoveryCode: recoveryCode,
         lives: 3,
@@ -1035,11 +1293,11 @@ async function joinGameByCode() {
     setupLobbyListener();
     switchView('waiting-room-view');
     updateLobbyUI();
-    
+
     // Display Recovery Code
     const codeDisplay = document.getElementById('player-recovery-code-display');
     if (codeDisplay) codeDisplay.textContent = recoveryCode;
-    
+
     saveSession();
 }
 
@@ -1047,7 +1305,7 @@ async function rejoinGame() {
     clearSession();
     const gameIdInput = document.getElementById('rejoin-game-id');
     const recoveryInput = document.getElementById('rejoin-recovery-code');
-    
+
     if (!gameIdInput || !recoveryInput) return; // Modal not ready?
 
     const gameCode = gameIdInput.value.trim().toUpperCase();
@@ -1067,19 +1325,19 @@ async function rejoinGame() {
             }
             return alert("Spiel mit ID '" + gameCode + "' nicht gefunden!");
         }
-        
+
         const data = snapshot.val();
         const players = data.players || {};
-        
+
         const entry = Object.entries(players).find(([pid, p]) => p.recoveryCode == recoveryCode);
-        
+
         if (!entry) return alert("Code ungültig! Kein Spieler mit diesem Code gefunden.");
-        
+
         playerId = entry[0];
         const playerData = entry[1];
         playerName = playerData.name;
         localStorage.setItem('bingolator_player_name', playerName);
-        
+
         // Restore State
         if (playerData.card) playerState.card = playerData.card;
         if (playerData.lives !== undefined) playerState.lives = playerData.lives;
@@ -1091,16 +1349,16 @@ async function rejoinGame() {
 
         hideModal('rejoin-modal'); // Close modal on success
         setupLobbyListener();
-        
+
         if (data.status === 'PLAYING') {
-             switchView('game-view');
-             initGameScreen(data);
+            switchView('game-view');
+            initGameScreen(data);
         } else {
-             switchView('waiting-room-view');
+            switchView('waiting-room-view');
         }
-        
+
         updateLobbyUI();
-        
+
         const codeDisplay = document.getElementById('player-recovery-code-display');
         if (codeDisplay) codeDisplay.textContent = recoveryCode;
 
@@ -1182,7 +1440,7 @@ function updatePlayerList(players) {
     // For Host Modal
     const codesList = document.getElementById('player-codes-list');
     const modalGameId = document.getElementById('codes-modal-game-id');
-    
+
     if (list) list.innerHTML = '';
     if (codesList && isHost) codesList.innerHTML = '';
     if (modalGameId && isHost) modalGameId.textContent = gameId;
@@ -1195,7 +1453,7 @@ function updatePlayerList(players) {
 
         if (isHost) {
             html += `<button class="btn-kick-player" onclick="openKickModal('${pid}')" title="Spieler entfernen">×</button>`;
-            
+
             // Add to Codes Modal List
             if (codesList) {
                 const row = document.createElement('div');
@@ -1214,7 +1472,7 @@ function updatePlayerList(players) {
         const btnStart = document.getElementById('btn-start-game');
         if (btnStart) btnStart.classList.remove('hidden');
     }
-    
+
     // Toggle Host Codes Button
     const btnCodes = document.getElementById('btn-show-player-codes');
     if (btnCodes) {
@@ -1310,34 +1568,34 @@ function initGameScreen(data) {
         // Player setup
         // Check if we already have a restored card in playerState (from rejoin)
         if (!playerState.card) {
-             const sessionStr = localStorage.getItem('bingolator_session');
-             let session = null;
-             if (sessionStr) {
-                 try { session = JSON.parse(sessionStr); } catch (e) { }
-             }
-             
-             if (session && session.card && session.gameId === gameId) {
-                 playerState.card = session.card;
-                 playerState.markedCount = session.markedCount || 0;
-                 playerState.lives = session.lives !== undefined ? session.lives : 3;
-             } else {
-                 // Generate NEW Card
-                 playerState.lives = 3;
-                 playerState.markedCount = 0;
-                 playerState.wonRows = [];
-                 playerState.card = generateLottoCard(data.pool);
-                 
-                 // SYNC INITIAL STATE TO FIREBASE
-                 if (playerId && gameId) {
-                     database.ref(`games/${gameId}/players/${playerId}`).update({
-                         card: playerState.card,
-                         lives: 3,
-                         markedCount: 0,
-                         wonRows: []
-                     });
-                 }
-                 saveSession();
-             }
+            const sessionStr = localStorage.getItem('bingolator_session');
+            let session = null;
+            if (sessionStr) {
+                try { session = JSON.parse(sessionStr); } catch (e) { }
+            }
+
+            if (session && session.card && session.gameId === gameId) {
+                playerState.card = session.card;
+                playerState.markedCount = session.markedCount || 0;
+                playerState.lives = session.lives !== undefined ? session.lives : 3;
+            } else {
+                // Generate NEW Card
+                playerState.lives = 3;
+                playerState.markedCount = 0;
+                playerState.wonRows = [];
+                playerState.card = generateLottoCard(data.pool);
+
+                // SYNC INITIAL STATE TO FIREBASE
+                if (playerId && gameId) {
+                    database.ref(`games/${gameId}/players/${playerId}`).update({
+                        card: playerState.card,
+                        lives: 3,
+                        markedCount: 0,
+                        wonRows: []
+                    });
+                }
+                saveSession();
+            }
         } else {
             // Card exists (restored from Rejoin), just render
         }
@@ -1458,14 +1716,14 @@ function renderBingoCard(card) {
     const grid = document.getElementById('bingoCard');
     if (!grid) return;
     grid.innerHTML = '';
-    
+
     // Ensure we handle sparse arrays from Firebase by iterating 0..8 explicitly
     for (let r = 0; r < 3; r++) {
         const row = card && card[r] ? card[r] : [];
-        
+
         for (let c = 0; c < 9; c++) {
             const cellData = row[c];
-            
+
             let val = null;
             let isMarked = false;
 
@@ -1591,7 +1849,7 @@ function handleCellClick(value, cell, r, c) {
     if (value === currentGameData.currentProblem.result) {
         cell.classList.add('marked');
         playerState.markedCount++;
-        playerState.streak++; 
+        playerState.streak++;
         playerState.card[r][c] = { val: value, marked: true };
         updated = true;
 
@@ -1620,15 +1878,15 @@ function handleCellClick(value, cell, r, c) {
             showModal('gameOverOverlay');
         }
     }
-    
+
     // SYNC UPDATE TO FIREBASE
     if (updated && playerId && gameId) {
         database.ref(`games/${gameId}/players/${playerId}`).update({
-             card: playerState.card,
-             lives: playerState.lives,
-             streak: playerState.streak,
-             markedCount: playerState.markedCount,
-             wonRows: playerState.wonRows || []
+            card: playerState.card,
+            lives: playerState.lives,
+            streak: playerState.streak,
+            markedCount: playerState.markedCount,
+            wonRows: playerState.wonRows || []
         });
     }
 }
