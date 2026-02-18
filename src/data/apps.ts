@@ -28,10 +28,10 @@ export const apps: App[] = [
     tags: ['Training', 'Mathe', 'Üben'],
   },
   {
-    id: 'bingolator',
-    name: 'Bingolator',
+    id: 'bingo',
+    name: 'Bingo',
     description: 'Multiplayer-Mathe-Lotto für die ganze Klasse.',
-    path: 'apps/Spiele/Bingolator/index.html',
+    path: 'apps/Spiele/Bingo/index.html',
     icon: 'app-thumbnails/Bingo-Thumbnail.png',
     category: 'Spiele',
     tags: ['Bingo', 'Multiplayer', 'Kopfrechnen', 'Echtzeit'],

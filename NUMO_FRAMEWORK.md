@@ -42,7 +42,7 @@ Die Kategorien sind fest im Typ-System verankert (`src/App.tsx` bzw. `src/data/a
 -   **Alle-Ansicht**: Zeigt alle Apps an, mit optionalen Filtern.
 -   **Kategorie-Ansicht**: Filtert die Apps basierend auf dem `category` Feld.
 -   **Routing**: Das Dashboard verwendet URL-Parameter für Deep Linking zu Apps.
-    -   Apps werden über `?app=<App-ID>` geöffnet (z.B. `/?app=bingolator`).
+    -   Apps werden über `?app=<App-ID>` geöffnet (z.B. `/?app=bingo`).
     -   Beim Neuladen der Seite bleibt die aktive App erhalten.
     -   Browser-Navigation (Vor/Zurück) wird unterstützt.
 

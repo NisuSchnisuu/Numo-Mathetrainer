@@ -30,7 +30,7 @@ let isLeaving = false; // Flag to prevent 'kicked' modal during voluntary exit
 let html5QrScanner = null;
 
 // --- IndexedDB Logic ---
-const DB_NAME = 'BingolatorDB';
+const DB_NAME = 'BingoDB';
 const STORE_NAME = 'customGames';
 let dbInstance = null;
 
@@ -151,11 +151,11 @@ function saveSession() {
         wrongAnswers: playerState.wrongAnswers,
         lastActive: Date.now()
     };
-    localStorage.setItem('bingolator_session', JSON.stringify(session));
+    localStorage.setItem('bingo_session', JSON.stringify(session));
 }
 
 function clearSession() {
-    localStorage.removeItem('bingolator_session');
+    localStorage.removeItem('bingo_session');
     playerState = {
         lives: 3,
         streak: 0,
@@ -167,7 +167,7 @@ function clearSession() {
 }
 
 function checkSession() {
-    const sessionStr = localStorage.getItem('bingolator_session');
+    const sessionStr = localStorage.getItem('bingo_session');
     if (!sessionStr) return false;
 
     try {
@@ -301,7 +301,7 @@ function initApp() {
     }, 500);
 
     // Restore Name
-    const savedName = localStorage.getItem('bingolator_player_name');
+    const savedName = localStorage.getItem('bingo_player_name');
     if (savedName) {
         const pNameInput = document.getElementById('player-name');
         if (pNameInput) pNameInput.value = savedName;
@@ -309,7 +309,7 @@ function initApp() {
     }
 
     // Restore Settings
-    const savedSettings = localStorage.getItem('bingolator_settings');
+    const savedSettings = localStorage.getItem('bingo_settings');
     if (savedSettings) {
         try {
             const settings = JSON.parse(savedSettings);
@@ -331,7 +331,7 @@ function initApp() {
     if (checkSession()) return;
 
     // CHECK FOR ACTIVE HOST SESSION
-    const savedHostGame = localStorage.getItem('bingolator_host_game_id');
+    const savedHostGame = localStorage.getItem('bingo_host_game_id');
     if (savedHostGame) {
         // Verify existence
         database.ref('games/' + savedHostGame).once('value').then(snapshot => {
@@ -350,7 +350,7 @@ function initApp() {
                 const btnDelete = document.getElementById('btn-host-delete');
                 if (btnDelete) btnDelete.onclick = () => hostDeleteGame(savedHostGame);
             } else {
-                localStorage.removeItem('bingolator_host_game_id');
+                localStorage.removeItem('bingo_host_game_id');
             }
         });
     }
@@ -758,7 +758,7 @@ async function createNewGame() {
     isHost = true;
     const nameInput = document.getElementById('player-name');
     playerName = (nameInput ? nameInput.value : "") || "Host";
-    localStorage.setItem('bingolator_player_name', playerName);
+    localStorage.setItem('bingo_player_name', playerName);
     gameId = Math.random().toString(36).substring(2, 6).toUpperCase();
 
     // CHECK FOR CUSTOM SAVED GAME SELECTION
@@ -798,7 +798,7 @@ async function createNewGame() {
             opType: document.getElementById('opType').value,
             range: document.getElementById('range').value
         };
-        localStorage.setItem('bingolator_settings', JSON.stringify(settings));
+        localStorage.setItem('bingo_settings', JSON.stringify(settings));
         pool = generateProblemPool(settings);
     }
 
@@ -816,7 +816,7 @@ async function createNewGame() {
         // Persistent Game: Do NOT remove on disconnect
         // gameRef.onDisconnect().remove();
 
-        localStorage.setItem('bingolator_host_game_id', gameId);
+        localStorage.setItem('bingo_host_game_id', gameId);
 
         hideModal('create-game-modal');
         setupLobbyListener();
@@ -833,12 +833,12 @@ async function hostRejoinGame(savedId) {
     clearSession();
     gameId = savedId;
     isHost = true;
-    playerName = localStorage.getItem('bingolator_player_name') || "Host";
+    playerName = localStorage.getItem('bingo_player_name') || "Host";
 
     const snapshot = await database.ref('games/' + gameId).once('value');
     if (!snapshot.exists()) {
         alert("Spiel nicht mehr vorhanden.");
-        localStorage.removeItem('bingolator_host_game_id');
+        localStorage.removeItem('bingo_host_game_id');
         location.reload();
         return;
     }
@@ -860,7 +860,7 @@ async function hostDeleteGame(savedId) {
     if (!confirm("Möchtest du das laufende Spiel wirklich löschen?")) return;
 
     await database.ref('games/' + savedId).remove();
-    localStorage.removeItem('bingolator_host_game_id');
+    localStorage.removeItem('bingo_host_game_id');
     location.reload();
 }
 
@@ -1209,7 +1209,7 @@ async function saveAndCreateCustomGame() {
     isHost = true;
     const nameInput = document.getElementById('player-name');
     playerName = (nameInput ? nameInput.value : "") || "Host";
-    localStorage.setItem('bingolator_player_name', playerName);
+    localStorage.setItem('bingo_player_name', playerName);
     gameId = Math.random().toString(36).substring(2, 6).toUpperCase();
 
     const settings = {
@@ -1259,7 +1259,7 @@ async function exportToJSON() {
     if ('showSaveFilePicker' in window) {
         try {
             const handle = await window.showSaveFilePicker({
-                suggestedName: 'bingolator_aufgaben.json',
+                suggestedName: 'bingo_aufgaben.json',
                 types: [{
                     description: 'JSON File',
                     accept: { 'application/json': ['.json'] },
@@ -1277,7 +1277,7 @@ async function exportToJSON() {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = 'bingolator_aufgaben.json';
+        a.download = 'bingo_aufgaben.json';
         a.click();
         URL.revokeObjectURL(url);
     }
@@ -1354,7 +1354,7 @@ async function joinGameByCode() {
     const nameInput = document.getElementById('player-name');
     playerName = nameInput ? nameInput.value : "";
     if (!playerName) return alert("Bitte gib deinen Namen ein!");
-    localStorage.setItem('bingolator_player_name', playerName);
+    localStorage.setItem('bingo_player_name', playerName);
 
     gameId = code;
     isHost = false;
@@ -1422,13 +1422,11 @@ async function rejoinGame() {
         playerId = entry[0];
         const playerData = entry[1];
         playerName = playerData.name;
-        localStorage.setItem('bingolator_player_name', playerName);
+        localStorage.setItem('bingo_player_name', playerName);
 
         // Restore State
         if (playerData.card) playerState.card = playerData.card;
         if (playerData.lives !== undefined) playerState.lives = playerData.lives;
-        if (playerData.markedCount !== undefined) playerState.markedCount = playerData.markedCount;
-        if (playerData.streak !== undefined) playerState.streak = playerData.streak;
         if (playerData.markedCount !== undefined) playerState.markedCount = playerData.markedCount;
         if (playerData.streak !== undefined) playerState.streak = playerData.streak;
         if (playerData.wonRows) playerState.wonRows = playerData.wonRows || [];
@@ -1736,7 +1734,7 @@ function initGameScreen(data) {
         // Player setup
         // Check if we already have a restored card in playerState (from rejoin)
         if (!playerState.card) {
-            const sessionStr = localStorage.getItem('bingolator_session');
+            const sessionStr = localStorage.getItem('bingo_session');
             let session = null;
             if (sessionStr) {
                 try { session = JSON.parse(sessionStr); } catch (e) { }
@@ -2756,7 +2754,7 @@ function initRedemptionModal() {
             const allAnswers = [...new Set(pool.map(p => p.result))].sort();
 
             let optionsHtml = allAnswers.map(ans =>
-                `<div class="redemption-option" onclick="selectRedemptionOption('${index}', '${ans.replace(/'/g, "\\'")}')">${ans}</div>`
+                `<div class="redemption-option" onclick="selectRedemptionOption('${index}', '${ans.replace(/'/g, "'")}')">${ans}</div>`
             ).join('');
 
             contextHtml = `

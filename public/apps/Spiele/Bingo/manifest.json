@@ -1,6 +1,6 @@
 {
-  "name": "Bingolator",
-  "short_name": "Bingolator",
+  "name": "Bingo",
+  "short_name": "Bingo",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

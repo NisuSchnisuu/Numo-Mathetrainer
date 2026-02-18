@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bingolator-v2';
+const CACHE_NAME = 'bingo-v2';
 const ASSETS = [
     './',
     './index.html',
@@ -15,7 +15,7 @@ self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(CACHE_NAME)
             .then((cache) => {
-                console.log('Caching Bingolator assets');
+                console.log('Caching Bingo assets');
                 return cache.addAll(ASSETS);
             })
     );
@@ -29,8 +29,8 @@ self.addEventListener('activate', (event) => {
             caches.keys().then((cacheNames) => {
                 return Promise.all(
                     cacheNames.map((cache) => {
-                        if (cache.startsWith('bingolator-') && cache !== CACHE_NAME) {
-                            console.log('Clearing old Bingolator cache:', cache);
+                        if (cache.startsWith('bingo-') && cache !== CACHE_NAME) {
+                            console.log('Clearing old Bingo cache:', cache);
                             return caches.delete(cache);
                         }
                     })

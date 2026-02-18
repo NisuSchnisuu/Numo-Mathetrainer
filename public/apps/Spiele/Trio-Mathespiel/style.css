@@ -2096,7 +2096,7 @@ select option {
     color: var(--text-muted);
 }
 
-/* GLOBAL APP SCALING - Removed to allow better native scaling like Bingolator */
+/* GLOBAL APP SCALING - Removed to allow better native scaling like Bingo */
 /*
 :root {
     --mobile-scale: 0.85;
