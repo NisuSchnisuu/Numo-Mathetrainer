@@ -2088,7 +2088,7 @@ function handleCellClick(value, cell, r, c) {
         }
 
         updatePlayerHearts();
-        updatePlayerStreak(); // Update UI
+        // updatePlayerStreak(); // REMOVED
         saveSession();
 
         if (playerState.lives === 0) {
@@ -2102,7 +2102,7 @@ function handleCellClick(value, cell, r, c) {
         database.ref(`games/${gameId}/players/${playerId}`).update({
             card: playerState.card,
             lives: playerState.lives,
-            streak: playerState.streak,
+            // streak: playerState.streak, // REMOVED
             markedCount: playerState.markedCount,
             wonRows: playerState.wonRows || [],
             almostBingo: playerState.almostBingo || null,
@@ -2455,27 +2455,71 @@ function continueGame() {
 }
 
 
+// --- NEW: New Number Notification ---
 function updateProblemDisplay(problem) {
     const display = document.getElementById('currentTermDisplay');
-    if (display) {
-        display.innerHTML = problem ? formatTerm(problem.term) : "Warte auf Host...";
+    if (!display) return;
+
+    // Determine if it's a new number (host-side drawing)
+    const newTerm = problem ? formatTerm(problem.term) : "Warte...";
+    const currentTerm = display.innerHTML;
+
+    // Only trigger modal if:
+    // 1. We have a problem
+    // 2. The term is different (new ID is better but term diff works for unique pool)
+    // 3. We are NOT the host (host sees it in dashboard)
+    if (problem && newTerm !== currentTerm && !isHost) {
+        showNewNumberModal(newTerm);
     }
+
+    display.innerHTML = newTerm;
 }
 
-function updatePlayerStreak() {
-    const valEl = document.getElementById('streakValue');
-    const container = document.getElementById('streakContainer');
-    if (!valEl || !container) return;
+function showNewNumberModal(text) {
+    const modal = document.getElementById('new-number-modal');
+    const content = document.getElementById('new-number-display');
+    if (!modal || !content) return;
 
-    valEl.textContent = playerState.streak;
+    content.innerHTML = text;
+    modal.classList.remove('hidden');
+    modal.classList.remove('animate-out');
 
-    if (playerState.streak >= 3) {
-        container.style.animation = 'pulse 1s infinite';
-    } else {
-        container.style.animation = 'none';
-    }
+    // Dynamic Font Scaling
+    // Reset to max size
+    content.style.fontSize = '15vw'; // Start massive
+    content.style.whiteSpace = 'nowrap';
+    content.style.display = 'inline-block'; // Ensure correct measurement
+
+    // Force a reflow/render to measure
+    requestAnimationFrame(() => {
+        // Use a small timeout to ensure layout has happened after removing 'hidden'
+        setTimeout(() => {
+            const maxWidth = window.innerWidth * 0.85; // 85% of screen width
+            const currentWidth = content.scrollWidth;
+
+            if (currentWidth > maxWidth) {
+                const scale = maxWidth / currentWidth;
+                const currentFontSize = parseFloat(window.getComputedStyle(content).fontSize);
+                const newFontSize = Math.floor(currentFontSize * scale);
+
+                // Apply, but enforce a minimum just in case
+                content.style.fontSize = Math.max(newFontSize, 16) + 'px';
+            }
+        }, 10);
+    });
+
+    // Shortened to 2 seconds
+    setTimeout(() => {
+        modal.classList.add('animate-out');
+        // Hide completely after animation
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            modal.classList.remove('animate-out');
+        }, 800);
+    }, 2000);
 }
 
+// Streak logic removed.
 function updatePlayerHearts() {
     const container = document.getElementById('heartsContainer');
     if (!container) return;

@@ -628,8 +628,10 @@ body {
     justify-content: flex-start;
 }
 
+
 .top-bar-right {
     justify-content: flex-end;
+    /* Streak counter removed */
 }
 
 .top-bar-center {
@@ -637,6 +639,7 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
+    position: relative;
 }
 
 .btn-icon-leave-mini {
@@ -666,21 +669,90 @@ body {
 }
 
 .active-problem-mini {
-    background: #1e293b;
-    padding: 0.8vh 4vw;
-    border-radius: 100px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 0 20px rgba(16, 185, 129, 0.1);
-    min-width: 25vw;
+    background: rgba(30, 41, 59, 0.8);
+    backdrop-filter: blur(5px);
+    padding: 1vh 5vw;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    min-width: 40vw;
+    /* Wider for centered look */
     text-align: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 #currentTermDisplay {
     font-family: 'Inter', sans-serif;
-    font-size: clamp(1.5rem, 5vh, 3rem);
+    font-size: clamp(1.8rem, 5vh, 3.5rem);
+    font-weight: 800;
+    color: var(--primary-color);
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+/* --- NEW NUMBER MODAL --- */
+.new-number-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(5px);
+    z-index: 5000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 1;
+    transition: opacity 0.3s;
+}
+
+.new-number-modal.hidden {
+    display: none;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.new-number-content {
+    background: linear-gradient(135deg, #1e293b, #0f172a);
+    padding: 40px;
+    border-radius: 30px;
+    border: 2px solid var(--primary-color);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+    transform: scale(1);
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.new-number-modal.animate-out .new-number-content {
+    animation: minimizeToHeader 0.8s forwards cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.new-number-modal.animate-out {
+    background: transparent;
+    backdrop-filter: none;
+    /* pointer-events: none; REMOVED to block clicks during animation */
+}
+
+#new-number-display {
+    font-size: 8rem;
     font-weight: 900;
     color: var(--primary-color);
-    letter-spacing: -1px;
+    text-shadow: 0 0 30px rgba(16, 185, 129, 0.4);
+    line-height: 1;
+}
+
+@keyframes minimizeToHeader {
+    0% {
+        transform: translate(0, 0) scale(1);
+        opacity: 1;
+    }
+
+    100% {
+        /* Move roughly to header top-center */
+        transform: translate(0, -42vh) scale(0.1);
+        opacity: 0;
+    }
 }
 
 .streak-counter {
