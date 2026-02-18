@@ -401,7 +401,8 @@
                     <!-- History items injected here -->
                 </div>
                 <div class="host-controls">
-                    <button class="btn-secondary" onclick="confirmLeaveGame()" style="width: 100%;">Spiel
+                    <button id="btn-host-end-game" class="btn-secondary" onclick="handleHostGameEnd()"
+                        style="width: 100%;">Spiel
                         beenden</button>
                 </div>
             </div>
@@ -500,6 +501,21 @@
         </div>
     </div>
 
+    <!-- Finish Round Confirm Modal -->
+    <div id="finish-round-confirm-modal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 400px; text-align: center;">
+            <h2 style="color: var(--secondary-color);">Runde beenden?</h2>
+            <p style="color: var(--text-muted); margin-bottom: 25px;">Möchtest du die Runde beenden und die
+                Statistik anzeigen?</p>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn-secondary" onclick="hideModal('finish-round-confirm-modal')"
+                    style="flex: 1;">Abbrechen</button>
+                <button class="btn-primary" onclick="confirmFinishGameRound()"
+                    style="flex: 1; background: var(--secondary-color);">Beenden</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Host Left Modal -->
     <div id="host-left-modal" class="modal-overlay">
         <div class="modal-content" style="max-width: 400px; text-align: center;">
@@ -588,6 +604,38 @@
     <div id="host-notification-container"
         style="position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none;">
         <!-- Toasts injected here -->
+    </div>
+
+    <!-- STATS MODAL -->
+    <div id="stats-modal" class="modal-overlay">
+        <div class="modal-content" style="width: 95%; max-width: 500px; text-align: center;">
+            <h1 class="game-title" style="margin-bottom: 20px;">Statistik</h1>
+
+            <div id="stats-list" class="stats-list"
+                style="text-align: left; margin-bottom: 25px; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 12px;">
+                <!-- Stats injected here -->
+                <div class="stat-row">
+                    <span class="stat-rank">🥇 1. Bingo</span>
+                    <span class="stat-name" id="stat-1-bingo">-</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-rank">🥈 2. Bingo</span>
+                    <span class="stat-name" id="stat-2-bingo">-</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-rank">🥉 3. Bingo</span>
+                    <span class="stat-name" id="stat-3-bingo">-</span>
+                </div>
+                <hr style="border-color: rgba(255,255,255,0.1); margin: 10px 0;">
+                <div class="stat-row highlight">
+                    <span class="stat-rank">🏆 SUPERBINGO</span>
+                    <span class="stat-name" id="stat-superbingo">-</span>
+                </div>
+            </div>
+
+            <button class="btn-primary" id="btn-close-stats" onclick="hideModal('stats-modal')"
+                style="width: 100%;">Schließen</button>
+        </div>
     </div>
 
     <!-- PWA INSTALL MODAL -->
@@ -754,6 +802,9 @@
             <p>Das Spiel ist für das <strong>Querformat</strong> optimiert.</p>
         </div>
     </div>
+
+    <!-- HOST NOTIFICATION CONTAINER (Centered) -->
+    <div id="host-notification-container"></div>
 
     <!-- SAVE SUCCESS MODAL -->
     <div id="save-success-modal" class="modal-overlay">

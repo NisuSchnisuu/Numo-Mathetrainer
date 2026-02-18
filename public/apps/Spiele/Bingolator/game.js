@@ -1517,11 +1517,32 @@ function setupLobbyListener() {
             updateHostDashboard(data);
         }
 
-        // WINNER LOGIC
         if (data.winners) {
             updateWinnerModal(data.winners);
         } else {
             hideModal('winner-modal');
+        }
+
+        // FINISHED GAME STATE
+        if (data.status === 'FINISHED') {
+            const btnEnd = document.getElementById('btn-host-end-game');
+            if (btnEnd) {
+                btnEnd.textContent = "Verlassen";
+                btnEnd.classList.add('btn-danger'); // Optional styling
+            }
+            if (data.bingoLog) {
+                // Determine if we should show stats automatically
+                // Maybe only if the user hasn't closed it yet? 
+                // For now, let's just update it.
+                // We add a check to avoid spamming the modal if it's already open/closed
+                // But simplified: Just show it.
+                if (!document.getElementById('stats-modal').classList.contains('active')) {
+                    // showStatsModal(data.bingoLog); // Maybe too aggressive to show repeatedly?
+                    // Only show if we just transitioned? 
+                    // Let's just update the content if modal is open, or open it once.
+                }
+                showStatsModal(data.bingoLog);
+            }
         }
     });
 }
@@ -1627,6 +1648,62 @@ async function executeLeaveGame() {
 }
 
 /**
+ * NEW: Handle Host "End Game" vs "Leave"
+ */
+function handleHostGameEnd() {
+    if (currentGameData && currentGameData.status === 'FINISHED') {
+        confirmLeaveGame();
+    } else {
+        showModal('finish-round-confirm-modal');
+    }
+}
+
+function confirmFinishGameRound() {
+    hideModal('finish-round-confirm-modal');
+    finishGameRound();
+}
+
+async function finishGameRound() {
+    await database.ref('games/' + gameId).update({
+        status: 'FINISHED'
+    });
+}
+
+function showStatsModal(bingoLog) {
+    if (!bingoLog) return;
+    showModal('stats-modal');
+
+    const sortedEvents = Object.values(bingoLog).sort((a, b) => a.timestamp - b.timestamp);
+    const superBingos = sortedEvents.filter(e => e.type === 'SUPER').map(e => e.player);
+
+    // Filter Row Bingos (Standard) - Unique Players for Ranks
+    const rowEvents = sortedEvents.filter(e => e.type === 'ROW');
+    const uniqueWinners = [];
+    const seenPlayers = new Set();
+
+    rowEvents.forEach(e => {
+        if (!seenPlayers.has(e.player)) {
+            uniqueWinners.push(e.player);
+            seenPlayers.add(e.player);
+        }
+    });
+
+    document.getElementById('stat-1-bingo').textContent = uniqueWinners[0] || '-';
+    document.getElementById('stat-2-bingo').textContent = uniqueWinners[1] || '-';
+    document.getElementById('stat-3-bingo').textContent = uniqueWinners[2] || '-';
+
+    const superEl = document.getElementById('stat-superbingo');
+    if (superBingos.length > 0) {
+        superEl.textContent = superBingos.join(', ');
+        superEl.style.color = 'var(--success)';
+        superEl.style.fontWeight = 'bold';
+    } else {
+        superEl.textContent = '-';
+        superEl.style.color = '';
+    }
+}
+
+/**
  * Game Progression
  */
 async function startGame() {
@@ -1721,6 +1798,7 @@ async function hostDrawNext() {
             resEl.style.color = "var(--warning)";
         }
         if (termEl) termEl.textContent = "Spiel beendet";
+        finishGameRound();
         return;
     }
 
@@ -1963,10 +2041,12 @@ function handleCellClick(value, cell, r, c) {
         return;
     }
     if (!currentGameData || !currentGameData.currentProblem || cell.classList.contains('marked')) return;
+    if (currentGameData.status === 'FINISHED') return; // Game Ended
 
     let updated = false;
 
-    if (value === currentGameData.currentProblem.result) {
+    // Use loose equality or String conversion to handle Number vs String discrepancies
+    if (String(value) === String(currentGameData.currentProblem.result)) {
         cell.classList.add('marked');
         playerState.markedCount++;
         playerState.streak++;
@@ -2064,18 +2144,41 @@ function checkForWins() {
         playerState.wonRows.push(...newlyWonRows);
         saveSession();
 
-        // Push to Firebase
+        const timestamp = firebase.database.ServerValue.TIMESTAMP;
+
+        // Log BINGO Events
+        newlyWonRows.forEach(row => {
+            database.ref('games/' + gameId + '/bingoLog').push({
+                player: playerName,
+                type: 'ROW',
+                row: row,
+                timestamp: timestamp
+            });
+        });
+
+        // Push to Firebase (Backup / Legacy)
         database.ref('games/' + gameId + '/winners/' + playerId).set({
             name: playerName,
             card: playerState.card,
             rows: playerState.wonRows, // Send all won rows
-            timestamp: firebase.database.ServerValue.TIMESTAMP
+            timestamp: timestamp
         });
 
         // Local Row Win Modal (only if NOT full house yet)
         if (playerState.markedCount < 15) {
             showModal('rowOverlay');
         }
+    }
+
+    // CHECK FULL HOUSE (SUPERBINGO)
+    if (playerState.markedCount === 15 && !playerState.hasFullHouse) {
+        playerState.hasFullHouse = true;
+        database.ref('games/' + gameId + '/bingoLog').push({
+            player: playerName,
+            type: 'SUPER',
+            timestamp: firebase.database.ServerValue.TIMESTAMP
+        });
+        showModal('fullHouseOverlay');
     }
 
     // CHECK FOR "ALMOST THERE" (1 away)
@@ -2832,3 +2935,7 @@ function checkRedemptionAnswers() {
         setTimeout(() => btn.classList.remove('error-shake'), 500);
     }
 }
+
+// --- GLOBAL EXPORTS ---
+window.handleHostGameEnd = handleHostGameEnd;
+window.confirmFinishGameRound = confirmFinishGameRound;
