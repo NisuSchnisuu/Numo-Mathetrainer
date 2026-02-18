@@ -1798,6 +1798,75 @@ select:focus {
     display: none !important;
 }
 
+
+/* --- HOST HISTORY --- */
+.history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 10px;
+    max-height: 400px;
+    overflow-y: auto;
+
+    /* Increased padding to prevent cutoff from scale/shadow */
+    padding: 20px;
+}
+
+.history-item {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 0 10px;
+    /* Reset vertical padding, use flex centering */
+
+    height: 60px;
+    /* Fixed uniform height */
+    flex-shrink: 0;
+    /* Prevent shrinking */
+
+    /* Centering */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 1.5rem;
+    /* Slightly larger for readability */
+    font-weight: 700;
+    color: var(--text-muted);
+
+    box-sizing: border-box;
+    /* Ensure border/padding included in height */
+}
+
+.history-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.history-item.active-history {
+    background: rgba(16, 185, 129, 0.2);
+    border: 2px solid var(--primary-color);
+    /* Thicker border instead of scale */
+    color: white;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+    animation: pulseHistory 2s infinite;
+}
+
+@keyframes pulseHistory {
+    0% {
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
+    }
+
+    70% {
+        box-shadow: 0 0 0 10px rgba(16, 185, 129, 0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+    }
+}
+
 /* --- FRACTION DISPLAY --- */
 .fraction {
     display: inline-flex;
@@ -1807,6 +1876,7 @@ select:focus {
     margin: 0 4px;
     font-size: 0.85em;
     /* Slightly smaller to fit */
+    color: inherit;
 }
 
 .numerator {
@@ -1825,19 +1895,20 @@ select:focus {
 /* --- HOST NOTIFICATION CENTER --- */
 #host-notification-container {
     position: fixed;
-    top: 15%;
-    /* Positioning above the Current Problem */
+    top: 50%;
     left: 50%;
-    transform: translateX(-50%);
+    transform: translate(-50%, -50%);
+    /* CENTERED */
     z-index: 10000;
     display: flex;
     flex-direction: column;
+    /* Stack downwards visually, or reverse if we want new on top */
     align-items: center;
-    gap: 15px;
+    gap: 10px;
     pointer-events: none;
-    /* Allow clicks to pass through */
-    width: 80%;
+    width: 90%;
     max-width: 600px;
+    /* Allow multiple notifications to stack */
 }
 
 .host-toast {
@@ -1852,8 +1923,12 @@ select:focus {
     display: flex;
     align-items: center;
     gap: 15px;
-    animation: slideInDown 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    white-space: nowrap;
+    animation: slideInUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    white-space: normal;
+    /* Allow wrap for long names */
+    text-align: left;
+    transition: all 0.3s ease;
+    /* For smooth collapsing */
 }
 
 .host-toast.super-bingo {
@@ -1864,23 +1939,24 @@ select:focus {
     font-weight: bold;
 }
 
-@keyframes slideInDown {
+@keyframes slideInUp {
     from {
-        transform: translateY(-50px);
+        transform: translateY(50px);
         opacity: 0;
     }
 
     to {
         transform: translateY(0);
         opacity: 1;
+    }
+}
 
-        @keyframes fadeOutRight {
-            to {
-                transform: translateX(50px);
-                opacity: 0;
-            }
-        }
-
+@keyframes slideUpFadeOut {
+    to {
+        transform: translateY(-50px);
+        opacity: 0;
+        margin-bottom: -50px;
+        /* Pull next items up */
     }
 }
 
@@ -1958,4 +2034,90 @@ select:focus {
     100% {
         filter: hue-rotate(360deg);
     }
+}
+
+/* --- HOST ALL ANSWERS GRID --- */
+.answers-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+    gap: 8px;
+    padding: 10px;
+    overflow-y: auto;
+    max-height: 70vh;
+}
+
+/* Logical Grid for 1-90 */
+.answers-grid.grid-10-cols {
+    grid-template-columns: repeat(10, 1fr);
+}
+
+.answer-cell {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 10px 5px;
+    text-align: center;
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--text-muted);
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 40px;
+    word-break: break-word;
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: pointer;
+}
+
+/* Text mode cells might need more width */
+.answers-grid.text-mode .answer-cell {
+    font-size: 0.8rem;
+    padding: 8px;
+}
+
+.answers-grid.text-mode {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+}
+
+.answer-cell.drawn {
+    background: var(--success);
+    color: white;
+    border-color: var(--success);
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+    transform: scale(1.05);
+}
+
+@media (max-width: 600px) {
+    .answers-grid.grid-10-cols {
+        grid-template-columns: repeat(5, 1fr);
+        /* 5 cols on mobile for 1-90 */
+    }
+}
+
+/* --- GRID TOOLTIP --- */
+.grid-tooltip {
+    position: fixed;
+    background: rgba(15, 23, 42, 0.95);
+    color: white;
+    padding: 10px 15px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    pointer-events: none;
+    z-index: 25000;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transform: translate(-50%, -120%);
+    /* Center above */
+    white-space: pre-wrap;
+    max-width: 200px;
+    text-align: center;
+    opacity: 0;
+    transition: opacity 0.2s, transform 0.2s;
+}
+
+.grid-tooltip.visible {
+    opacity: 1;
+    transform: translate(-50%, -100%) translateY(-10px);
 }

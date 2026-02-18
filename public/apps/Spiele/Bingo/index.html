@@ -389,10 +389,33 @@
         <div id="host-dashboard" class="host-dashboard hidden">
             <div class="host-main">
                 <button id="btn-show-player-codes-ingame" class="btn-secondary"
-                    style="position: absolute; top: 10px; left: 10px; padding: 5px 10px; font-size: 0.8rem;"
+                    style="position: absolute; top: 10px; left: 10px; padding: 5px 10px; font-size: 0.8rem; display: flex; align-items: center; gap: 6px;"
                     onclick="showModal('player-codes-modal')">
-                    👥 Codes
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                        <circle cx="9" cy="7" r="4" />
+                        <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                    </svg>
+                    Codes
                 </button>
+
+                <!-- NEW: All Answers Button -->
+                <button id="btn-show-all-answers" class="btn-secondary"
+                    style="position: absolute; top: 10px; right: 10px; padding: 5px 10px; font-size: 0.8rem; display: flex; align-items: center; gap: 6px;"
+                    onclick="showAllAnswersModal()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect width="18" height="18" x="3" y="3" rx="2" />
+                        <path d="M3 9h18" />
+                        <path d="M3 15h18" />
+                        <path d="M9 3v18" />
+                        <path d="M15 3v18" />
+                    </svg>
+                    Lösungen
+                </button>
+
                 <h1 class="host-title">BINGO</h1>
                 <div class="host-current-draw">
                     <div id="host-current-term" class="big-term">--</div>
@@ -414,6 +437,19 @@
             </div>
         </div>
     </section>
+
+    <!-- ALL ANSWERS MODAL (Host) -->
+    <div id="all-answers-modal" class="modal-overlay">
+        <div class="modal-content"
+            style="width: 95%; max-width: 800px; padding-top: 50px; max-height: 90vh; display: flex; flex-direction: column;">
+            <button id="btn-close-all-answers" class="btn-icon-close"
+                onclick="hideModal('all-answers-modal')">&times;</button>
+            <h2 style="margin:0; margin-bottom: 10px;">Gezogene Zahlen / Antworten</h2>
+            <div id="all-answers-grid" class="answers-grid">
+                <!-- Grid items injected here -->
+            </div>
+        </div>
+    </div>
 
     <!-- SAVE GAME NAME MODAL -->
     <div id="save-game-name-modal" class="modal-overlay">
@@ -882,6 +918,25 @@
                 style="width: 100%; border-radius: 50px; background: var(--success);">Weiter spielen</button>
         </div>
     </div>
+
+    <!-- QR SCANNER OVERLAY -->
+    <div id="qr-scanner-overlay" class="modal-overlay">
+        <div class="modal-content" style="width: 90%; max-width: 500px; padding: 20px; text-align: center;">
+            <div class="modal-header">
+                <h2>Code scannen</h2>
+                <button class="btn-close-modal" onclick="stopQrScanner()">×</button>
+            </div>
+            <div id="qr-reader" style="width: 100%; margin-top: 20px;"></div>
+            <p style="margin-top: 15px; color: var(--text-muted); font-size: 0.9rem;">
+                Erlaube den Zugriff auf deine Kamera.
+            </p>
+            <button class="btn-secondary" onclick="stopQrScanner()"
+                style="margin-top: 20px; width: 100%;">Abbrechen</button>
+        </div>
+    </div>
+
+    <!-- HOST GRID TOOLTIP -->
+    <div id="grid-tooltip" class="grid-tooltip hidden"></div>
 
     <script src="game.js"></script>
 </body>

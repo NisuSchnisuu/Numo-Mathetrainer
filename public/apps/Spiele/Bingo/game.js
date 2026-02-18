@@ -268,6 +268,64 @@ function showInstallModal() {
 /**
  * Initialize Firebase & Core App
  */
+/**
+ * Initialize Firebase & Core App
+ */
+// --- QR SCANNER LOGIC ---
+
+function onScanSuccess(decodedText, decodedResult) {
+    // Handle the scanned code
+    console.log(`Scan result: ${decodedText}`, decodedResult);
+
+    // Clean URL if it's a full URL
+    let code = decodedText;
+    try {
+        if (decodedText.includes('join=')) {
+            const url = new URL(decodedText);
+            code = url.searchParams.get('join');
+        }
+    } catch (e) {
+        // Not a URL, hopefully a direct code
+    }
+
+    if (code) {
+        stopQrScanner(); // Close scanner
+        enterJoinMode(code.toUpperCase());
+    }
+}
+
+function onScanFailure(error) {
+    // handle scan failure, usually better to ignore and keep scanning.
+    // console.warn(`Code scan error = ${error}`);
+}
+
+function startQrScanner() {
+    showModal('qr-scanner-overlay');
+
+    // If not already created
+    if (!html5QrScanner) {
+        html5QrScanner = new Html5QrcodeScanner(
+            "qr-reader",
+            { fps: 10, qrbox: { width: 250, height: 250 } },
+            /* verbose= */ false
+        );
+        html5QrScanner.render(onScanSuccess, onScanFailure);
+    }
+}
+
+function stopQrScanner() {
+    hideModal('qr-scanner-overlay');
+    // We can pause or clear.
+    // If we want to restart fresh next time:
+    if (html5QrScanner) {
+        html5QrScanner.clear().then(() => {
+            html5QrScanner = null;
+        }).catch((err) => {
+            console.error("Failed to clear html5QrcodeScanner. ", err);
+        });
+    }
+}
+
 function initApp() {
     if (typeof firebase !== 'undefined') {
         if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
@@ -327,6 +385,25 @@ function initApp() {
     // Bind UI Events
     bindEvents();
 
+    // 4. Auto-Show Install Modal if requested via URL
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('install') === 'true') {
+        showInstallModal();
+        // Clean URL
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.delete('install');
+        window.history.replaceState({}, document.title, newUrl.toString());
+    }
+
+    // PRIORITIZE URL JOIN CODE
+    if (params.has('join')) {
+        const code = params.get('join').toUpperCase();
+        enterJoinMode(code);
+        // Do NOT call checkSession() if joining a specific game via URL
+        // We assume the user wants to join THIS game, not restore an old one.
+        return;
+    }
+
     // Check for active session (Player)
     if (checkSession()) return;
 
@@ -354,21 +431,13 @@ function initApp() {
             }
         });
     }
+}
 
-    // 4. Auto-Show Install Modal if requested via URL
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('install') === 'true') {
-        showInstallModal();
-        // Clean URL
-        const newUrl = new URL(window.location.href);
-        newUrl.searchParams.delete('install');
-        window.history.replaceState({}, document.title, newUrl.toString());
-    }
-
-    if (params.has('join')) {
-        const code = params.get('join').toUpperCase();
-        enterJoinMode(code);
-    }
+// Missing function fix
+function updatePlayerStreak() {
+    // Currently no UI for streak in player view, so this is a placeholder/no-op
+    // or we can add console log for debug
+    console.log("Streak updated:", playerState.streak);
 }
 
 function enterJoinMode(code) {
@@ -2118,6 +2187,9 @@ function checkForWins() {
     if (!playerState.card) return;
 
     const card = playerState.card;
+    // Track how many rows we had BEFORE this check
+    const previousRowCount = playerState.wonRows.length;
+
     const newlyWonRows = [];
 
     // Check each row (0, 1, 2)
@@ -2149,19 +2221,23 @@ function checkForWins() {
         playerState.wonRows.push(...newlyWonRows);
         saveSession();
 
-        // Log BINGO Events locally (will push when claimed)
-        const timestamp = firebase.database.ServerValue.TIMESTAMP;
-        newlyWonRows.forEach(row => {
+        // -------------------------------------------------------------
+        // NEW LOGIC: Only trigger "ROW" Bingo if it is the FIRST row won.
+        // If player already had rows (previousRowCount > 0), subsequent rows are silent.
+        // -------------------------------------------------------------
+        if (previousRowCount === 0) {
+            const timestamp = firebase.database.ServerValue.TIMESTAMP;
+            // Push event for the first row found (usually just one at a time)
             database.ref('games/' + gameId + '/bingoLog').push({
                 player: playerName,
                 type: 'ROW',
-                row: row,
+                row: newlyWonRows[0],
                 timestamp: timestamp
             });
-        });
+        }
     }
 
-    // CHECK FULL HOUSE (SUPERBINGO)
+    // CHECK FULL HOUSE (SUPERBINGO) - ALWAYS TRIGGERS
     if (playerState.markedCount === 15 && !playerState.hasFullHouse) {
         playerState.hasFullHouse = true;
         database.ref('games/' + gameId + '/bingoLog').push({
@@ -2172,6 +2248,8 @@ function checkForWins() {
     }
 
     // CHECK FOR CLAIM BUTTON VISIBILITY
+    // Show if we have ANY rows (even silent ones) or Super Bingo
+    // effectively: if we have un-claimed wins
     const currentRows = playerState.wonRows.length;
     const currentSuper = playerState.hasFullHouse;
 
@@ -2213,9 +2291,30 @@ function checkAlmostThere() {
     if (!playerState.card) return null;
     const card = playerState.card;
 
-    // 1. Check Rows
+    // 1. Check Full House (Super Bingo) - HIGHEST PRIORITY
+    // Distance to 15
+    if (playerState.markedCount === 14) {
+        // Find the single missing number on the whole card
+        for (let r = 0; r < 3; r++) {
+            for (let c = 0; c < 9; c++) {
+                const cell = card[r][c];
+                if (cell !== null) {
+                    const isMarked = (typeof cell === 'object' && cell.marked);
+                    if (!isMarked) {
+                        let val = (typeof cell === 'object') ? cell.val : cell;
+                        return { type: 'SUPER', missing: val };
+                    }
+                }
+            }
+        }
+    }
+
+    // 2. Check Rows (Standard Bingo)
+    // Only relevant if we haven't won any rows yet (since 2nd row is silent)
+    if (playerState.wonRows.length > 0) return null;
+
     for (let r = 0; r < 3; r++) {
-        if (playerState.wonRows.includes(r)) continue; // Already won
+        if (playerState.wonRows.includes(r)) continue;
 
         let blocked = false;
         let missing = [];
@@ -2240,40 +2339,24 @@ function checkAlmostThere() {
         }
     }
 
-    // 2. Check Full House (Super Bingo)
-    // Distance to 15
-    if (playerState.markedCount === 14) {
-        // Find the single missing number on the whole card
-        for (let r = 0; r < 3; r++) {
-            for (let c = 0; c < 9; c++) {
-                const cell = card[r][c];
-                if (cell !== null) {
-                    const isMarked = (typeof cell === 'object' && cell.marked);
-                    if (!isMarked) {
-                        let val = (typeof cell === 'object') ? cell.val : cell;
-                        return { type: 'FULL', missing: val };
-                    }
-                }
-            }
-        }
-    }
-
     return null;
 }
 
 // --- HOST TOASTS ---
-const shownToasts = new Set(); // Track "PlayerID-MissingNum" to avoid spam
+const shownToasts = new Set(); // Track "PlayerID-MissingNum-Type" to avoid spam
 
 function checkAndShowHostToasts(players) {
     if (!isHost) return;
 
     Object.entries(players).forEach(([pid, p]) => {
         if (p.almostBingo) {
-            const signature = `${pid}-${p.almostBingo.missing}`;
+            // Include type in signature so "Row 1-away" is distinct from "Super 1-away"
+            const type = p.almostBingo.type || 'ROW';
+            const signature = `${pid}-${p.almostBingo.missing}-${type}`;
 
             if (!shownToasts.has(signature)) {
                 // Show it
-                showHostToast(p.name, p.almostBingo.missing, p.almostBingo.type === 'FULL');
+                showHostToast(p.name, p.almostBingo.missing, type === 'SUPER');
                 shownToasts.add(signature);
 
                 // Cleanup old signatures (optional, simple cache)
@@ -2298,12 +2381,29 @@ function showHostToast(playerName, missingNum, isSuper) {
 
     toast.innerHTML = `<span style="font-size: 1.5rem;">${icon}</span> <span>${msg}</span>`;
 
+    // Newest always bottom, but we use flex-col-reverse in CSS for visual stacking if preferred, 
+    // OR just append. User requested "disappear upwards", "others slide up".
+    // Standard flex-col + append child works:
+    // [Toast 1]
+    // [Toast 2]
+    // If Toast 1 removed, Toast 2 slides up.
+
     container.appendChild(toast);
 
     // Remove after 5 seconds
     setTimeout(() => {
-        toast.style.animation = 'fadeOutRight 0.5s ease-in forwards';
-        setTimeout(() => toast.remove(), 500);
+        // Slide UP and Fade OUT
+        toast.style.animation = 'slideUpFadeOut 0.5s ease-in forwards';
+        setTimeout(() => {
+            // Collapse height to make others slide up smoothly (optional polish)
+            toast.style.height = '0';
+            toast.style.margin = '0';
+            toast.style.padding = '0';
+            toast.style.overflow = 'hidden';
+
+            // Then remove DOM
+            setTimeout(() => toast.remove(), 300);
+        }, 500);
     }, 5000);
 }
 
@@ -3049,3 +3149,103 @@ function checkRedemptionAnswers() {
 // --- GLOBAL EXPORTS ---
 window.handleHostGameEnd = handleHostGameEnd;
 window.confirmFinishGameRound = confirmFinishGameRound;
+
+/* --- HOST ALL ANSWERS GRID --- */
+function showAllAnswersModal() {
+    if (!currentGameData || !currentGameData.pool) return;
+
+    // Check mode: If >80% are numbers, treat as number mode
+    let numberCount = 0;
+    const pool = currentGameData.pool;
+    pool.forEach(p => {
+        if (!isNaN(parseFloat(p.result))) numberCount++;
+    });
+
+    const isNumberMode = pool.length > 0 && (numberCount / pool.length) > 0.8;
+
+    // Sort
+    const sortedPool = [...pool].sort((a, b) => {
+        if (isNumberMode) {
+            const valA = parseFloat(a.result);
+            const valB = parseFloat(b.result);
+            if (!isNaN(valA) && !isNaN(valB)) return valA - valB;
+        }
+        return a.result.toString().localeCompare(b.result.toString(), undefined, { numeric: true, sensitivity: 'base' });
+    });
+
+    const grid = document.getElementById('all-answers-grid');
+    if (!grid) return;
+
+    grid.innerHTML = '';
+
+    // Layout Class
+    grid.className = 'answers-grid';
+    // If Number Mode and enough items, use 10-col grid (typical for 1-90)
+    // Otherwise responsive text mode
+    if (isNumberMode && pool.length >= 20) {
+        grid.classList.add('grid-10-cols');
+    } else {
+        grid.classList.add('text-mode');
+    }
+
+    sortedPool.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'answer-cell';
+        if (item.drawn) div.classList.add('drawn');
+
+        // Format result (if fraction or special)
+        div.innerHTML = formatTerm(item.result.toString());
+
+        // Tooltip Data
+        div.dataset.term = item.term;
+
+        // Events
+        div.addEventListener('mousedown', showGridTooltip);
+        div.addEventListener('touchstart', showGridTooltip, { passive: true });
+        div.addEventListener('mouseup', hideGridTooltip);
+        div.addEventListener('mouseleave', hideGridTooltip);
+        div.addEventListener('touchend', hideGridTooltip);
+        div.addEventListener('touchcancel', hideGridTooltip);
+
+        grid.appendChild(div);
+    });
+
+    showModal('all-answers-modal');
+}
+
+window.showAllAnswersModal = showAllAnswersModal;
+
+/* --- TOOLTIP EVENT HANDLERS --- */
+function showGridTooltip(e) {
+    const term = e.currentTarget.dataset.term;
+    if (!term) return;
+
+    const tooltip = document.getElementById('grid-tooltip');
+    if (!tooltip) return;
+
+    // Set Text
+    tooltip.textContent = term;
+
+    // Position
+    const rect = e.currentTarget.getBoundingClientRect();
+    tooltip.style.left = (rect.left + rect.width / 2) + 'px';
+    tooltip.style.top = rect.top + 'px';
+
+    // Show
+    tooltip.classList.remove('hidden');
+    requestAnimationFrame(() => {
+        tooltip.classList.add('visible');
+    });
+}
+
+function hideGridTooltip() {
+    const tooltip = document.getElementById('grid-tooltip');
+    if (!tooltip) return;
+
+    tooltip.classList.remove('visible');
+    setTimeout(() => {
+        if (!tooltip.classList.contains('visible')) {
+            tooltip.classList.add('hidden');
+        }
+    }, 200);
+}
