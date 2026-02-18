@@ -1801,12 +1801,89 @@ select:focus {
     to {
         transform: translateY(0);
         opacity: 1;
+
+        @keyframes fadeOutRight {
+            to {
+                transform: translateX(50px);
+                opacity: 0;
+            }
+        }
+
     }
 }
 
-@keyframes fadeOutRight {
-    to {
-        transform: translateX(50px);
-        opacity: 0;
+/* --- MANUAL CLAIM BUTTON --- */
+.btn-claim-bingo {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 15000;
+    width: 60vw;
+    height: 60vw;
+    /* Maintain square aspect ratio directly */
+    max-width: 250px;
+    max-height: 250px;
+    /* Also limit height */
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: radial-gradient(circle, #ef4444 0%, #b91c1c 100%);
+    border: 6px solid white;
+    /* Slightly thinner border */
+    box-shadow: 0 0 40px rgba(239, 68, 68, 0.8), 0 0 80px rgba(239, 68, 68, 0.4);
+    color: white;
+    font-size: clamp(2rem, 6vw, 3rem);
+    /* Smaller font */
+    font-weight: 900;
+    cursor: pointer;
+    animation: claimPulse 1.5s infinite;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: transform 0.2s;
+}
+
+.btn-claim-bingo:active {
+    transform: translate(-50%, -50%) scale(0.95);
+}
+
+.btn-claim-bingo.hidden {
+    display: none !important;
+}
+
+@keyframes claimPulse {
+    0% {
+        transform: translate(-50%, -50%) scale(1);
+        box-shadow: 0 0 30px rgba(239, 68, 68, 0.6);
+    }
+
+    50% {
+        transform: translate(-50%, -50%) scale(1.05);
+        box-shadow: 0 0 60px rgba(239, 68, 68, 0.9);
+    }
+
+    100% {
+        transform: translate(-50%, -50%) scale(1);
+        box-shadow: 0 0 30px rgba(239, 68, 68, 0.6);
+    }
+}
+
+/* Winner Modal Enhancements */
+#winner-modal.superbingo .game-title {
+    background: linear-gradient(135deg, #f59e0b, #fbbf24);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: 0 4px 30px rgba(245, 158, 11, 0.4);
+    animation: rainbow 3s infinite linear;
+}
+
+@keyframes rainbow {
+    0% {
+        filter: hue-rotate(0deg);
+    }
+
+    100% {
+        filter: hue-rotate(360deg);
     }
 }

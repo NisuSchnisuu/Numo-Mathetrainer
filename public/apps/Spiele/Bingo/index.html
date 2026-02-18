@@ -278,7 +278,8 @@
         <div class="full-screen-lobby">
             <div class="lobby-header-new">
                 <div class="header-left">
-                    <button id="btn-show-player-codes-ingame" class="btn-icon-host hidden" title="Spieler-Codes anzeigen">
+                    <button id="btn-show-player-codes-ingame" class="btn-icon-host hidden"
+                        title="Spieler-Codes anzeigen">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
                             stroke="currentColor" stroke-width="2">
                             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
@@ -573,11 +574,22 @@
                 <div class="bingo-card-preview" id="preview-grid"></div>
             </div>
 
+            <!-- Player Win Message (Self) -->
+            <div id="player-win-message" class="hidden" style="margin-bottom: 20px;">
+                <h2 style="color: var(--success); font-size: 2rem;">DU HAST EIN BINGO!</h2>
+                <p style="color: var(--text-muted);">Glückwunsch! Der Host wurde benachrichtigt.</p>
+            </div>
+
             <p id="winner-wait-msg" style="color: var(--text-muted);">Warte auf Host...</p>
 
             <button id="btn-winner-continue" class="btn-primary hidden" style="width: 100%;">Runde fortsetzen</button>
         </div>
     </div>
+
+    <!-- MANUAL CLAIM BUTTON (Centered Overlay) -->
+    <button id="btn-claim-bingo" class="btn-claim-bingo hidden">
+        <span>BINGO!</span>
+    </button>
 
     <!-- REDEMPTION MODAL (NO LIVES) -->
     <div id="redemption-modal" class="modal-overlay">
@@ -829,7 +841,8 @@
                 <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none"
                     stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M3 6h18" />
-                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                    <path
+                        d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
                     <line x1="10" y1="11" x2="10" y2="17" />
                     <line x1="14" y1="11" x2="14" y2="17" />
                 </svg>

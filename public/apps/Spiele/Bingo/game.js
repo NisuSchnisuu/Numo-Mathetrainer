@@ -504,6 +504,10 @@ function bindEvents() {
     const btnShowCodes = document.getElementById('btn-show-player-codes');
     if (btnShowCodes) btnShowCodes.onclick = () => showModal('player-codes-modal');
 
+    // MANUAL CLAIM BUTTON
+    const btnClaimBingo = document.getElementById('btn-claim-bingo');
+    if (btnClaimBingo) btnClaimBingo.onclick = claimBingo;
+
     const btnCloseCodes = document.getElementById('btn-close-player-codes');
     if (btnCloseCodes) btnCloseCodes.onclick = () => hideModal('player-codes-modal');
 
@@ -2107,6 +2111,9 @@ function handleCellClick(value, cell, r, c) {
     }
 }
 
+// MANUAL CLAIM STATE
+let lastClaimedState = { rows: 0, super: false };
+
 function checkForWins() {
     if (!playerState.card) return;
 
@@ -2142,9 +2149,8 @@ function checkForWins() {
         playerState.wonRows.push(...newlyWonRows);
         saveSession();
 
+        // Log BINGO Events locally (will push when claimed)
         const timestamp = firebase.database.ServerValue.TIMESTAMP;
-
-        // Log BINGO Events
         newlyWonRows.forEach(row => {
             database.ref('games/' + gameId + '/bingoLog').push({
                 player: playerName,
@@ -2153,19 +2159,6 @@ function checkForWins() {
                 timestamp: timestamp
             });
         });
-
-        // Push to Firebase (Backup / Legacy)
-        database.ref('games/' + gameId + '/winners/' + playerId).set({
-            name: playerName,
-            card: playerState.card,
-            rows: playerState.wonRows, // Send all won rows
-            timestamp: timestamp
-        });
-
-        // Local Row Win Modal (only if NOT full house yet)
-        if (playerState.markedCount < 15) {
-            showModal('rowOverlay');
-        }
     }
 
     // CHECK FULL HOUSE (SUPERBINGO)
@@ -2176,20 +2169,44 @@ function checkForWins() {
             type: 'SUPER',
             timestamp: firebase.database.ServerValue.TIMESTAMP
         });
-        showModal('fullHouseOverlay');
+    }
+
+    // CHECK FOR CLAIM BUTTON VISIBILITY
+    const currentRows = playerState.wonRows.length;
+    const currentSuper = playerState.hasFullHouse;
+
+    if (currentRows > lastClaimedState.rows || (currentSuper && !lastClaimedState.super)) {
+        const btnClaim = document.getElementById('btn-claim-bingo');
+        if (btnClaim) btnClaim.classList.remove('hidden');
     }
 
     // CHECK FOR "ALMOST THERE" (1 away)
     const almostStatus = checkAlmostThere();
     if (almostStatus) {
-        // We found a line with 1 missing.
-        // Sync this to Firebase so Host knows.
-        // We add a timestamp so the host can distinct new events if needed, 
-        // though strictly we just need the current state.
         playerState.almostBingo = almostStatus;
     } else {
         playerState.almostBingo = null;
     }
+}
+
+function claimBingo() {
+    if (!playerId || !gameId) return;
+
+    const btnClaim = document.getElementById('btn-claim-bingo');
+    if (btnClaim) btnClaim.classList.add('hidden');
+
+    // Update claimed state
+    lastClaimedState.rows = playerState.wonRows.length;
+    lastClaimedState.super = playerState.hasFullHouse;
+
+    // Push to Firebase
+    database.ref('games/' + gameId + '/winners/' + playerId).set({
+        name: playerName,
+        card: playerState.card,
+        rows: playerState.wonRows,
+        isSuper: playerState.hasFullHouse || false,
+        timestamp: firebase.database.ServerValue.TIMESTAMP
+    });
 }
 
 function checkAlmostThere() {
@@ -2283,9 +2300,6 @@ function showHostToast(playerName, missingNum, isSuper) {
 
     container.appendChild(toast);
 
-    // Sound effect (subtle)
-    // const audio = new Audio('assets/notification.mp3'); audio.play().catch(e=>{});
-
     // Remove after 5 seconds
     setTimeout(() => {
         toast.style.animation = 'fadeOutRight 0.5s ease-in forwards';
@@ -2299,26 +2313,51 @@ function updateWinnerModal(winners) {
     const previewContainer = document.getElementById('winner-card-preview');
     const btnContinue = document.getElementById('btn-winner-continue');
     const waitMsg = document.getElementById('winner-wait-msg');
+    const selfWinMsg = document.getElementById('player-win-message');
+    const title = modal.querySelector('.game-title');
 
     if (!modal || !list) return;
 
     list.innerHTML = '';
 
     // Sort winners by timestamp
-    const sortedWinners = Object.values(winners).sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+    const sortedWinners = Object.entries(winners)
+        .map(([pid, data]) => ({ ...data, pid }))
+        .sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
 
+    if (sortedWinners.length === 0) {
+        hideModal('winner-modal');
+        return;
+    }
+
+    const latestWinner = sortedWinners[sortedWinners.length - 1];
+    const isSuperBingo = latestWinner.isSuper;
+
+    // Update Modal Styling for SuperBingo
+    if (isSuperBingo) {
+        modal.classList.add('superbingo');
+        title.innerHTML = 'SUPER BINGO!';
+    } else {
+        modal.classList.remove('superbingo');
+        title.innerHTML = 'BINGO!';
+    }
+
+    // Render Winner Chips
     sortedWinners.forEach(winner => {
         const chip = document.createElement('div');
         chip.className = 'winner-chip';
+        // Mark selected if it's the latest one (default behavior)
+        const isSelected = winner.pid === latestWinner.pid;
+        if (isSelected) chip.classList.add('selected');
+
         chip.innerHTML = `<span>🏆</span> ${winner.name}`;
 
+        // Host click to switch view
         if (isHost) {
             chip.onclick = () => {
-                // Highlight selected
                 document.querySelectorAll('.winner-chip').forEach(c => c.classList.remove('selected'));
                 chip.classList.add('selected');
 
-                // Show card
                 if (previewContainer) {
                     previewContainer.style.display = 'block';
                     document.getElementById('preview-player-name').textContent = winner.name;
@@ -2326,14 +2365,43 @@ function updateWinnerModal(winners) {
                 }
             };
         }
-
         list.appendChild(chip);
     });
 
+    // --- AUTO SHOW LATEST WINNER ---
+
+    // HOST VIEW
     if (isHost) {
+        if (previewContainer) {
+            previewContainer.style.display = 'block';
+            document.getElementById('preview-player-name').textContent = latestWinner.name;
+            renderPreviewCard(latestWinner.card, latestWinner.rows);
+        }
         if (btnContinue) btnContinue.classList.remove('hidden');
         if (waitMsg) waitMsg.classList.add('hidden');
-    } else {
+        if (selfWinMsg) selfWinMsg.classList.add('hidden');
+    }
+    // PLAYER VIEW
+    else {
+        // Am I the latest winner?
+        if (latestWinner.pid === playerId) {
+            if (selfWinMsg) selfWinMsg.classList.remove('hidden');
+            if (previewContainer) {
+                previewContainer.style.display = 'block';
+                document.getElementById('preview-player-name').textContent = "DIR";
+                renderPreviewCard(latestWinner.card, latestWinner.rows);
+            }
+        } else {
+            // Another player won
+            if (selfWinMsg) selfWinMsg.classList.add('hidden');
+            // Show their card too? Request said "Show winner card" - implies generally.
+            if (previewContainer) {
+                previewContainer.style.display = 'block';
+                document.getElementById('preview-player-name').textContent = latestWinner.name;
+                renderPreviewCard(latestWinner.card, latestWinner.rows);
+            }
+        }
+
         if (btnContinue) btnContinue.classList.add('hidden');
         if (waitMsg) waitMsg.classList.remove('hidden');
     }
