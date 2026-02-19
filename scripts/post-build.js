@@ -21,7 +21,7 @@ if (!fs.existsSync(dashboardDir)) {
 
 // Ensure apps destination directory exists (or parent)
 if (!fs.existsSync(distDir)) {
-    fs.mkdirSync(distDir, { recursive: true });
+  fs.mkdirSync(distDir, { recursive: true });
 }
 
 // Move apps from dist/dashboard/apps to dist/apps
@@ -32,10 +32,10 @@ if (fs.existsSync(appsSrcDir)) {
   // Since we use emptyOutDir: true for dashboard, dist/apps might be stale if we don't clean dist.
   // But vite only cleans dist/dashboard.
   // So we should probably clean dist/apps if it exists.
-  
+
   if (fs.existsSync(appsDestDir)) {
-      console.log('Cleaning existing dist/apps...');
-      fs.rmSync(appsDestDir, { recursive: true, force: true });
+    console.log('Cleaning existing dist/apps...');
+    fs.rmSync(appsDestDir, { recursive: true, force: true });
   }
 
   fs.renameSync(appsSrcDir, appsDestDir);
@@ -47,8 +47,8 @@ if (fs.existsSync(appsSrcDir)) {
 if (fs.existsSync(thumbsSrcDir)) {
   console.log(`Moving thumbnails from ${thumbsSrcDir} to ${thumbsDestDir}...`);
   if (fs.existsSync(thumbsDestDir)) {
-      console.log('Cleaning existing dist/app-thumbnails...');
-      fs.rmSync(thumbsDestDir, { recursive: true, force: true });
+    console.log('Cleaning existing dist/app-thumbnails...');
+    fs.rmSync(thumbsDestDir, { recursive: true, force: true });
   }
   fs.renameSync(thumbsSrcDir, thumbsDestDir);
 } else {
@@ -65,7 +65,13 @@ const redirectHtml = `<!DOCTYPE html>
   // More robust redirect for Safari/iPad
   var path = window.location.pathname;
   if (!path.endsWith('/')) path += '/';
-  window.location.replace(path + "dashboard/" + window.location.search + window.location.hash);
+  
+  // Prevent infinite loop if we are already at /dashboard/ or subpath
+  if (path.indexOf('/dashboard/') > -1) {
+    console.warn('Redirect loop detected/prevented: Already at ' + path);
+  } else {
+    window.location.replace(path + "dashboard/" + window.location.search + window.location.hash);
+  }
 </script>
 <noscript>
   <meta http-equiv="refresh" content="0; url=./dashboard/">
