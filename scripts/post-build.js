@@ -57,28 +57,66 @@ if (fs.existsSync(thumbsSrcDir)) {
 
 // Create redirect index.html at root dist
 const redirectHtml = `<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<title>Redirecting...</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #0f172a; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+  .container { text-align: center; padding: 20px; }
+  a { color: #22d3ee; }
+  button { margin-top: 20px; padding: 10px 20px; background: #22d3ee; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
+  button:hover { background: #06b6d4; }
+</style>
 <script>
-  // More robust redirect for Safari/iPad
+  // Helper to repair the app state
+  async function repairApp() {
+    try {
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (let registration of registrations) {
+          await registration.unregister();
+          console.log('Unregistered SW:', registration);
+        }
+      }
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map(key => caches.delete(key)));
+        console.log('Cleared caches');
+      }
+      // Force reload to dashboard
+      window.location.href = '/Numo-Mathetrainer/dashboard/?t=' + Date.now();
+    } catch (e) {
+      alert('Error during repair: ' + e);
+    }
+  }
+
+  // Logic to handle direction or error detection
   var path = window.location.pathname;
   if (!path.endsWith('/')) path += '/';
   
-  // Prevent infinite loop if we are already at /dashboard/ or subpath
+  // ERROR DETECTED: This file (root redirector) is being served at /dashboard/
   if (path.indexOf('/dashboard/') > -1) {
     console.warn('Redirect loop detected/prevented: Already at ' + path);
+    // Wait for DOM
+    window.onload = function() {
+        document.getElementById('status').innerText = 'App-Cache Fehler erkannt';
+        document.getElementById('msg').innerText = 'Dein Gerät hat eine alte oder falsche Version der App gespeichert. Bitte klicke auf "Reparieren", um das Problem zu lösen.';
+        document.getElementById('repair-btn').style.display = 'inline-block';
+        document.getElementById('manual-link').style.display = 'none';
+    };
   } else {
+    // Normal redirect
     window.location.replace(path + "dashboard/" + window.location.search + window.location.hash);
   }
 </script>
 <noscript>
-  <meta http-equiv="refresh" content="0; url=./dashboard/">
+  <meta http-equiv="refresh" content="0; url=/Numo-Mathetrainer/dashboard/">
 </noscript>
 </head>
 <body>
-<p>Redirecting to <a href="./dashboard/">dashboard</a>...</p>
+<div class="container">
+  <h1 id="status">Lade Dashboard...</h1>
+  <p id="msg">Du wirst weitergeleitet.</p>
+  <p id="manual-link">Falls nichts passiert: <a href="/Numo-Mathetrainer/dashboard/">Hier klicken</a></p>
+  <button id="repair-btn" onclick="repairApp()" style="display:none">App Reparieren</button>
+</div>
 </body>
 </html>`;
 
