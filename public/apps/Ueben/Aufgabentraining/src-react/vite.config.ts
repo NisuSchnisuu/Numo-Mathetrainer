@@ -19,8 +19,8 @@ export default defineConfig({
         name: "Aufgabentraining",
         short_name: "Training",
         description: "Mathe Aufgabentraining",
-        theme_color: "#ffffff",
-        background_color: "#ffffff",
+        theme_color: "#020817",
+        background_color: "#020817",
         display: "standalone",
         start_url: "./index.html",
         icons: [

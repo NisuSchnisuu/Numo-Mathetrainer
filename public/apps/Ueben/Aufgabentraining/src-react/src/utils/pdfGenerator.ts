@@ -112,7 +112,7 @@ export async function generateWorksheetPdf(config: PdfConfig) {
     const isSingleCol = exerciseType === 'einsetzen' || exerciseType === 'baumeister';
 
     let currentY = startY;
-    let currentY = startY;
+
 
     // For 2-column layout (legacy behavior for 'berechnen')
     // We'll stick to the original logic for 'berechnen' to minimize visual changes unless it overflows (unlikely for 20 tasks)
