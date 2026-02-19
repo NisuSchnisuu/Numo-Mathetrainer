@@ -67,7 +67,7 @@ export async function generateWorksheetPdf(config: PdfConfig) {
             try {
                 const { task: t } = generateTerm(range, ops, difficulty);
                 const solutionString = t.orderedElements.map((e: GameElement) => e.val.toString()).join(' ');
-                
+
                 // Check for duplicates
                 const uniqueKey = `${solutionString}=${t.target}`;
                 if (usedTerms.has(uniqueKey)) {
@@ -79,10 +79,10 @@ export async function generateWorksheetPdf(config: PdfConfig) {
                 if (exerciseType === 'berechnen') {
                     task = { display: `${solutionString} = `, target: t.target, solution: `${solutionString} = ${t.target}` } as BerechnenTask;
                 } else if (exerciseType === 'einsetzen') {
-                    task = { 
-                        target: t.target, 
+                    task = {
+                        target: t.target,
                         solution: `${solutionString} = ${t.target}`,
-                        elements: t.orderedElements 
+                        elements: t.orderedElements
                     } as EinsetzenTask;
                 } else if (exerciseType === 'baumeister') {
                     const numbers = t.orderedElements.filter(e => e.type === 'number').map(e => e.val.toString()).sort();
@@ -105,12 +105,38 @@ export async function generateWorksheetPdf(config: PdfConfig) {
     // Layout
     const startY = 65;
     const rowHeight = 20;
+    const pageHeight = 297; // A4 height in mm
+    const bottomMargin = 20;
 
-    doc.setFontSize(14);
+    // Use single column for complex tasks
+    const isSingleCol = exerciseType === 'einsetzen' || exerciseType === 'baumeister';
+
+    let currentY = startY;
+    let currentY = startY;
+
+    // For 2-column layout (legacy behavior for 'berechnen')
+    // We'll stick to the original logic for 'berechnen' to minimize visual changes unless it overflows (unlikely for 20 tasks)
+    // But for single column, we need dynamic Y and pagination.
+
     tasks.forEach((task, index) => {
-        const isCol1 = index < 10;
-        const x = isCol1 ? 20 : 110;
-        const y = startY + (index % 10) * rowHeight;
+        // Determine Position
+        let x, y;
+
+        if (isSingleCol) {
+            // Check for page break
+            if (currentY + rowHeight > pageHeight - bottomMargin) {
+                doc.addPage();
+                currentY = 20; // Start at top of new page
+            }
+            x = 20;
+            y = currentY;
+            currentY += rowHeight;
+        } else {
+            // Original 2-column Static Layout for 'berechnen' (assumes 20 tasks fit on one page)
+            const isCol1 = index < 10;
+            x = isCol1 ? 20 : 110;
+            y = startY + (index % 10) * rowHeight;
+        }
 
         // Task Number
         doc.setFontSize(8);
@@ -142,11 +168,12 @@ export async function generateWorksheetPdf(config: PdfConfig) {
             doc.setFontSize(9);
             const numbersStr = `Zahlen: ${t.numbers.join(', ')}`;
             doc.text(numbersStr, x, y - 4);
-            
-            // Anzeige der verfügbaren Zeichen rechts daneben
+
+            // Anzeige der verfügbaren Zeichen rechts daneben (oder darunter wenn single col?)
+            // Bei Single Col haben wir massig Platz rechts.
             const opsStr = `Zeichen: ${t.ops.join(' ')}`;
-            doc.text(opsStr, x + 40, y - 4);
-            
+            doc.text(opsStr, x + (isSingleCol ? 80 : 40), y - 4);
+
             doc.setFontSize(12);
             doc.text(`Ziel: ${t.target}`, x, y + 4);
             doc.line(x + 20, y + 4, x + 85, y + 4);
@@ -170,5 +197,22 @@ export async function generateWorksheetPdf(config: PdfConfig) {
     const now = new Date();
     const timeStr = `${now.getHours()}-${now.getMinutes()}-${now.getSeconds()}`;
     const fileName = `${title.replace(/\s+/g, '_')}_${now.toISOString().split('T')[0]}_${timeStr}.pdf`;
-    doc.save(fileName);
+
+    // iOS Detection
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+    // @ts-ignore
+    const isMacWithTouch = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1; // iPad Pro with Magic Keyboard
+
+    if (isIOS || isMacWithTouch) {
+        // iOS/iPadOS erlaubt oft kein direktes Speichern via .save() in WebViews/PWAs.
+        // Wir öffnen das PDF in einem neuen Tab/Fenster, wo der User "Teilen" -> "In Dateien sichern" nutzen kann.
+        const blob = doc.output('blob');
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
+
+        // Cleanup nach kurzer Zeit (optional, aber gut für Memory)
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } else {
+        doc.save(fileName);
+    }
 }
