@@ -34,6 +34,19 @@
     -webkit-font-smoothing: antialiased;
 }
 
+/* Global rule to show a hand cursor on all common interactive elements */
+button,
+a,
+select,
+input[type="button"],
+input[type="submit"],
+input[type="reset"],
+[role="button"],
+.clickable,
+[onclick] {
+    cursor: pointer;
+}
+
 body {
     font-family: var(--font-family);
     background-color: var(--background-dark);
