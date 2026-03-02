@@ -985,7 +985,7 @@ function addCustomRow(data = null) {
     // Unified Row Structure
     row.innerHTML = `
         <div style="flex: 2; position: relative;">
-             <input type="text" class="custom-term-input" placeholder="Wieviel ist 5+5?" value="${termVal}" style="width: 100%; padding: 8px;">
+             <input type="text" class="custom-term-input" placeholder="Wieviel ist 5+5?" value="${termVal}" data-last-term="${termVal}" style="width: 100%; padding: 8px;">
         </div>
         <div style="flex: 1; position: relative; display: flex; align-items: center; gap: 5px;">
              <input type="text" class="custom-result-input" placeholder="Antwort" value="${resVal}" style="width: 100%; padding: 8px; font-weight:700; color:var(--secondary-color); text-align:center;">
@@ -1078,9 +1078,11 @@ function handleCustomInput(row, skipAutoCalc = false) {
     if (!termInput || !resultInput) return;
 
     let term = termInput.value.trim();
+    const lastTerm = termInput.getAttribute('data-last-term') || "";
 
     // AUTO-CALC LOGIC
-    if (!skipAutoCalc && term && !resultInput.value.trim() && !resultInput.disabled) {
+    if (!skipAutoCalc && term && (term !== lastTerm || (!resultInput.value.trim() && !resultInput.disabled))) {
+        termInput.setAttribute('data-last-term', term);
         // Only try auto-calc if result is empty OR if it was previously auto-filled (how to track? maybe just if not locked?)
         // Simpler: If term looks like math and result is empty or we force check
 
